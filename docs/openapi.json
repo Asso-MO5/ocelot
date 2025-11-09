@@ -1,0 +1,309 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ocelot API - Museum Back End",
+    "description": "API backend Fastify avec authentification Discord OAuth2.\n\nCette documentation est générée à partir des scénarios Gherkin/Cucumber et des schémas Fastify.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Serveur de développement"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentification",
+      "description": "Endpoints d'authentification Discord OAuth2"
+    }
+  ],
+  "paths": {
+    "/auth/signin": {
+      "get": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Redirige vers Discord OAuth2 pour l'authentification",
+        "description": "**Redirection vers Discord pour l'authentification** : je devrais être redirigé vers Discord OAuth2 l'URL de redirection devrait contenir le client_id l'URL de redirection devrait contenir le redirect_uri l'URL de redirection devrait contenir les scopes demandés\n\n**Erreur si DISCORD_CLIENT_ID n'est pas configuré** : je devrais recevoir une erreur 500 le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"\n\n**Utilisation de scopes personnalisés** : l'URL de redirection Discord devrait contenir les scopes personnalisés\n\n**Configuration de l'URI de redirection personnalisée** : l'URL de redirection Discord devrait utiliser l'URI personnalisée\n\n### Scénarios de test\n\n**Redirection vers Discord pour l'authentification**\n\n📋 que je suis un utilisateur non authentifié\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ je devrais être redirigé vers Discord OAuth2\n\n✅ l'URL de redirection devrait contenir le client_id\n\n✅ l'URL de redirection devrait contenir le redirect_uri\n\n✅ l'URL de redirection devrait contenir les scopes demandés\n\n**Erreur si DISCORD_CLIENT_ID n'est pas configuré**\n\n📋 que DISCORD_CLIENT_ID n'est pas défini\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ je devrais recevoir une erreur 500\n\n✅ le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"\n\n**Utilisation de scopes personnalisés**\n\n📋 que DISCORD_SCOPES est configuré avec \"identify email guilds\"\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ l'URL de redirection Discord devrait contenir les scopes personnalisés\n\n**Configuration de l'URI de redirection personnalisée**\n\n📋 que DISCORD_REDIRECT_URI est configuré\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ l'URL de redirection Discord devrait utiliser l'URI personnalisée\n\n",
+        "operationId": "get_auth_signin",
+        "parameters": [],
+        "responses": {
+          "302": {
+            "description": "Redirection",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL de redirection"
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur - je devrais recevoir une erreur 500, le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Message d'erreur"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "example": {
+                  "error": "exemple_error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "get": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Alias de /auth/signin - Redirige vers Discord OAuth2",
+        "description": "**Redirection vers Discord via /auth/login** : je devrais être redirigé vers Discord OAuth2 le comportement devrait être identique à \"/auth/signin\"\n\n### Scénarios de test\n\n**Redirection vers Discord via /auth/login**\n\n📋 que je suis un utilisateur non authentifié\n\n⚡ je fais une requête GET vers \"/auth/login\"\n\n✅ je devrais être redirigé vers Discord OAuth2\n\n✅ le comportement devrait être identique à \"/auth/signin\"\n\n",
+        "operationId": "get_auth_login",
+        "parameters": [],
+        "responses": {
+          "302": {
+            "description": "Redirection",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL de redirection"
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Message d'erreur"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/callback": {
+      "get": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Callback OAuth2 de Discord - Échange le code d'autorisation contre des tokens",
+        "description": "**Callback OAuth2 sans code** : je devrais être redirigé vers le frontend avec error=missing_code\n\n### Scénarios de test\n\n**Callback OAuth2 sans code**\n\n📋 que Discord n'a pas retourné de code\n\n⚡ je fais une requête GET vers \"/auth/callback\"\n\n✅ je devrais être redirigé vers le frontend avec error=missing_code\n\n",
+        "operationId": "get_auth_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "Code d'autorisation retourné par Discord",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Code d'autorisation retourné par Discord"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "Code d'erreur retourné par Discord",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Code d'erreur retourné par Discord"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "État passé lors de la requête initiale",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "État passé lors de la requête initiale"
+            }
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Vérifie l'état de la session utilisateur",
+        "description": "**Vérification de session - utilisateur non authentifié** : je devrais recevoir authenticated: false je devrais recevoir hasRefreshToken: false\n\n**Vérification de session - utilisateur authentifié** : je devrais recevoir authenticated: true je devrais recevoir hasRefreshToken: true si un refresh_token existe\n\n### Scénarios de test\n\n**Vérification de session - utilisateur non authentifié**\n\n📋 que je n'ai pas de token d'accès\n\n⚡ je fais une requête GET vers \"/auth/session\"\n\n✅ je devrais recevoir authenticated: false\n\n✅ je devrais recevoir hasRefreshToken: false\n\n**Vérification de session - utilisateur authentifié**\n\n📋 que j'ai un access_token valide\n\n⚡ je fais une requête GET vers \"/auth/session\"\n\n✅ je devrais recevoir authenticated: true\n\n✅ je devrais recevoir hasRefreshToken: true si un refresh_token existe\n\n",
+        "operationId": "get_auth_session",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean",
+                      "description": "Indique si l'utilisateur est authentifié"
+                    },
+                    "hasRefreshToken": {
+                      "type": "boolean",
+                      "description": "Indique si un refresh token est disponible"
+                    }
+                  },
+                  "required": [
+                    "authenticated",
+                    "hasRefreshToken"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Récupère les informations de l'utilisateur authentifié (gère automatiquement le refresh du token)",
+        "description": "**Récupération des données utilisateur - token valide** : je devrais recevoir mes informations utilisateur la réponse devrait contenir id, username, discriminator, avatar la réponse devrait contenir email si le scope email est accordé\n\n**Récupération des données utilisateur - token expiré avec refresh automatique** : que j'ai un refresh_token valide le refresh_token devrait être utilisé pour obtenir un nouveau access_token les nouveaux tokens devraient être stockés dans les cookies je devrais recevoir mes informations utilisateur\n\n**Récupération des données utilisateur - token expiré sans refresh token** : que je n'ai pas de refresh_token je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Token expiré et aucun refresh token disponible\"\n\n**Récupération des données utilisateur - refresh token invalide** : que mon refresh_token est invalide je devrais recevoir une erreur 401 les cookies devraient être supprimés le message d'erreur devrait indiquer \"Session expirée, veuillez vous reconnecter\"\n\n**Récupération des données utilisateur - non authentifié** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"\n\n### Scénarios de test\n\n**Récupération des données utilisateur - token valide**\n\n📋 que j'ai un access_token valide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir mes informations utilisateur\n\n✅ la réponse devrait contenir id, username, discriminator, avatar\n\n✅ la réponse devrait contenir email si le scope email est accordé\n\n**Récupération des données utilisateur - token expiré avec refresh automatique**\n\n📋 que mon access_token est expiré\n\n✅ que j'ai un refresh_token valide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ le refresh_token devrait être utilisé pour obtenir un nouveau access_token\n\n✅ les nouveaux tokens devraient être stockés dans les cookies\n\n✅ je devrais recevoir mes informations utilisateur\n\n**Récupération des données utilisateur - token expiré sans refresh token**\n\n📋 que mon access_token est expiré\n\n✅ que je n'ai pas de refresh_token\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ le message d'erreur devrait indiquer \"Token expiré et aucun refresh token disponible\"\n\n**Récupération des données utilisateur - refresh token invalide**\n\n📋 que mon access_token est expiré\n\n✅ que mon refresh_token est invalide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ les cookies devraient être supprimés\n\n✅ le message d'erreur devrait indiquer \"Session expirée, veuillez vous reconnecter\"\n\n**Récupération des données utilisateur - non authentifié**\n\n📋 que je n'ai pas de token d'accès\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ le message d'erreur devrait indiquer \"Non authentifié\"\n\n",
+        "operationId": "get_auth_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "ID unique de l'utilisateur Discord"
+                    },
+                    "username": {
+                      "type": "string",
+                      "description": "Nom d'utilisateur"
+                    },
+                    "discriminator": {
+                      "type": "string",
+                      "description": "Discriminator (4 chiffres)"
+                    },
+                    "avatar": {
+                      "type": [
+                        "string"
+                      ],
+                      "description": "Hash de l'avatar ou null",
+                      "nullable": true
+                    },
+                    "email": {
+                      "type": "string",
+                      "description": "Email de l'utilisateur (si le scope email est accordé)"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "username",
+                    "discriminator",
+                    "avatar"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Non authentifié - que je n'ai pas de refresh_token, je devrais recevoir une erreur 401, le message d'erreur devrait indiquer \"Token expiré et aucun refresh token disponible\"",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Message d'erreur"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "example": {
+                  "error": "exemple_error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Message d'erreur"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "discord_access_token",
+        "description": "Token d'accès Discord stocké dans un cookie HTTP-only"
+      }
+    }
+  }
+}

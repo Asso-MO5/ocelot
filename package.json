@@ -1,0 +1,39 @@
+{
+  "name": "ocelot",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "museum back end",
+  "main": "dist/src/server.js",
+  "scripts": {
+    "dev": "node --env-file=.env.local --watch src/server.ts",
+    "start": "node --experimental-strip-types src/server.ts",
+    "test": "node --test src/**/*.test.ts",
+    "test:watch": "node --test --watch src/**/*.test.ts",
+    "docs": "node --experimental-strip-types src/scripts/generate-doc.ts",
+    "migrate": "node --experimental-strip-types scripts/migrate.ts up -j ts -m migrations",
+    "migrate:up": "node --experimental-strip-types scripts/migrate.ts up -j ts -m migrations",
+    "migrate:down": "node --experimental-strip-types scripts/migrate.ts down -j ts -m migrations",
+    "migrate:create": "node --experimental-strip-types scripts/migrate.ts create -j ts -m migrations",
+    "migrate:prod": "node --experimental-strip-types scripts/migrate.ts --prod up -j ts -m migrations",
+    "migrate:prod:up": "node --experimental-strip-types scripts/migrate.ts --prod up -j ts -m migrations",
+    "migrate:prod:down": "node --experimental-strip-types scripts/migrate.ts --prod down -j ts -m migrations"
+  },
+  "author": "kazerlelutin",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/postgres": "^6.0.2",
+    "fastify": "^5.6.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.6",
+    "node-pg-migrate": "^8.0.3",
+    "pino-pretty": "^13.1.2",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
