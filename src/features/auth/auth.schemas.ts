@@ -70,8 +70,16 @@ export const meResponseSchema = {
       type: 'string',
       description: 'Email de l\'utilisateur (si le scope email est accordé)',
     },
+    roles: {
+      type: 'array',
+      description: 'Rôles de l\'utilisateur',
+      items: {
+        type: 'string',
+        description: 'Nom du rôle',
+      },
+    },
   },
-  required: ['id', 'username', 'discriminator', 'avatar'],
+  required: ['id', 'username', 'discriminator', 'avatar', 'roles'],
 } as const;
 
 /**
@@ -96,14 +104,6 @@ export const callbackSchema: FastifySchema = {
   // Pas de réponse car c'est une redirection
 } as const;
 
-/**
- * Schéma complet pour la route /auth/session
- */
-export const sessionSchema: FastifySchema = {
-  response: {
-    200: sessionResponseSchema,
-  },
-} as const;
 
 /**
  * Schéma complet pour la route /auth/me

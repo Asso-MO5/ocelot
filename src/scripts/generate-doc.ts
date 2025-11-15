@@ -150,7 +150,7 @@ async function generateOpenAPIDoc(): Promise<void> {
   const featuresDir = join(__dirname, '../features');
   const features: ParsedFeature[] = [];
 
-  // Lire tous les fichiers .feature.ts
+  // Lire tous les fichiers .feature
   function findFeatureFiles(dir: string): string[] {
     const files: string[] = [];
     const entries = readdirSync(dir);
@@ -161,7 +161,7 @@ async function generateOpenAPIDoc(): Promise<void> {
 
       if (stat.isDirectory()) {
         files.push(...findFeatureFiles(fullPath));
-      } else if (entry.endsWith('.feature.ts')) {
+      } else if (entry.endsWith('.feature')) {
         files.push(fullPath);
       }
     }
@@ -175,13 +175,10 @@ async function generateOpenAPIDoc(): Promise<void> {
   for (const filePath of featureFiles) {
     try {
       const content = readFileSync(filePath, 'utf-8');
-      // Extraire le contenu de la constante exportée
-      const match = content.match(/export\s+const\s+\w+\s*=\s*`([\s\S]*?)`/);
-      if (match) {
-        const feature = parseGherkinFeature(match[1]);
-        if (feature) {
-          features.push(feature);
-        }
+      // Parser directement le contenu du fichier .feature
+      const feature = parseGherkinFeature(content);
+      if (feature) {
+        features.push(feature);
       }
     } catch (err) {
       console.warn(`Erreur lors de la lecture de ${filePath}:`, err);
@@ -191,10 +188,59 @@ async function generateOpenAPIDoc(): Promise<void> {
   // Importer les schémas
   const {
     callbackSchema,
-    sessionSchema,
     meSchema,
     signinSchema
   } = await import('../features/auth/auth.schemas.ts');
+
+  const {
+    createCheckoutSchema,
+    getCheckoutStatusSchema
+  } = await import('../features/pay/pay.schemas.ts');
+
+  const {
+    createScheduleSchema,
+    updateScheduleSchema,
+    getSchedulesSchema,
+    getPublicSchedulesSchema,
+    getScheduleByIdSchema,
+    deleteScheduleSchema
+  } = await import('../features/schedules/schedules.schemas.ts');
+
+  const {
+    createPriceSchema,
+    updatePriceSchema,
+    getPricesSchema,
+    getPriceByIdSchema,
+    deletePriceSchema
+  } = await import('../features/prices/prices.schemas.ts');
+
+  const {
+    upsertSettingSchema,
+    getSettingsSchema,
+    getSettingByKeySchema,
+    deleteSettingSchema,
+    getMaxCapacitySchema,
+    setMaxCapacitySchema,
+    getCurrentVisitorsSchema,
+    setCurrentVisitorsSchema,
+    incrementVisitorsSchema,
+    decrementVisitorsSchema
+  } = await import('../features/settings/settings.schemas.ts');
+
+  const {
+    createTicketSchema,
+    createTicketsWithPaymentSchema,
+    updateTicketSchema,
+    getTicketsSchema,
+    getTicketByIdSchema,
+    getTicketsByCheckoutIdSchema,
+    validateTicketSchema,
+    deleteTicketSchema
+  } = await import('../features/tickets/tickets.schemas.ts');
+
+  const {
+    getSlotsSchema
+  } = await import('../features/slots/slots.schemas.ts');
 
   // Définir les routes avec leurs schémas
   const routes = [
@@ -203,30 +249,266 @@ async function generateOpenAPIDoc(): Promise<void> {
       path: '/auth/signin',
       schema: signinSchema,
       description: 'Redirige vers Discord OAuth2 pour l\'authentification',
+      tag: 'Authentification',
     },
     {
       method: 'GET',
       path: '/auth/login',
       schema: signinSchema,
       description: 'Alias de /auth/signin - Redirige vers Discord OAuth2',
+      tag: 'Authentification',
     },
     {
       method: 'GET',
       path: '/auth/callback',
       schema: callbackSchema,
       description: 'Callback OAuth2 de Discord - Échange le code d\'autorisation contre des tokens',
-    },
-    {
-      method: 'GET',
-      path: '/auth/session',
-      schema: sessionSchema,
-      description: 'Vérifie l\'état de la session utilisateur',
+      tag: 'Authentification',
     },
     {
       method: 'GET',
       path: '/auth/me',
       schema: meSchema,
       description: 'Récupère les informations de l\'utilisateur authentifié (gère automatiquement le refresh du token)',
+      tag: 'Authentification',
+    },
+    {
+      method: 'POST',
+      path: '/pay/checkout',
+      schema: createCheckoutSchema,
+      description: 'Crée un nouveau checkout SumUp pour un paiement',
+      tag: 'Paiement',
+    },
+    {
+      method: 'GET',
+      path: '/pay/checkout/:checkoutId',
+      schema: getCheckoutStatusSchema,
+      description: 'Vérifie le statut d\'un checkout SumUp',
+      tag: 'Paiement',
+    },
+    {
+      method: 'POST',
+      path: '/museum/schedules',
+      schema: createScheduleSchema,
+      description: 'Crée ou met à jour un horaire d\'ouverture (UPSERT). Pour les exceptions : cherche par start_date, end_date et audience_type. Pour les horaires récurrents : cherche par day_of_week et audience_type. Retourne 201 si créé, 200 si mis à jour.',
+      tag: 'Musée - Horaires',
+    },
+    {
+      method: 'GET',
+      path: '/museum/schedules/public',
+      schema: getPublicSchedulesSchema,
+      description: 'Récupère uniquement les horaires publics (route publique, accessible sans authentification)',
+      tag: 'Musée - Horaires',
+    },
+    {
+      method: 'GET',
+      path: '/museum/schedules',
+      schema: getSchedulesSchema,
+      description: 'Récupère tous les horaires avec filtres optionnels (authentification requise)',
+      tag: 'Musée - Horaires',
+    },
+    {
+      method: 'GET',
+      path: '/museum/schedules/:id',
+      schema: getScheduleByIdSchema,
+      description: 'Récupère un horaire par son ID',
+      tag: 'Musée - Horaires',
+    },
+    {
+      method: 'PUT',
+      path: '/museum/schedules/:id',
+      schema: updateScheduleSchema,
+      description: 'Met à jour un horaire',
+      tag: 'Musée - Horaires',
+    },
+    {
+      method: 'DELETE',
+      path: '/museum/schedules/:id',
+      schema: deleteScheduleSchema,
+      description: 'Supprime un horaire',
+      tag: 'Musée - Horaires',
+    },
+    {
+      method: 'POST',
+      path: '/museum/prices',
+      schema: createPriceSchema,
+      description: 'Crée ou met à jour un tarif (upsert). Si un id est fourni et existe, met à jour le tarif (retourne 200). Sinon, crée un nouveau tarif (retourne 201).',
+      tag: 'Musée - Tarifs',
+    },
+    {
+      method: 'GET',
+      path: '/museum/prices',
+      schema: getPricesSchema,
+      description: 'Récupère tous les tarifs avec filtres optionnels',
+      tag: 'Musée - Tarifs',
+    },
+    {
+      method: 'GET',
+      path: '/museum/prices/:id',
+      schema: getPriceByIdSchema,
+      description: 'Récupère un tarif par son ID',
+      tag: 'Musée - Tarifs',
+    },
+    {
+      method: 'PUT',
+      path: '/museum/prices/:id',
+      schema: updatePriceSchema,
+      description: 'Met à jour un tarif',
+      tag: 'Musée - Tarifs',
+    },
+    {
+      method: 'DELETE',
+      path: '/museum/prices/:id',
+      schema: deletePriceSchema,
+      description: 'Supprime un tarif',
+      tag: 'Musée - Tarifs',
+    },
+    {
+      method: 'GET',
+      path: '/museum/settings',
+      schema: getSettingsSchema,
+      description: 'Récupère tous les paramètres avec filtres optionnels',
+      tag: 'Musée - Paramètres',
+    },
+    {
+      method: 'GET',
+      path: '/museum/settings/:key',
+      schema: getSettingByKeySchema,
+      description: 'Récupère un paramètre par sa clé',
+      tag: 'Musée - Paramètres',
+    },
+    {
+      method: 'POST',
+      path: '/museum/settings',
+      schema: upsertSettingSchema,
+      description: 'Crée ou met à jour un paramètre (upsert) - Retourne 201 si créé, 200 si mis à jour',
+      tag: 'Musée - Paramètres',
+    },
+    {
+      method: 'PUT',
+      path: '/museum/settings',
+      schema: upsertSettingSchema,
+      description: 'Crée ou met à jour un paramètre (upsert) - Retourne 201 si créé, 200 si mis à jour',
+      tag: 'Musée - Paramètres',
+    },
+    {
+      method: 'DELETE',
+      path: '/museum/settings/:key',
+      schema: deleteSettingSchema,
+      description: 'Supprime un paramètre par sa clé',
+      tag: 'Musée - Paramètres',
+    },
+    {
+      method: 'GET',
+      path: '/museum/capacity/max',
+      schema: getMaxCapacitySchema,
+      description: 'Récupère la capacité maximale du musée',
+      tag: 'Musée - Capacité',
+    },
+    {
+      method: 'POST',
+      path: '/museum/capacity/max',
+      schema: setMaxCapacitySchema,
+      description: 'Définit la capacité maximale du musée',
+      tag: 'Musée - Capacité',
+    },
+    {
+      method: 'GET',
+      path: '/museum/capacity/current',
+      schema: getCurrentVisitorsSchema,
+      description: 'Récupère le nombre actuel de visiteurs',
+      tag: 'Musée - Capacité',
+    },
+    {
+      method: 'POST',
+      path: '/museum/capacity/current',
+      schema: setCurrentVisitorsSchema,
+      description: 'Définit le nombre actuel de visiteurs',
+      tag: 'Musée - Capacité',
+    },
+    {
+      method: 'POST',
+      path: '/museum/capacity/increment',
+      schema: incrementVisitorsSchema,
+      description: 'Incrémente le nombre de visiteurs',
+      tag: 'Musée - Capacité',
+    },
+    {
+      method: 'POST',
+      path: '/museum/capacity/decrement',
+      schema: decrementVisitorsSchema,
+      description: 'Décrémente le nombre de visiteurs',
+      tag: 'Musée - Capacité',
+    },
+    {
+      method: 'POST',
+      path: '/museum/tickets',
+      schema: createTicketSchema,
+      description: 'Crée un nouveau ticket avec génération automatique d\'un code QR unique',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'GET',
+      path: '/museum/tickets',
+      schema: getTicketsSchema,
+      description: 'Récupère tous les tickets avec filtres optionnels (email, date, statut, etc.)',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'GET',
+      path: '/museum/tickets/:id',
+      schema: getTicketByIdSchema,
+      description: 'Récupère un ticket par son ID (authentification requise)',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'GET',
+      path: '/museum/tickets/qr/:qrCode',
+      schema: getTicketByIdSchema,
+      description: 'Récupère un ticket par son code QR (route publique)',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'POST',
+      path: '/museum/tickets/validate',
+      schema: validateTicketSchema,
+      description: 'Valide/utilise un ticket en scannant son code QR (route publique)',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'POST',
+      path: '/museum/tickets/payment',
+      schema: createTicketsWithPaymentSchema,
+      description: 'Crée plusieurs tickets avec paiement SumUp. Crée d\'abord un checkout SumUp avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'GET',
+      path: '/museum/tickets/checkout/:checkoutId',
+      schema: getTicketsByCheckoutIdSchema,
+      description: 'Récupère tous les tickets associés à un checkout_id donné (route publique)',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'PUT',
+      path: '/museum/tickets/:id',
+      schema: updateTicketSchema,
+      description: 'Met à jour un ticket',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'DELETE',
+      path: '/museum/tickets/:id',
+      schema: deleteTicketSchema,
+      description: 'Supprime un ticket',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'GET',
+      path: '/museum/slots',
+      schema: getSlotsSchema,
+      description: 'Récupère les créneaux horaires disponibles pour une date donnée avec leurs capacités et taux d\'occupation (route publique)',
+      tag: 'Musée - Créneaux',
     },
   ];
 
@@ -253,6 +535,34 @@ async function generateOpenAPIDoc(): Promise<void> {
         name: 'Authentification',
         description: 'Endpoints d\'authentification Discord OAuth2',
       },
+      {
+        name: 'Paiement',
+        description: 'Endpoints de paiement SumUp',
+      },
+      {
+        name: 'Musée - Horaires',
+        description: 'Endpoints de gestion des horaires d\'ouverture',
+      },
+      {
+        name: 'Musée - Tarifs',
+        description: 'Endpoints de gestion des tarifs',
+      },
+      {
+        name: 'Musée - Paramètres',
+        description: 'Endpoints de gestion des paramètres du musée',
+      },
+      {
+        name: 'Musée - Capacité',
+        description: 'Endpoints de gestion de la capacité et des visiteurs',
+      },
+      {
+        name: 'Musée - Tickets',
+        description: 'Endpoints de gestion des tickets et réservations',
+      },
+      {
+        name: 'Musée - Créneaux',
+        description: 'Endpoints de gestion des créneaux horaires et disponibilités',
+      },
     ],
     paths: {} as Record<string, any>,
   };
@@ -262,7 +572,7 @@ async function generateOpenAPIDoc(): Promise<void> {
     const scenarios = findScenariosForEndpoint(features, route.method, route.path);
     const pathItem: any = {
       [route.method.toLowerCase()]: {
-        tags: ['Authentification'],
+        tags: [route.tag || 'Autre'],
         summary: route.description,
         description: generateDescriptionFromScenarios(scenarios),
         operationId: `${route.method.toLowerCase()}_${route.path.replace(/\//g, '_').replace(/^_|_$/g, '')}`,
@@ -272,7 +582,7 @@ async function generateOpenAPIDoc(): Promise<void> {
     };
 
     // Ajouter les paramètres de query
-    if (route.schema.querystring) {
+    if ('querystring' in route.schema && route.schema.querystring) {
       const querySchema = route.schema.querystring as any;
       if (querySchema.properties) {
         for (const [key, prop] of Object.entries(querySchema.properties as Record<string, any>)) {
@@ -285,6 +595,35 @@ async function generateOpenAPIDoc(): Promise<void> {
           });
         }
       }
+    }
+
+    // Ajouter les paramètres de route (params)
+    if ('params' in route.schema && route.schema.params) {
+      const paramsSchema = route.schema.params as any;
+      if (paramsSchema.properties) {
+        for (const [key, prop] of Object.entries(paramsSchema.properties as Record<string, any>)) {
+          pathItem[route.method.toLowerCase()].parameters.push({
+            name: key,
+            in: 'path',
+            description: prop.description || '',
+            required: paramsSchema.required?.includes(key) || true,
+            schema: jsonSchemaToOpenAPI(prop),
+          });
+        }
+      }
+    }
+
+    // Ajouter le body pour les requêtes POST/PUT
+    if (['POST', 'PUT', 'PATCH'].includes(route.method) && 'body' in route.schema && route.schema.body) {
+      const bodySchema = route.schema.body as any;
+      pathItem[route.method.toLowerCase()].requestBody = {
+        required: true,
+        content: {
+          'application/json': {
+            schema: jsonSchemaToOpenAPI(bodySchema),
+          },
+        },
+      };
     }
 
     // Ajouter les réponses
@@ -342,12 +681,48 @@ async function generateOpenAPIDoc(): Promise<void> {
   };
 
   // Ajouter la sécurité aux endpoints protégés
+  const protectedPaths = [
+    '/auth/me',
+    '/auth/session',
+    '/museum/settings', // POST, PUT, DELETE
+    '/museum/settings/:key', // DELETE
+    '/museum/capacity/max', // POST
+    '/museum/capacity/current', // POST
+    '/museum/capacity/increment', // POST
+    '/museum/capacity/decrement', // POST
+    '/museum/schedules', // GET (membres), POST
+    '/museum/schedules/:id', // PUT, DELETE
+    '/museum/prices', // POST
+    '/museum/prices/:id', // PUT, DELETE
+    '/museum/tickets', // POST
+    '/museum/tickets/:id', // PUT, DELETE
+  ];
+
   for (const path in openApiDoc.paths) {
-    if (path === '/auth/me' || path === '/auth/session') {
-      const methods = Object.keys(openApiDoc.paths[path]);
-      for (const method of methods) {
-        if (openApiDoc.paths[path][method]) {
-          openApiDoc.paths[path][method].security = [{ cookieAuth: [] }];
+    const methods = Object.keys(openApiDoc.paths[path]);
+    for (const method of methods) {
+      const pathObj = openApiDoc.paths[path][method];
+      if (pathObj) {
+        // Vérifier si le path correspond à un endpoint protégé
+        const isProtected = protectedPaths.some(protectedPath => {
+          // Gérer les paths avec paramètres
+          const pathPattern = protectedPath.replace(/:[^/]+/g, '[^/]+');
+          const pathRegex = new RegExp(`^${pathPattern}$`);
+          return pathRegex.test(path);
+        });
+
+        // Les méthodes POST, PUT, DELETE sont protégées (sauf certaines routes publiques)
+        const isWriteMethod = ['post', 'put', 'delete'].includes(method.toLowerCase());
+        const isPublicWrite = path === '/auth/signin' || path === '/auth/callback';
+
+        // Routes publiques qui ne nécessitent pas d'authentification
+        const isPublicRoute = path === '/museum/schedules/public' ||
+          path === '/museum/slots' ||
+          path === '/museum/tickets/payment' ||
+          path.startsWith('/museum/tickets/checkout/');
+
+        if ((isProtected || (isWriteMethod && !isPublicWrite)) && !isPublicRoute) {
+          pathObj.security = [{ cookieAuth: [] }];
         }
       }
     }

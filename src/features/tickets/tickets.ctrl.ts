@@ -1,0 +1,376 @@
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import {
+  createTicket,
+  createTicketsWithPayment,
+  getTickets,
+  getTicketById,
+  getTicketByQRCode,
+  getTicketsByCheckoutId,
+  updateTicket,
+  validateTicket,
+  deleteTicket,
+} from './tickets.service.ts';
+import type {
+  CreateTicketBody,
+  CreateTicketsWithPaymentBody,
+  UpdateTicketBody,
+  GetTicketsQuery,
+  ValidateTicketBody,
+} from './tickets.types.ts';
+import {
+  createTicketSchema,
+  createTicketsWithPaymentSchema,
+  updateTicketSchema,
+  getTicketsSchema,
+  getTicketByIdSchema,
+  getTicketsByCheckoutIdSchema,
+  validateTicketSchema,
+  deleteTicketSchema,
+} from './tickets.schemas.ts';
+import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
+import { roles } from '../auth/auth.const.ts';
+
+/**
+ * Handler pour créer un ticket
+ */
+export async function createTicketHandler(
+  req: FastifyRequest<{ Body: CreateTicketBody }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const ticket = await createTicket(app, req.body);
+    return reply.code(201).send(ticket);
+  } catch (err: any) {
+    app.log.error({ err, body: req.body }, 'Erreur lors de la création du ticket');
+
+    if (
+      err.message?.includes('obligatoire') ||
+      err.message?.includes('doit être') ||
+      err.message?.includes('postérieure') ||
+      err.message?.includes('ne peut pas être vide')
+    ) {
+      return reply.code(400).send({ error: err.message });
+    }
+
+    return reply.code(500).send({ error: 'Erreur lors de la création du ticket' });
+  }
+}
+
+/**
+ * Handler pour créer plusieurs tickets avec paiement
+ */
+export async function createTicketsWithPaymentHandler(
+  req: FastifyRequest<{ Body: CreateTicketsWithPaymentBody }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const result = await createTicketsWithPayment(app, req.body);
+    return reply.code(201).send(result);
+  } catch (err: any) {
+    app.log.error({ err, body: req.body }, 'Erreur lors de la création des tickets avec paiement');
+
+    if (
+      err.message?.includes('obligatoire') ||
+      err.message?.includes('doit être') ||
+      err.message?.includes('postérieure') ||
+      err.message?.includes('requis') ||
+      err.message?.includes('supérieur à 0')
+    ) {
+      return reply.code(400).send({ error: err.message });
+    }
+
+    if (err.message?.includes('SUMUP_API_KEY') || err.message?.includes('SUMUP_MERCHANT_CODE')) {
+      return reply.code(500).send({ error: 'Configuration SumUp manquante' });
+    }
+
+    return reply.code(500).send({ error: 'Erreur lors de la création des tickets avec paiement' });
+  }
+}
+
+/**
+ * Handler pour récupérer tous les tickets
+ */
+export async function getTicketsHandler(
+  req: FastifyRequest<{ Querystring: GetTicketsQuery }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const tickets = await getTickets(app, req.query);
+    return reply.send(tickets);
+  } catch (err: any) {
+    app.log.error({ err, query: req.query }, 'Erreur lors de la récupération des tickets');
+    return reply.code(500).send({ error: 'Erreur lors de la récupération des tickets' });
+  }
+}
+
+/**
+ * Handler pour récupérer un ticket par son ID
+ */
+export async function getTicketByIdHandler(
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const ticket = await getTicketById(app, req.params.id);
+
+    if (!ticket) {
+      return reply.code(404).send({ error: 'Ticket non trouvé' });
+    }
+
+    return reply.send(ticket);
+  } catch (err: any) {
+    app.log.error({ err, id: req.params.id }, 'Erreur lors de la récupération du ticket');
+    return reply.code(500).send({ error: 'Erreur lors de la récupération du ticket' });
+  }
+}
+
+/**
+ * Handler pour récupérer un ticket par son code QR
+ */
+export async function getTicketByQRCodeHandler(
+  req: FastifyRequest<{ Params: { qrCode: string } }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const ticket = await getTicketByQRCode(app, req.params.qrCode);
+
+    if (!ticket) {
+      return reply.code(404).send({ error: 'Ticket non trouvé' });
+    }
+
+    return reply.send(ticket);
+  } catch (err: any) {
+    app.log.error({ err, qrCode: req.params.qrCode }, 'Erreur lors de la récupération du ticket');
+    return reply.code(500).send({ error: 'Erreur lors de la récupération du ticket' });
+  }
+}
+
+/**
+ * Handler pour récupérer tous les tickets par checkout_id
+ */
+export async function getTicketsByCheckoutIdHandler(
+  req: FastifyRequest<{ Params: { checkoutId: string } }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const tickets = await getTicketsByCheckoutId(app, req.params.checkoutId);
+    return reply.send(tickets);
+  } catch (err: any) {
+    app.log.error({ err, checkoutId: req.params.checkoutId }, 'Erreur lors de la récupération des tickets');
+    return reply.code(500).send({ error: 'Erreur lors de la récupération des tickets' });
+  }
+}
+
+/**
+ * Handler pour mettre à jour un ticket
+ */
+export async function updateTicketHandler(
+  req: FastifyRequest<{ Params: { id: string }; Body: UpdateTicketBody }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const ticket = await updateTicket(app, req.params.id, req.body);
+    return reply.send(ticket);
+  } catch (err: any) {
+    app.log.error({ err, id: req.params.id, body: req.body }, 'Erreur lors de la mise à jour du ticket');
+
+    if (err.message?.includes('non trouvé')) {
+      return reply.code(404).send({ error: err.message });
+    }
+
+    if (
+      err.message?.includes('doit être') ||
+      err.message?.includes('ne peut pas être vide')
+    ) {
+      return reply.code(400).send({ error: err.message });
+    }
+
+    return reply.code(500).send({ error: 'Erreur lors de la mise à jour du ticket' });
+  }
+}
+
+/**
+ * Handler pour valider/utiliser un ticket (scan QR)
+ */
+export async function validateTicketHandler(
+  req: FastifyRequest<{ Body: ValidateTicketBody }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const ticket = await validateTicket(app, req.body.qr_code);
+    return reply.send(ticket);
+  } catch (err: any) {
+    app.log.error({ err, qr_code: req.body.qr_code }, 'Erreur lors de la validation du ticket');
+
+    if (err.message?.includes('non trouvé')) {
+      return reply.code(404).send({ error: err.message });
+    }
+
+    if (
+      err.message?.includes('pas valide') ||
+      err.message?.includes('déjà été utilisé') ||
+      err.message?.includes('passée')
+    ) {
+      return reply.code(400).send({ error: err.message });
+    }
+
+    return reply.code(500).send({ error: 'Erreur lors de la validation du ticket' });
+  }
+}
+
+/**
+ * Handler pour supprimer un ticket
+ */
+export async function deleteTicketHandler(
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const deleted = await deleteTicket(app, req.params.id);
+
+    if (!deleted) {
+      return reply.code(404).send({ error: 'Ticket non trouvé' });
+    }
+
+    return reply.code(204).send();
+  } catch (err: any) {
+    app.log.error({ err, id: req.params.id }, 'Erreur lors de la suppression du ticket');
+    return reply.code(500).send({ error: 'Erreur lors de la suppression du ticket' });
+  }
+}
+
+/**
+ * Enregistre les routes pour les tickets
+ * 
+ * Routes publiques : 
+ *   - GET /museum/tickets (lecture avec filtres)
+ *   - GET /museum/tickets/qr/:qrCode (récupération par code QR)
+ *   - POST /museum/tickets/validate (validation/scan QR)
+ * 
+ * Routes protégées membres : 
+ *   - GET /museum/tickets/:id (récupération par ID)
+ * 
+ * Routes protégées : 
+ *   - POST, PUT, DELETE (écriture) - uniquement pour les rôles "bureau" et "dev"
+ */
+export function registerTicketsRoutes(app: FastifyInstance) {
+  // Routes publiques : lecture des tickets
+  app.get<{ Querystring: GetTicketsQuery }>(
+    '/museum/tickets',
+    {
+      schema: getTicketsSchema,
+    },
+    async (req, reply) => getTicketsHandler(req, reply, app)
+  );
+
+  app.get<{ Params: { qrCode: string } }>(
+    '/museum/tickets/qr/:qrCode',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['qrCode'],
+          properties: {
+            qrCode: {
+              type: 'string',
+              minLength: 8,
+              maxLength: 8,
+              pattern: '^[A-Z0-9]{8}$',
+              description: 'Code QR du ticket (8 caractères alphanumériques majuscules)',
+            },
+          },
+        },
+        response: {
+          200: getTicketByIdSchema.response[200],
+          404: getTicketByIdSchema.response[404],
+          500: getTicketByIdSchema.response[500],
+        },
+      },
+    },
+    async (req, reply) => getTicketByQRCodeHandler(req, reply, app)
+  );
+
+  // Route publique : validation/scan QR
+  app.post<{ Body: ValidateTicketBody }>(
+    '/museum/tickets/validate',
+    {
+      schema: validateTicketSchema,
+    },
+    async (req, reply) => validateTicketHandler(req, reply, app)
+  );
+
+  // Route publique : récupération des tickets par checkout_id
+  app.get<{ Params: { checkoutId: string } }>(
+    '/museum/tickets/checkout/:checkoutId',
+    {
+      schema: getTicketsByCheckoutIdSchema,
+    },
+    async (req, reply) => getTicketsByCheckoutIdHandler(req, reply, app)
+  );
+
+  // Route protégée membres : récupération par ID
+  app.get<{ Params: { id: string } }>(
+    '/museum/tickets/:id',
+    {
+      schema: getTicketByIdSchema,
+      preHandler: [authenticateHook(app)],
+    },
+    async (req, reply) => getTicketByIdHandler(req, reply, app)
+  );
+
+  // Routes protégées : modification des tickets (uniquement bureau et dev)
+  app.post<{ Body: CreateTicketBody }>(
+    '/museum/tickets',
+    {
+      schema: createTicketSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
+    },
+    async (req, reply) => createTicketHandler(req, reply, app)
+  );
+
+  // Route publique : création de plusieurs tickets avec paiement
+  app.post<{ Body: CreateTicketsWithPaymentBody }>(
+    '/museum/tickets/payment',
+    {
+      schema: createTicketsWithPaymentSchema,
+    },
+    async (req, reply) => createTicketsWithPaymentHandler(req, reply, app)
+  );
+
+  app.put<{ Params: { id: string }; Body: UpdateTicketBody }>(
+    '/museum/tickets/:id',
+    {
+      schema: updateTicketSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
+    },
+    async (req, reply) => updateTicketHandler(req, reply, app)
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    '/museum/tickets/:id',
+    {
+      schema: deleteTicketSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
+    },
+    async (req, reply) => deleteTicketHandler(req, reply, app)
+  );
+}
+

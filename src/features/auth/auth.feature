@@ -1,9 +1,3 @@
-/**
- * Scénarios Gherkin/Cucumber pour les fonctionnalités d'authentification Discord OAuth2
- * Format: Feature, Scenario, Given, When, Then
- */
-
-export const authFeature = `
 Feature: Authentification Discord OAuth2
   En tant qu'utilisateur
   Je veux m'authentifier via Discord
@@ -121,4 +115,3 @@ Feature: Authentification Discord OAuth2
     Alors je devrais être redirigé vers l'URL du frontend configurée
     Et l'URL devrait contenir success=true
 `;
-

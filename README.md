@@ -30,6 +30,14 @@ yarn install
 - `GET /auth/session` - Vérifie l'état de la session (authentifié, refresh token disponible)
 - `GET /auth/me` - Récupère les informations de l'utilisateur authentifié (gère automatiquement le refresh du token)
 
+### Paiement (SumUp)
+
+- `POST /pay/checkout` - Crée un nouveau checkout SumUp
+  - Body: `{ amount: number, currency?: string, description?: string, checkout_reference?: string }`
+  - Retourne: `{ checkout_id, checkout_reference, amount, currency, status }`
+- `GET /pay/checkout/:checkoutId` - Vérifie le statut d'un checkout SumUp
+  - Retourne: `{ id, checkout_reference, amount, currency, status, payment_type?, transaction_code? }`
+
 ## ⚙️ Configuration
 
 Le serveur utilise les variables d'environnement suivantes (définies dans `.env.local`) :
@@ -71,6 +79,11 @@ Le serveur utilise les variables d'environnement suivantes (définies dans `.env
   - Les erreurs dupliquées (dans la fenêtre configurée) ne seront pas envoyées pour éviter le spam
   - Les réponses HTTP aux clients restent génériques (sans détails de l'erreur)
 
+### SumUp (Paiement)
+
+- `SUMUP_API_KEY` - Clé API SumUp (requis pour les paiements)
+- `SUMUP_MERCHANT_CODE` - Code marchand SumUp (requis pour les paiements)
+
 ### Frontend
 
 - `FRONTEND_URL` - URL du frontend pour les redirections (défaut: `http://localhost:3000`)
@@ -87,6 +100,11 @@ src/
 │   │   └── auth.types.ts     # Types TypeScript pour Discord
 │   ├── docs/
 │   │   └── docs.ctrl.ts      # Routes de documentation
+│   ├── pay/
+│   │   ├── pay.ctrl.ts       # Contrôleur de paiement SumUp
+│   │   ├── pay.utils.ts      # Utilitaires pour l'API SumUp
+│   │   ├── pay.schemas.ts    # Schémas de validation Fastify
+│   │   └── pay.types.ts      # Types TypeScript pour SumUp
 │   └── terror/
 │       ├── error.handler.ts  # Gestionnaires d'erreurs Fastify
 │       ├── error.service.ts  # Services de gestion d'erreurs (DB, Discord)

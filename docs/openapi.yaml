@@ -13,6 +13,20 @@ servers:
 tags:
   - name: "Authentification"
     description: "Endpoints d'authentification Discord OAuth2"
+  - name: "Paiement"
+    description: "Endpoints de paiement SumUp"
+  - name: "Musée - Horaires"
+    description: "Endpoints de gestion des horaires d'ouverture"
+  - name: "Musée - Tarifs"
+    description: "Endpoints de gestion des tarifs"
+  - name: "Musée - Paramètres"
+    description: "Endpoints de gestion des paramètres du musée"
+  - name: "Musée - Capacité"
+    description: "Endpoints de gestion de la capacité et des visiteurs"
+  - name: "Musée - Tickets"
+    description: "Endpoints de gestion des tickets et réservations"
+  - name: "Musée - Créneaux"
+    description: "Endpoints de gestion des créneaux horaires et disponibilités"
 paths:
   /auth/signin:
     get:
@@ -183,61 +197,6 @@ paths:
             type: "string"
             description: "État passé lors de la requête initiale"
       responses:
-  /auth/session:
-    get:
-      tags:
-        - Authentification
-      summary: "Vérifie l'état de la session utilisateur"
-      description: "**Vérification de session - utilisateur non authentifié** : je devrais recevoir authenticated: false je devrais recevoir hasRefreshToken: false
-
-**Vérification de session - utilisateur authentifié** : je devrais recevoir authenticated: true je devrais recevoir hasRefreshToken: true si un refresh_token existe
-
-### Scénarios de test
-
-**Vérification de session - utilisateur non authentifié**
-
-📋 que je n'ai pas de token d'accès
-
-⚡ je fais une requête GET vers \"/auth/session\"
-
-✅ je devrais recevoir authenticated: false
-
-✅ je devrais recevoir hasRefreshToken: false
-
-**Vérification de session - utilisateur authentifié**
-
-📋 que j'ai un access_token valide
-
-⚡ je fais une requête GET vers \"/auth/session\"
-
-✅ je devrais recevoir authenticated: true
-
-✅ je devrais recevoir hasRefreshToken: true si un refresh_token existe
-
-"
-      operationId: "get_auth_session"
-      parameters:
-      responses:
-        200:
-          description: "Succès"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  authenticated:
-                    type: "boolean"
-                    description: "Indique si l'utilisateur est authentifié"
-                  hasRefreshToken:
-                    type: "boolean"
-                    description: "Indique si un refresh token est disponible"
-                required:
-                  - authenticated
-                  - hasRefreshToken
-              example: null
-          headers: null
-      security:
-        - cookieAuth:
   /auth/me:
     get:
       tags:
@@ -345,11 +304,18 @@ paths:
                   email:
                     type: "string"
                     description: "Email de l'utilisateur (si le scope email est accordé)"
+                  roles:
+                    type: "array"
+                    description: "Rôles de l'utilisateur"
+                    items:
+                      type: "string"
+                      description: "Nom du rôle"
                 required:
                   - id
                   - username
                   - discriminator
                   - avatar
+                  - roles
               example: null
           headers: null
         401:
@@ -383,6 +349,3872 @@ paths:
           headers: null
       security:
         - cookieAuth:
+  /pay/checkout:
+    post:
+      tags:
+        - Paiement
+      summary: "Crée un nouveau checkout SumUp pour un paiement"
+      description: "**Créer un checkout SumUp avec succès** : que je fournis un montant valide dans le body je reçois une réponse 200 la réponse contient un \"checkout_id\" la réponse contient le \"checkout_reference\" la réponse contient le \"amount\" la réponse contient la \"currency\" la réponse contient le \"status\"
+
+**Créer un checkout avec un montant invalide** : que je fournis un montant négatif ou nul dans le body je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0
+
+**Créer un checkout avec une devise personnalisée** : que je fournis un montant valide que je spécifie une devise dans le body(par exemple \"USD\") je reçois une réponse 200 la réponse contient la devise spécifiée
+
+**Créer un checkout avec une description** : que je fournis un montant valide que je fournis une description dans le body je reçois une réponse 200 le checkout est créé avec la description fournie
+
+**Créer un checkout avec une référence personnalisée** : que je fournis un montant valide que je fournis une \"checkout_reference\" personnalisée dans le body je reçois une réponse 200 la réponse contient la référence personnalisée fournie
+
+**Créer un checkout sans montant** : que je ne fournis pas de montant dans le body je reçois une réponse 400 la réponse contient un message d'erreur de validation
+
+**Créer un checkout avec configuration SumUp manquante** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message indiquant que la configuration SumUp est manquante
+
+**Gérer les erreurs de l'API SumUp** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message d'erreur générique les détails de l'erreur sont loggés côté serveur
+
+### Scénarios de test
+
+**Créer un checkout SumUp avec succès**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide dans le body
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un \"checkout_id\"
+
+✅ la réponse contient le \"checkout_reference\"
+
+✅ la réponse contient le \"amount\"
+
+✅ la réponse contient la \"currency\"
+
+✅ la réponse contient le \"status\"
+
+**Créer un checkout avec un montant invalide**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant négatif ou nul dans le body
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0
+
+**Créer un checkout avec une devise personnalisée**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ que je spécifie une devise dans le body(par exemple \"USD\")
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient la devise spécifiée
+
+**Créer un checkout avec une description**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ que je fournis une description dans le body
+
+✅ je reçois une réponse 200
+
+✅ le checkout est créé avec la description fournie
+
+**Créer un checkout avec une référence personnalisée**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ que je fournis une \"checkout_reference\" personnalisée dans le body
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient la référence personnalisée fournie
+
+**Créer un checkout sans montant**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je ne fournis pas de montant dans le body
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur de validation
+
+**Créer un checkout avec configuration SumUp manquante**
+
+📋 que SUMUP_API_KEY n'est pas configurée
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ je reçois une réponse 500
+
+✅ la réponse contient un message indiquant que la configuration SumUp est manquante
+
+**Gérer les erreurs de l'API SumUp**
+
+📋 que l'API SumUp retourne une erreur
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ je reçois une réponse 500
+
+✅ la réponse contient un message d'erreur générique
+
+✅ les détails de l'erreur sont loggés côté serveur
+
+"
+      operationId: "post_pay_checkout"
+      parameters:
+      responses:
+        200:
+          description: "Succès - que je fournis un montant valide dans le body, je reçois une réponse 200, la réponse contient un \"checkout_id\", la réponse contient le \"checkout_reference\", la réponse contient le \"amount\", la réponse contient la \"currency\", la réponse contient le \"status\""
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  checkout_id:
+                    type: "string"
+                    description: "ID du checkout SumUp"
+                  checkout_reference:
+                    type: "string"
+                    description: "Référence du checkout"
+                  amount:
+                    type: "number"
+                    description: "Montant du paiement"
+                  currency:
+                    type: "string"
+                    description: "Devise"
+                  status:
+                    type: "string"
+                    description: "Statut du checkout"
+              example:
+                checkout_id: "exemple_checkout_id"
+                checkout_reference: "exemple_checkout_reference"
+                amount: 123
+                currency: "exemple_currency"
+                status: "exemple_status"
+          headers: null
+        400:
+          description: "Code 400 - que je fournis un montant négatif ou nul dans le body, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        500:
+          description: "Erreur serveur - que je fournis un montant valide, je reçois une réponse 500, la réponse contient un message indiquant que la configuration SumUp est manquante"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - amount
+              properties:
+                amount:
+                  type: "number"
+                  minimum: 5
+                  maximum: 12
+                  description: "Montant du paiement"
+                currency:
+                  type: "string"
+                  default: "EUR"
+                  description: "Devise du paiement (défaut: EUR)"
+                description:
+                  type: "string"
+                  description: "Description du paiement"
+      security:
+        - cookieAuth:
+  /pay/checkout/:checkoutId:
+    get:
+      tags:
+        - Paiement
+      summary: "Vérifie le statut d'un checkout SumUp"
+      description: ""
+      operationId: "get_pay_checkout_:checkoutId"
+      parameters:
+        - name: "checkoutId"
+          in: "path"
+          description: "ID du checkout SumUp"
+          required: true
+          schema:
+            type: "string"
+            description: "ID du checkout SumUp"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  checkout_reference:
+                    type: "string"
+                  amount:
+                    type: "number"
+                  currency:
+                    type: "string"
+                  status:
+                    type: "string"
+                    enum:
+                      - PENDING
+                      - PAID
+                      - FAILED
+                      - CANCELLED
+                  payment_type:
+                    type: "string"
+                  transaction_code:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+  /museum/schedules:
+    post:
+      tags:
+        - Musée - Horaires
+      summary: "Crée ou met à jour un horaire d'ouverture (UPSERT). Pour les exceptions : cherche par start_date, end_date et audience_type. Pour les horaires récurrents : cherche par day_of_week et audience_type. Retourne 201 si créé, 200 si mis à jour."
+      description: "**Créer un horaire récurrent pour le public** : que je fournis un day_of_week (0-6) que je fournis start_time et end_time que je fournis audience_type = \"public\" je reçois une réponse 201 la réponse contient l'horaire créé avec un id la réponse contient day_of_week, start_time, end_time, audience_type
+
+**Créer un horaire récurrent pour les membres** : que je fournis un day_of_week (0-6) que je fournis start_time et end_time que je fournis audience_type = \"member\" je reçois une réponse 201 la réponse contient l'horaire créé avec audience_type = \"member\"
+
+**Créer une exception (horaires spécifiques pour une période)** : que je fournis is_exception = true que je fournis start_date et end_date que je fournis start_time et end_time que je fournis audience_type je reçois une réponse 201 la réponse contient is_exception = true la réponse contient start_date et end_date
+
+**Créer une fermeture exceptionnelle** : que je fournis is_exception = true que je fournis is_closed = true que je fournis start_date et end_date que je fournis une description je reçois une réponse 201 la réponse contient is_closed = true la réponse contient la description
+
+**Erreur lors de la création d'un horaire récurrent sans day_of_week** : que je ne fournis pas day_of_week que is_exception = false je reçois une réponse 400 la réponse contient un message d'erreur indiquant que day_of_week est requis
+
+**Erreur lors de la création d'une exception sans dates** : que je fournis is_exception = true que je ne fournis pas start_date ou end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date et end_date sont requis
+
+### Scénarios de test
+
+**Créer un horaire récurrent pour le public**
+
+📋 que je veux créer un horaire récurrent
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ que je fournis un day_of_week (0-6)
+
+✅ que je fournis start_time et end_time
+
+✅ que je fournis audience_type = \"public\"
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient l'horaire créé avec un id
+
+✅ la réponse contient day_of_week, start_time, end_time, audience_type
+
+**Créer un horaire récurrent pour les membres**
+
+📋 que je veux créer un horaire récurrent pour les membres
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ que je fournis un day_of_week (0-6)
+
+✅ que je fournis start_time et end_time
+
+✅ que je fournis audience_type = \"member\"
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient l'horaire créé avec audience_type = \"member\"
+
+**Créer une exception (horaires spécifiques pour une période)**
+
+📋 que je veux créer une exception pour les vacances
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ que je fournis is_exception = true
+
+✅ que je fournis start_date et end_date
+
+✅ que je fournis start_time et end_time
+
+✅ que je fournis audience_type
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient is_exception = true
+
+✅ la réponse contient start_date et end_date
+
+**Créer une fermeture exceptionnelle**
+
+📋 que je veux créer une fermeture exceptionnelle
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ que je fournis is_exception = true
+
+✅ que je fournis is_closed = true
+
+✅ que je fournis start_date et end_date
+
+✅ que je fournis une description
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient is_closed = true
+
+✅ la réponse contient la description
+
+**Erreur lors de la création d'un horaire récurrent sans day_of_week**
+
+📋 que je veux créer un horaire récurrent
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ que je ne fournis pas day_of_week
+
+✅ que is_exception = false
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que day_of_week est requis
+
+**Erreur lors de la création d'une exception sans dates**
+
+📋 que je veux créer une exception
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ que je fournis is_exception = true
+
+✅ que je ne fournis pas start_date ou end_date
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que start_date et end_date sont requis
+
+"
+      operationId: "post_museum_schedules"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  day_of_week:
+                    type:
+                      - integer
+                    nullable: true
+                  start_time:
+                    type: "string"
+                  end_time:
+                    type: "string"
+                  audience_type:
+                    type: "string"
+                  start_date:
+                    type:
+                      - string
+                    nullable: true
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  is_exception:
+                    type: "boolean"
+                  is_closed:
+                    type: "boolean"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+                description: "Horaire mis à jour (upsert)"
+              example: null
+          headers: null
+        201:
+          description: "Code 201 - que je fournis un day_of_week (0-6), que je fournis start_time et end_time, que je fournis audience_type = \"public\", je reçois une réponse 201, la réponse contient l'horaire créé avec un id, la réponse contient day_of_week, start_time, end_time, audience_type"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  day_of_week:
+                    type:
+                      - integer
+                    nullable: true
+                  start_time:
+                    type: "string"
+                  end_time:
+                    type: "string"
+                  audience_type:
+                    type: "string"
+                  start_date:
+                    type:
+                      - string
+                    nullable: true
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  is_exception:
+                    type: "boolean"
+                  is_closed:
+                    type: "boolean"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+                description: "Nouvel horaire créé (upsert)"
+              example:
+                id: "exemple_id"
+                start_time: "exemple_start_time"
+                end_time: "exemple_end_time"
+                audience_type: "exemple_audience_type"
+                is_exception: true
+                is_closed: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
+          headers: null
+        400:
+          description: "Code 400 - que je ne fournis pas day_of_week, que is_exception = false, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que day_of_week est requis"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - start_time
+                - end_time
+                - audience_type
+              properties:
+                day_of_week:
+                  type: "integer"
+                  minimum: 0
+                  maximum: 6
+                  description: "Jour de la semaine (0=dimanche, 1=lundi, ..., 6=samedi). Requis si is_exception est false."
+                start_time:
+                  type: "string"
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de début au format HH:MM:SS"
+                end_time:
+                  type: "string"
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de fin au format HH:MM:SS"
+                audience_type:
+                  type: "string"
+                  enum:
+                    - public
+                    - member
+                  description: "Type d'audience (public ou member)"
+                start_date:
+                  type: "string"
+                  format: "date"
+                  description: "Date de début pour les horaires spécifiques (format YYYY-MM-DD)"
+                end_date:
+                  type: "string"
+                  format: "date"
+                  description: "Date de fin pour les horaires spécifiques (format YYYY-MM-DD)"
+                is_exception:
+                  type: "boolean"
+                  default: false
+                  description: "Indique si c'est une exception (vacances, fermeture exceptionnelle, etc.)"
+                is_closed:
+                  type: "boolean"
+                  default: false
+                  description: "Indique si le musée est fermé"
+                description:
+                  type: "string"
+                  description: "Description de l'exception ou du changement d'horaire"
+      security:
+        - cookieAuth:
+    get:
+      tags:
+        - Musée - Horaires
+      summary: "Récupère tous les horaires avec filtres optionnels (authentification requise)"
+      description: "**Récupérer tous les horaires** : je reçois une réponse 200 la réponse contient un tableau d'horaires
+
+### Scénarios de test
+
+**Récupérer tous les horaires**
+
+📋 que des horaires existent en base de données
+
+⚡ je fais une requête GET vers \"/museum/schedules\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un tableau d'horaires
+
+"
+      operationId: "get_museum_schedules"
+      parameters:
+        - name: "day_of_week"
+          in: "query"
+          description: "Filtrer par jour de la semaine (0=dimanche, 1=lundi, ..., 6=samedi)"
+          required: false
+          schema:
+            type: "integer"
+            minimum: 0
+            maximum: 6
+            description: "Filtrer par jour de la semaine (0=dimanche, 1=lundi, ..., 6=samedi)"
+        - name: "audience_type"
+          in: "query"
+          description: "Filtrer par type d'audience"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - public
+              - member
+            description: "Filtrer par type d'audience"
+        - name: "date"
+          in: "query"
+          description: "Récupérer les horaires pour une date spécifique (format YYYY-MM-DD)"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+            description: "Récupérer les horaires pour une date spécifique (format YYYY-MM-DD)"
+        - name: "include_exceptions"
+          in: "query"
+          description: "Inclure les exceptions dans les résultats"
+          required: false
+          schema:
+            type: "boolean"
+            default: true
+            description: "Inclure les exceptions dans les résultats"
+      responses:
+        200:
+          description: "Succès - je reçois une réponse 200, la réponse contient un tableau d'horaires"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    id:
+                      type: "string"
+                    day_of_week:
+                      type:
+                        - integer
+                      nullable: true
+                    start_time:
+                      type: "string"
+                    end_time:
+                      type: "string"
+                    audience_type:
+                      type: "string"
+                    start_date:
+                      type:
+                        - string
+                      nullable: true
+                    end_date:
+                      type:
+                        - string
+                      nullable: true
+                    is_exception:
+                      type: "boolean"
+                    is_closed:
+                      type: "boolean"
+                    description:
+                      type:
+                        - string
+                      nullable: true
+                    created_at:
+                      type: "string"
+                    updated_at:
+                      type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/schedules/public:
+    get:
+      tags:
+        - Musée - Horaires
+      summary: "Récupère uniquement les horaires publics (route publique, accessible sans authentification)"
+      description: ""
+      operationId: "get_museum_schedules_public"
+      parameters:
+        - name: "day_of_week"
+          in: "query"
+          description: "Filtrer par jour de la semaine (0=dimanche, 1=lundi, ..., 6=samedi)"
+          required: false
+          schema:
+            type: "integer"
+            minimum: 0
+            maximum: 6
+            description: "Filtrer par jour de la semaine (0=dimanche, 1=lundi, ..., 6=samedi)"
+        - name: "date"
+          in: "query"
+          description: "Récupérer les horaires pour une date spécifique (format YYYY-MM-DD)"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+            description: "Récupérer les horaires pour une date spécifique (format YYYY-MM-DD)"
+        - name: "include_exceptions"
+          in: "query"
+          description: "Inclure les exceptions dans les résultats"
+          required: false
+          schema:
+            type: "boolean"
+            default: true
+            description: "Inclure les exceptions dans les résultats"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    id:
+                      type: "string"
+                    day_of_week:
+                      type:
+                        - integer
+                      nullable: true
+                    start_time:
+                      type: "string"
+                    end_time:
+                      type: "string"
+                    audience_type:
+                      type: "string"
+                    start_date:
+                      type:
+                        - string
+                      nullable: true
+                    end_date:
+                      type:
+                        - string
+                      nullable: true
+                    is_exception:
+                      type: "boolean"
+                    is_closed:
+                      type: "boolean"
+                    description:
+                      type:
+                        - string
+                      nullable: true
+                    created_at:
+                      type: "string"
+                    updated_at:
+                      type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+  /museum/schedules/:id:
+    get:
+      tags:
+        - Musée - Horaires
+      summary: "Récupère un horaire par son ID"
+      description: "**Récupérer un horaire par son ID** : je reçois une réponse 200 la réponse contient l'horaire avec l'id demandé
+
+**Erreur lors de la récupération d'un horaire inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Horaire non trouvé\"
+
+### Scénarios de test
+
+**Récupérer un horaire par son ID**
+
+📋 qu'un horaire existe avec un id spécifique
+
+⚡ je fais une requête GET vers \"/museum/schedules/:id\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient l'horaire avec l'id demandé
+
+**Erreur lors de la récupération d'un horaire inexistant**
+
+📋 qu'aucun horaire n'existe avec cet id
+
+⚡ je fais une requête GET vers \"/museum/schedules/:id\"
+
+✅ je reçois une réponse 404
+
+✅ la réponse contient un message d'erreur \"Horaire non trouvé\"
+
+"
+      operationId: "get_museum_schedules_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID de l'horaire"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID de l'horaire"
+      responses:
+        200:
+          description: "Succès - je reçois une réponse 200, la réponse contient l'horaire avec l'id demandé"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  day_of_week:
+                    type:
+                      - integer
+                    nullable: true
+                  start_time:
+                    type: "string"
+                  end_time:
+                    type: "string"
+                  audience_type:
+                    type: "string"
+                  start_date:
+                    type:
+                      - string
+                    nullable: true
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  is_exception:
+                    type: "boolean"
+                  is_closed:
+                    type: "boolean"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example:
+                id: "exemple_id"
+                start_time: "exemple_start_time"
+                end_time: "exemple_end_time"
+                audience_type: "exemple_audience_type"
+                is_exception: true
+                is_closed: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
+          headers: null
+        404:
+          description: "Code 404 - je reçois une réponse 404, la réponse contient un message d'erreur \"Horaire non trouvé\""
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+    put:
+      tags:
+        - Musée - Horaires
+      summary: "Met à jour un horaire"
+      description: "**Mettre à jour un horaire** : que je fournis les champs à mettre à jour je reçois une réponse 200 la réponse contient l'horaire mis à jour
+
+### Scénarios de test
+
+**Mettre à jour un horaire**
+
+📋 qu'un horaire existe
+
+⚡ je fais une requête PUT vers \"/museum/schedules/:id\"
+
+✅ que je fournis les champs à mettre à jour
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient l'horaire mis à jour
+
+"
+      operationId: "put_museum_schedules_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID de l'horaire à mettre à jour"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID de l'horaire à mettre à jour"
+      responses:
+        200:
+          description: "Succès - que je fournis les champs à mettre à jour, je reçois une réponse 200, la réponse contient l'horaire mis à jour"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  day_of_week:
+                    type:
+                      - integer
+                    nullable: true
+                  start_time:
+                    type: "string"
+                  end_time:
+                    type: "string"
+                  audience_type:
+                    type: "string"
+                  start_date:
+                    type:
+                      - string
+                    nullable: true
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  is_exception:
+                    type: "boolean"
+                  is_closed:
+                    type: "boolean"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example:
+                id: "exemple_id"
+                start_time: "exemple_start_time"
+                end_time: "exemple_end_time"
+                audience_type: "exemple_audience_type"
+                is_exception: true
+                is_closed: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                day_of_week:
+                  type:
+                    - integer
+                  minimum: 0
+                  maximum: 6
+                  description: "Jour de la semaine (0=dimanche, 1=lundi, ..., 6=samedi)"
+                  nullable: true
+                start_time:
+                  type: "string"
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de début au format HH:MM:SS"
+                end_time:
+                  type: "string"
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de fin au format HH:MM:SS"
+                audience_type:
+                  type: "string"
+                  enum:
+                    - public
+                    - member
+                  description: "Type d'audience (public ou member)"
+                start_date:
+                  type:
+                    - string
+                  format: "date"
+                  description: "Date de début pour les horaires spécifiques (format YYYY-MM-DD)"
+                  nullable: true
+                end_date:
+                  type:
+                    - string
+                  format: "date"
+                  description: "Date de fin pour les horaires spécifiques (format YYYY-MM-DD)"
+                  nullable: true
+                is_exception:
+                  type: "boolean"
+                  description: "Indique si c'est une exception"
+                is_closed:
+                  type: "boolean"
+                  description: "Indique si le musée est fermé"
+                description:
+                  type:
+                    - string
+                  description: "Description de l'exception ou du changement d'horaire"
+                  nullable: true
+      security:
+        - cookieAuth:
+    delete:
+      tags:
+        - Musée - Horaires
+      summary: "Supprime un horaire"
+      description: "**Supprimer un horaire** : je reçois une réponse 204 l'horaire est supprimé de la base de données
+
+**Erreur lors de la suppression d'un horaire inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Horaire non trouvé\"
+
+### Scénarios de test
+
+**Supprimer un horaire**
+
+📋 qu'un horaire existe
+
+⚡ je fais une requête DELETE vers \"/museum/schedules/:id\"
+
+✅ je reçois une réponse 204
+
+✅ l'horaire est supprimé de la base de données
+
+**Erreur lors de la suppression d'un horaire inexistant**
+
+📋 qu'aucun horaire n'existe avec cet id
+
+⚡ je fais une requête DELETE vers \"/museum/schedules/:id\"
+
+✅ je reçois une réponse 404
+
+✅ la réponse contient un message d'erreur \"Horaire non trouvé\"
+
+"
+      operationId: "delete_museum_schedules_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID de l'horaire à supprimer"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID de l'horaire à supprimer"
+      responses:
+        204:
+          description: "Code 204 - je reçois une réponse 204, l'horaire est supprimé de la base de données"
+          content:
+            application/json:
+              schema:
+                type: "null"
+              example: null
+          headers: null
+        404:
+          description: "Code 404 - je reçois une réponse 404, la réponse contient un message d'erreur \"Horaire non trouvé\""
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/prices:
+    post:
+      tags:
+        - Musée - Tarifs
+      summary: "Crée ou met à jour un tarif (upsert). Si un id est fourni et existe, met à jour le tarif (retourne 200). Sinon, crée un nouveau tarif (retourne 201)."
+      description: "**Créer un tarif pour le public** : que je fournis un name que je fournis un amount en euros que je fournis audience_type = \"public\" je reçois une réponse 201 la réponse contient le tarif créé avec un id la réponse contient name, amount, audience_type
+
+**Créer un tarif pour les membres** : que je fournis un name que je fournis un amount en euros que je fournis audience_type = \"member\" je reçois une réponse 201 la réponse contient le tarif créé avec audience_type = \"member\"
+
+**Créer un tarif avec dates de validité** : que je fournis start_date et end_date que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient start_date et end_date
+
+**Créer un tarif inactif** : que je fournis is_active = false que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient is_active = false
+
+**Créer un tarif nécessitant un justificatif** : que je fournis requires_proof = true que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient requires_proof = true
+
+**Erreur lors de la création d'un tarif avec montant négatif** : que je fournis un amount négatif je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le montant doit être positif
+
+**Erreur lors de la création d'un tarif avec dates invalides** : que je fournis start_date sans end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date et end_date doivent être définis ensemble
+
+**Erreur lors de la création d'un tarif avec start_date après end_date** : que je fournis start_date après end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date doit être antérieure à end_date
+
+**Accès non autorisé pour créer un tarif sans authentification** : je reçois une réponse 401 la réponse contient un message d'erreur \"Non authentifié\"
+
+**Accès non autorisé pour créer un tarif sans les rôles requis** : je reçois une réponse 403 la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
+### Scénarios de test
+
+**Créer un tarif pour le public**
+
+📋 que je veux créer un tarif pour le public
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis un name
+
+✅ que je fournis un amount en euros
+
+✅ que je fournis audience_type = \"public\"
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient le tarif créé avec un id
+
+✅ la réponse contient name, amount, audience_type
+
+**Créer un tarif pour les membres**
+
+📋 que je veux créer un tarif pour les membres
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis un name
+
+✅ que je fournis un amount en euros
+
+✅ que je fournis audience_type = \"member\"
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient le tarif créé avec audience_type = \"member\"
+
+**Créer un tarif avec dates de validité**
+
+📋 que je veux créer un tarif valide pour une période spécifique
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis start_date et end_date
+
+✅ que je fournis name, amount, audience_type
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient start_date et end_date
+
+**Créer un tarif inactif**
+
+📋 que je veux créer un tarif inactif
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis is_active = false
+
+✅ que je fournis name, amount, audience_type
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient is_active = false
+
+**Créer un tarif nécessitant un justificatif**
+
+📋 que je veux créer un tarif réduit nécessitant un justificatif
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis requires_proof = true
+
+✅ que je fournis name, amount, audience_type
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient requires_proof = true
+
+**Erreur lors de la création d'un tarif avec montant négatif**
+
+📋 que je veux créer un tarif
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis un amount négatif
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que le montant doit être positif
+
+**Erreur lors de la création d'un tarif avec dates invalides**
+
+📋 que je veux créer un tarif avec dates
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis start_date sans end_date
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que start_date et end_date doivent être définis ensemble
+
+**Erreur lors de la création d'un tarif avec start_date après end_date**
+
+📋 que je veux créer un tarif avec dates
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis start_date après end_date
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que start_date doit être antérieure à end_date
+
+**Accès non autorisé pour créer un tarif sans authentification**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ je reçois une réponse 401
+
+✅ la réponse contient un message d'erreur \"Non authentifié\"
+
+**Accès non autorisé pour créer un tarif sans les rôles requis**
+
+📋 que je suis authentifié mais sans les rôles bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ je reçois une réponse 403
+
+✅ la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
+"
+      operationId: "post_museum_prices"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                description: "Tarif mis à jour (si id fourni et existe)"
+                properties:
+                  id:
+                    type: "string"
+                  amount:
+                    type: "number"
+                  audience_type:
+                    type: "string"
+                  start_date:
+                    type:
+                      - string
+                    nullable: true
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  is_active:
+                    type: "boolean"
+                  requires_proof:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+                  translations:
+                    type: "object"
+                    description: "Traductions organisées par langue et champ"
+                    additionalProperties:
+                      type: "object"
+                      additionalProperties:
+                        type: "string"
+                  name:
+                    type: "string"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+              example: null
+          headers: null
+        201:
+          description: "Code 201 - que je fournis un name, que je fournis un amount en euros, que je fournis audience_type = \"public\", je reçois une réponse 201, la réponse contient le tarif créé avec un id, la réponse contient name, amount, audience_type"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                description: "Nouveau tarif créé"
+                properties:
+                  id:
+                    type: "string"
+                  amount:
+                    type: "number"
+                  audience_type:
+                    type: "string"
+                  start_date:
+                    type:
+                      - string
+                    nullable: true
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  is_active:
+                    type: "boolean"
+                  requires_proof:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+                  translations:
+                    type: "object"
+                    description: "Traductions organisées par langue et champ"
+                    additionalProperties:
+                      type: "object"
+                      additionalProperties:
+                        type: "string"
+                  name:
+                    type: "string"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+              example:
+                id: "exemple_id"
+                amount: 123
+                audience_type: "exemple_audience_type"
+                is_active: true
+                requires_proof: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
+                name: "exemple_name"
+          headers: null
+        400:
+          description: "Code 400 - que je fournis un amount négatif, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que le montant doit être positif"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - amount
+                - audience_type
+                - translations
+              properties:
+                id:
+                  type: "string"
+                  format: "uuid"
+                  description: "ID optionnel pour l'upsert : si fourni et existe, met à jour le tarif ; sinon crée un nouveau tarif avec cet ID ou génère un nouvel ID"
+                amount:
+                  type: "number"
+                  minimum: 0
+                  description: "Montant en euros"
+                audience_type:
+                  type: "string"
+                  enum:
+                    - public
+                    - member
+                  description: "Type d'audience (public ou member)"
+                start_date:
+                  type: "string"
+                  format: "date"
+                  description: "Date de début de validité (format YYYY-MM-DD)"
+                end_date:
+                  type: "string"
+                  format: "date"
+                  description: "Date de fin de validité (format YYYY-MM-DD)"
+                is_active:
+                  type: "boolean"
+                  default: true
+                  description: "Indique si le tarif est actif"
+                requires_proof:
+                  type: "boolean"
+                  default: false
+                  description: "Indique si le tarif nécessite un justificatif (ex: tarif réduit étudiant, senior, etc.)"
+                translations:
+                  type: "array"
+                  minItems: 1
+                  description: "Traductions du tarif (au moins une traduction pour \"name\" est requise)"
+                  items:
+                    type: "object"
+                    required:
+                      - lang
+                      - field_name
+                      - translation
+                    properties:
+                      lang:
+                        type: "string"
+                        minLength: 2
+                        maxLength: 10
+                        description: "Code de langue (ex: \"fr\", \"en\", \"es\")"
+                      field_name:
+                        type: "string"
+                        enum:
+                          - name
+                          - description
+                        description: "Nom du champ à traduire (name ou description)"
+                      translation:
+                        type: "string"
+                        minLength: 1
+                        description: "Texte traduit"
+      security:
+        - cookieAuth:
+    get:
+      tags:
+        - Musée - Tarifs
+      summary: "Récupère tous les tarifs avec filtres optionnels"
+      description: "**Récupérer tous les tarifs actifs** : je reçois une réponse 200 la réponse contient un tableau de tarifs tous les tarifs retournés ont is_active = true
+
+### Scénarios de test
+
+**Récupérer tous les tarifs actifs**
+
+📋 que des tarifs existent en base de données
+
+⚡ je fais une requête GET vers \"/museum/prices\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un tableau de tarifs
+
+✅ tous les tarifs retournés ont is_active = true
+
+"
+      operationId: "get_museum_prices"
+      parameters:
+        - name: "audience_type"
+          in: "query"
+          description: "Filtrer par type d'audience"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - public
+              - member
+            description: "Filtrer par type d'audience"
+        - name: "date"
+          in: "query"
+          description: "Récupérer les tarifs valides pour une date spécifique (format YYYY-MM-DD)"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+            description: "Récupérer les tarifs valides pour une date spécifique (format YYYY-MM-DD)"
+        - name: "is_active"
+          in: "query"
+          description: "Filtrer par statut actif/inactif"
+          required: false
+          schema:
+            type: "boolean"
+            description: "Filtrer par statut actif/inactif"
+        - name: "lang"
+          in: "query"
+          description: "Code de langue pour les traductions (ex: \"fr\", \"en\"). Si non fourni, retourne toutes les traductions"
+          required: false
+          schema:
+            type: "string"
+            minLength: 2
+            maxLength: 10
+            description: "Code de langue pour les traductions (ex: \"fr\", \"en\"). Si non fourni, retourne toutes les traductions"
+      responses:
+        200:
+          description: "Succès - je reçois une réponse 200, la réponse contient un tableau de tarifs, tous les tarifs retournés ont is_active = true"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    id:
+                      type: "string"
+                    amount:
+                      type: "number"
+                    audience_type:
+                      type: "string"
+                    start_date:
+                      type:
+                        - string
+                      nullable: true
+                    end_date:
+                      type:
+                        - string
+                      nullable: true
+                    is_active:
+                      type: "boolean"
+                    requires_proof:
+                      type: "boolean"
+                    created_at:
+                      type: "string"
+                    updated_at:
+                      type: "string"
+                    translations:
+                      type: "object"
+                      description: "Traductions organisées par langue et champ"
+                      additionalProperties:
+                        type: "object"
+                        additionalProperties:
+                          type: "string"
+                    name:
+                      type: "string"
+                    description:
+                      type:
+                        - string
+                      nullable: true
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/prices/:id:
+    get:
+      tags:
+        - Musée - Tarifs
+      summary: "Récupère un tarif par son ID"
+      description: "**Récupérer un tarif par son ID** : je reçois une réponse 200 la réponse contient le tarif avec l'id demandé
+
+**Erreur lors de la récupération d'un tarif inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Tarif non trouvé\"
+
+### Scénarios de test
+
+**Récupérer un tarif par son ID**
+
+📋 qu'un tarif existe avec un id spécifique
+
+⚡ je fais une requête GET vers \"/museum/prices/:id\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le tarif avec l'id demandé
+
+**Erreur lors de la récupération d'un tarif inexistant**
+
+📋 qu'aucun tarif n'existe avec cet id
+
+⚡ je fais une requête GET vers \"/museum/prices/:id\"
+
+✅ je reçois une réponse 404
+
+✅ la réponse contient un message d'erreur \"Tarif non trouvé\"
+
+"
+      operationId: "get_museum_prices_:id"
+      parameters:
+        - name: "lang"
+          in: "query"
+          description: "Code de langue pour les traductions (ex: \"fr\", \"en\"). Si non fourni, retourne toutes les traductions"
+          required: false
+          schema:
+            type: "string"
+            minLength: 2
+            maxLength: 10
+            description: "Code de langue pour les traductions (ex: \"fr\", \"en\"). Si non fourni, retourne toutes les traductions"
+        - name: "id"
+          in: "path"
+          description: "ID du tarif"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID du tarif"
+      responses:
+        200:
+          description: "Succès - je reçois une réponse 200, la réponse contient le tarif avec l'id demandé"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  amount:
+                    type: "number"
+                  audience_type:
+                    type: "string"
+                  start_date:
+                    type:
+                      - string
+                    nullable: true
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  is_active:
+                    type: "boolean"
+                  requires_proof:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+                  translations:
+                    type: "object"
+                    description: "Traductions organisées par langue et champ"
+                    additionalProperties:
+                      type: "object"
+                      additionalProperties:
+                        type: "string"
+                  name:
+                    type: "string"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+              example:
+                id: "exemple_id"
+                amount: 123
+                audience_type: "exemple_audience_type"
+                is_active: true
+                requires_proof: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
+                name: "exemple_name"
+          headers: null
+        404:
+          description: "Code 404 - je reçois une réponse 404, la réponse contient un message d'erreur \"Tarif non trouvé\""
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+    put:
+      tags:
+        - Musée - Tarifs
+      summary: "Met à jour un tarif"
+      description: "**Mettre à jour un tarif** : que je fournis les champs à mettre à jour je reçois une réponse 200 la réponse contient le tarif mis à jour
+
+**Désactiver un tarif** : que je fournis is_active = false je reçois une réponse 200 la réponse contient is_active = false
+
+### Scénarios de test
+
+**Mettre à jour un tarif**
+
+📋 qu'un tarif existe
+
+⚡ je fais une requête PUT vers \"/museum/prices/:id\"
+
+✅ que je fournis les champs à mettre à jour
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le tarif mis à jour
+
+**Désactiver un tarif**
+
+📋 qu'un tarif existe
+
+⚡ je fais une requête PUT vers \"/museum/prices/:id\"
+
+✅ que je fournis is_active = false
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient is_active = false
+
+"
+      operationId: "put_museum_prices_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID du tarif à mettre à jour"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID du tarif à mettre à jour"
+      responses:
+        200:
+          description: "Succès - que je fournis les champs à mettre à jour, je reçois une réponse 200, la réponse contient le tarif mis à jour"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  amount:
+                    type: "number"
+                  audience_type:
+                    type: "string"
+                  start_date:
+                    type:
+                      - string
+                    nullable: true
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  is_active:
+                    type: "boolean"
+                  requires_proof:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+                  translations:
+                    type: "object"
+                    description: "Traductions organisées par langue et champ"
+                    additionalProperties:
+                      type: "object"
+                      additionalProperties:
+                        type: "string"
+                  name:
+                    type: "string"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+              example:
+                id: "exemple_id"
+                amount: 123
+                audience_type: "exemple_audience_type"
+                is_active: true
+                requires_proof: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
+                name: "exemple_name"
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                amount:
+                  type: "number"
+                  minimum: 0
+                  description: "Montant en euros"
+                audience_type:
+                  type: "string"
+                  enum:
+                    - public
+                    - member
+                  description: "Type d'audience (public ou member)"
+                start_date:
+                  type:
+                    - string
+                  format: "date"
+                  description: "Date de début de validité (format YYYY-MM-DD)"
+                  nullable: true
+                end_date:
+                  type:
+                    - string
+                  format: "date"
+                  description: "Date de fin de validité (format YYYY-MM-DD)"
+                  nullable: true
+                is_active:
+                  type: "boolean"
+                  description: "Indique si le tarif est actif"
+                requires_proof:
+                  type: "boolean"
+                  description: "Indique si le tarif nécessite un justificatif"
+                translations:
+                  type: "array"
+                  description: "Traductions du tarif"
+                  items:
+                    type: "object"
+                    required:
+                      - lang
+                      - field_name
+                      - translation
+                    properties:
+                      lang:
+                        type: "string"
+                        minLength: 2
+                        maxLength: 10
+                        description: "Code de langue (ex: \"fr\", \"en\", \"es\")"
+                      field_name:
+                        type: "string"
+                        enum:
+                          - name
+                          - description
+                        description: "Nom du champ à traduire (name ou description)"
+                      translation:
+                        type: "string"
+                        minLength: 1
+                        description: "Texte traduit"
+      security:
+        - cookieAuth:
+    delete:
+      tags:
+        - Musée - Tarifs
+      summary: "Supprime un tarif"
+      description: "**Supprimer un tarif** : je reçois une réponse 204 le tarif est supprimé de la base de données
+
+**Erreur lors de la suppression d'un tarif inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Tarif non trouvé\"
+
+### Scénarios de test
+
+**Supprimer un tarif**
+
+📋 qu'un tarif existe
+
+⚡ je fais une requête DELETE vers \"/museum/prices/:id\"
+
+✅ je reçois une réponse 204
+
+✅ le tarif est supprimé de la base de données
+
+**Erreur lors de la suppression d'un tarif inexistant**
+
+📋 qu'aucun tarif n'existe avec cet id
+
+⚡ je fais une requête DELETE vers \"/museum/prices/:id\"
+
+✅ je reçois une réponse 404
+
+✅ la réponse contient un message d'erreur \"Tarif non trouvé\"
+
+"
+      operationId: "delete_museum_prices_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID du tarif à supprimer"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID du tarif à supprimer"
+      responses:
+        204:
+          description: "Code 204 - je reçois une réponse 204, le tarif est supprimé de la base de données"
+          content:
+            application/json:
+              schema:
+                type: "null"
+              example: null
+          headers: null
+        404:
+          description: "Code 404 - je reçois une réponse 404, la réponse contient un message d'erreur \"Tarif non trouvé\""
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/settings:
+    get:
+      tags:
+        - Musée - Paramètres
+      summary: "Récupère tous les paramètres avec filtres optionnels"
+      description: ""
+      operationId: "get_museum_settings"
+      parameters:
+        - name: "key"
+          in: "query"
+          description: "Filtrer par clé spécifique"
+          required: false
+          schema:
+            type: "string"
+            description: "Filtrer par clé spécifique"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    id:
+                      type: "string"
+                    key:
+                      type: "string"
+                    value:
+                      type: "string"
+                    value_type:
+                      type: "string"
+                    description:
+                      type:
+                        - string
+                      nullable: true
+                    created_at:
+                      type: "string"
+                    updated_at:
+                      type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+    post:
+      tags:
+        - Musée - Paramètres
+      summary: "Crée ou met à jour un paramètre (upsert) - Retourne 201 si créé, 200 si mis à jour"
+      description: ""
+      operationId: "post_museum_settings"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  key:
+                    type: "string"
+                  value:
+                    type:
+                      - string
+                      - number
+                      - boolean
+                      - object
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        201:
+          description: "Code 201"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  key:
+                    type: "string"
+                  value:
+                    type:
+                      - string
+                      - number
+                      - boolean
+                      - object
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - key
+                - value
+              properties:
+                key:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 255
+                  description: "Clé unique du paramètre (ex: \"max_capacity\", \"current_visitors\")"
+                value:
+                  description: "Valeur du paramètre (string, number, boolean ou object) - Le type est auto-détecté si value_type n'est pas fourni"
+                description:
+                  type: "string"
+                  description: "Description du paramètre"
+      security:
+        - cookieAuth:
+    put:
+      tags:
+        - Musée - Paramètres
+      summary: "Crée ou met à jour un paramètre (upsert) - Retourne 201 si créé, 200 si mis à jour"
+      description: ""
+      operationId: "put_museum_settings"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  key:
+                    type: "string"
+                  value:
+                    type:
+                      - string
+                      - number
+                      - boolean
+                      - object
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        201:
+          description: "Code 201"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  key:
+                    type: "string"
+                  value:
+                    type:
+                      - string
+                      - number
+                      - boolean
+                      - object
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - key
+                - value
+              properties:
+                key:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 255
+                  description: "Clé unique du paramètre (ex: \"max_capacity\", \"current_visitors\")"
+                value:
+                  description: "Valeur du paramètre (string, number, boolean ou object) - Le type est auto-détecté si value_type n'est pas fourni"
+                description:
+                  type: "string"
+                  description: "Description du paramètre"
+      security:
+        - cookieAuth:
+  /museum/settings/:key:
+    get:
+      tags:
+        - Musée - Paramètres
+      summary: "Récupère un paramètre par sa clé"
+      description: ""
+      operationId: "get_museum_settings_:key"
+      parameters:
+        - name: "key"
+          in: "path"
+          description: "Clé du paramètre"
+          required: true
+          schema:
+            type: "string"
+            description: "Clé du paramètre"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  key:
+                    type: "string"
+                  value:
+                    type: "string"
+                  value_type:
+                    type: "string"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+    delete:
+      tags:
+        - Musée - Paramètres
+      summary: "Supprime un paramètre par sa clé"
+      description: ""
+      operationId: "delete_museum_settings_:key"
+      parameters:
+        - name: "key"
+          in: "path"
+          description: "Clé du paramètre à supprimer"
+          required: true
+          schema:
+            type: "string"
+            description: "Clé du paramètre à supprimer"
+      responses:
+        204:
+          description: "Code 204"
+          content:
+            application/json:
+              schema:
+                type: "null"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/capacity/max:
+    get:
+      tags:
+        - Musée - Capacité
+      summary: "Récupère la capacité maximale du musée"
+      description: ""
+      operationId: "get_museum_capacity_max"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  max_capacity:
+                    type: "number"
+                    description: "Capacité maximale du musée"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+    post:
+      tags:
+        - Musée - Capacité
+      summary: "Définit la capacité maximale du musée"
+      description: ""
+      operationId: "post_museum_capacity_max"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  key:
+                    type: "string"
+                  value:
+                    type: "string"
+                  value_type:
+                    type: "string"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - max_capacity
+              properties:
+                max_capacity:
+                  type: "number"
+                  minimum: 0
+                  description: "Capacité maximale du musée (doit être positive ou nulle)"
+      security:
+        - cookieAuth:
+  /museum/capacity/current:
+    get:
+      tags:
+        - Musée - Capacité
+      summary: "Récupère le nombre actuel de visiteurs"
+      description: ""
+      operationId: "get_museum_capacity_current"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  current_visitors:
+                    type: "number"
+                    description: "Nombre actuel de visiteurs dans le musée"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+    post:
+      tags:
+        - Musée - Capacité
+      summary: "Définit le nombre actuel de visiteurs"
+      description: ""
+      operationId: "post_museum_capacity_current"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  key:
+                    type: "string"
+                  value:
+                    type: "string"
+                  value_type:
+                    type: "string"
+                  description:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - current_visitors
+              properties:
+                current_visitors:
+                  type: "number"
+                  minimum: 0
+                  description: "Nombre actuel de visiteurs (doit être positif ou nul)"
+      security:
+        - cookieAuth:
+  /museum/capacity/increment:
+    post:
+      tags:
+        - Musée - Capacité
+      summary: "Incrémente le nombre de visiteurs"
+      description: ""
+      operationId: "post_museum_capacity_increment"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  current_visitors:
+                    type: "number"
+                    description: "Nouveau nombre de visiteurs après incrémentation"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                increment:
+                  type: "number"
+                  default: 1
+                  description: "Valeur d'incrémentation (par défaut: 1)"
+      security:
+        - cookieAuth:
+  /museum/capacity/decrement:
+    post:
+      tags:
+        - Musée - Capacité
+      summary: "Décrémente le nombre de visiteurs"
+      description: ""
+      operationId: "post_museum_capacity_decrement"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  current_visitors:
+                    type: "number"
+                    description: "Nouveau nombre de visiteurs après décrémentation"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                decrement:
+                  type: "number"
+                  default: 1
+                  description: "Valeur de décrémentation (par défaut: 1)"
+      security:
+        - cookieAuth:
+  /museum/tickets:
+    post:
+      tags:
+        - Musée - Tickets
+      summary: "Crée un nouveau ticket avec génération automatique d'un code QR unique"
+      description: ""
+      operationId: "post_museum_tickets"
+      parameters:
+      responses:
+        201:
+          description: "Code 201"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  qr_code:
+                    type: "string"
+                  first_name:
+                    type:
+                      - string
+                    nullable: true
+                  last_name:
+                    type:
+                      - string
+                    nullable: true
+                  email:
+                    type: "string"
+                  reservation_date:
+                    type: "string"
+                  slot_start_time:
+                    type: "string"
+                  slot_end_time:
+                    type: "string"
+                  checkout_id:
+                    type:
+                      - string
+                    nullable: true
+                  checkout_reference:
+                    type:
+                      - string
+                    nullable: true
+                  transaction_status:
+                    type:
+                      - string
+                    nullable: true
+                  ticket_price:
+                    type: "number"
+                  donation_amount:
+                    type: "number"
+                  total_amount:
+                    type: "number"
+                  status:
+                    type: "string"
+                  used_at:
+                    type:
+                      - string
+                    nullable: true
+                  notes:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - email
+                - reservation_date
+                - slot_start_time
+                - slot_end_time
+                - ticket_price
+              properties:
+                first_name:
+                  type: "string"
+                  maxLength: 255
+                  description: "Prénom du visiteur (optionnel)"
+                last_name:
+                  type: "string"
+                  maxLength: 255
+                  description: "Nom du visiteur (optionnel)"
+                email:
+                  type: "string"
+                  format: "email"
+                  maxLength: 255
+                  description: "Email du visiteur (obligatoire pour recevoir le ticket)"
+                reservation_date:
+                  type: "string"
+                  format: "date"
+                  description: "Date de réservation (format YYYY-MM-DD)"
+                slot_start_time:
+                  type: "string"
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de début du créneau horaire (format HH:MM:SS)"
+                slot_end_time:
+                  type: "string"
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de fin du créneau horaire (format HH:MM:SS)"
+                ticket_price:
+                  type: "number"
+                  minimum: 0
+                  description: "Prix du ticket en euros"
+                donation_amount:
+                  type: "number"
+                  minimum: 0
+                  default: 0
+                  description: "Montant du don optionnel en euros (0 par défaut)"
+                checkout_id:
+                  type: "string"
+                  description: "ID du checkout SumUp (optionnel au moment de la création)"
+                checkout_reference:
+                  type: "string"
+                  description: "Référence du checkout SumUp (optionnel)"
+                transaction_status:
+                  type: "string"
+                  description: "Statut de la transaction SumUp (optionnel)"
+                notes:
+                  type: "string"
+                  description: "Notes optionnelles"
+      security:
+        - cookieAuth:
+    get:
+      tags:
+        - Musée - Tickets
+      summary: "Récupère tous les tickets avec filtres optionnels (email, date, statut, etc.)"
+      description: ""
+      operationId: "get_museum_tickets"
+      parameters:
+        - name: "email"
+          in: "query"
+          description: "Filtrer par email"
+          required: false
+          schema:
+            type: "string"
+            format: "email"
+            description: "Filtrer par email"
+        - name: "reservation_date"
+          in: "query"
+          description: "Filtrer par date de réservation (format YYYY-MM-DD)"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+            description: "Filtrer par date de réservation (format YYYY-MM-DD)"
+        - name: "status"
+          in: "query"
+          description: "Filtrer par statut"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - pending
+              - paid
+              - cancelled
+              - used
+              - expired
+            description: "Filtrer par statut"
+        - name: "checkout_id"
+          in: "query"
+          description: "Filtrer par checkout ID"
+          required: false
+          schema:
+            type: "string"
+            description: "Filtrer par checkout ID"
+        - name: "qr_code"
+          in: "query"
+          description: "Filtrer par code QR"
+          required: false
+          schema:
+            type: "string"
+            description: "Filtrer par code QR"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    id:
+                      type: "string"
+                    qr_code:
+                      type: "string"
+                    first_name:
+                      type:
+                        - string
+                      nullable: true
+                    last_name:
+                      type:
+                        - string
+                      nullable: true
+                    email:
+                      type: "string"
+                    reservation_date:
+                      type: "string"
+                    slot_start_time:
+                      type: "string"
+                    slot_end_time:
+                      type: "string"
+                    checkout_id:
+                      type:
+                        - string
+                      nullable: true
+                    checkout_reference:
+                      type:
+                        - string
+                      nullable: true
+                    transaction_status:
+                      type:
+                        - string
+                      nullable: true
+                    ticket_price:
+                      type: "number"
+                    donation_amount:
+                      type: "number"
+                    total_amount:
+                      type: "number"
+                    status:
+                      type: "string"
+                    used_at:
+                      type:
+                        - string
+                      nullable: true
+                    notes:
+                      type:
+                        - string
+                      nullable: true
+                    created_at:
+                      type: "string"
+                    updated_at:
+                      type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/tickets/:id:
+    get:
+      tags:
+        - Musée - Tickets
+      summary: "Récupère un ticket par son ID (authentification requise)"
+      description: ""
+      operationId: "get_museum_tickets_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID du ticket"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID du ticket"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  qr_code:
+                    type: "string"
+                  first_name:
+                    type:
+                      - string
+                    nullable: true
+                  last_name:
+                    type:
+                      - string
+                    nullable: true
+                  email:
+                    type: "string"
+                  reservation_date:
+                    type: "string"
+                  slot_start_time:
+                    type: "string"
+                  slot_end_time:
+                    type: "string"
+                  checkout_id:
+                    type:
+                      - string
+                    nullable: true
+                  checkout_reference:
+                    type:
+                      - string
+                    nullable: true
+                  transaction_status:
+                    type:
+                      - string
+                    nullable: true
+                  ticket_price:
+                    type: "number"
+                  donation_amount:
+                    type: "number"
+                  total_amount:
+                    type: "number"
+                  status:
+                    type: "string"
+                  used_at:
+                    type:
+                      - string
+                    nullable: true
+                  notes:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+    put:
+      tags:
+        - Musée - Tickets
+      summary: "Met à jour un ticket"
+      description: ""
+      operationId: "put_museum_tickets_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID du ticket à mettre à jour"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID du ticket à mettre à jour"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  qr_code:
+                    type: "string"
+                  first_name:
+                    type:
+                      - string
+                    nullable: true
+                  last_name:
+                    type:
+                      - string
+                    nullable: true
+                  email:
+                    type: "string"
+                  reservation_date:
+                    type: "string"
+                  slot_start_time:
+                    type: "string"
+                  slot_end_time:
+                    type: "string"
+                  checkout_id:
+                    type:
+                      - string
+                    nullable: true
+                  checkout_reference:
+                    type:
+                      - string
+                    nullable: true
+                  transaction_status:
+                    type:
+                      - string
+                    nullable: true
+                  ticket_price:
+                    type: "number"
+                  donation_amount:
+                    type: "number"
+                  total_amount:
+                    type: "number"
+                  status:
+                    type: "string"
+                  used_at:
+                    type:
+                      - string
+                    nullable: true
+                  notes:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                first_name:
+                  type:
+                    - string
+                  maxLength: 255
+                  description: "Prénom du visiteur"
+                  nullable: true
+                last_name:
+                  type:
+                    - string
+                  maxLength: 255
+                  description: "Nom du visiteur"
+                  nullable: true
+                email:
+                  type: "string"
+                  format: "email"
+                  maxLength: 255
+                  description: "Email du visiteur"
+                reservation_date:
+                  type: "string"
+                  format: "date"
+                  description: "Date de réservation (format YYYY-MM-DD)"
+                slot_start_time:
+                  type: "string"
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de début du créneau horaire (format HH:MM:SS)"
+                slot_end_time:
+                  type: "string"
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de fin du créneau horaire (format HH:MM:SS)"
+                ticket_price:
+                  type: "number"
+                  minimum: 0
+                  description: "Prix du ticket en euros"
+                donation_amount:
+                  type: "number"
+                  minimum: 0
+                  description: "Montant du don optionnel en euros"
+                checkout_id:
+                  type:
+                    - string
+                  description: "ID du checkout SumUp"
+                  nullable: true
+                checkout_reference:
+                  type:
+                    - string
+                  description: "Référence du checkout SumUp"
+                  nullable: true
+                transaction_status:
+                  type:
+                    - string
+                  description: "Statut de la transaction SumUp"
+                  nullable: true
+                status:
+                  type: "string"
+                  enum:
+                    - pending
+                    - paid
+                    - cancelled
+                    - used
+                    - expired
+                  description: "Statut du ticket"
+                used_at:
+                  type:
+                    - string
+                  format: "date-time"
+                  description: "Date/heure d'utilisation du ticket"
+                  nullable: true
+                notes:
+                  type:
+                    - string
+                  description: "Notes optionnelles"
+                  nullable: true
+      security:
+        - cookieAuth:
+    delete:
+      tags:
+        - Musée - Tickets
+      summary: "Supprime un ticket"
+      description: ""
+      operationId: "delete_museum_tickets_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID du ticket à supprimer"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID du ticket à supprimer"
+      responses:
+        204:
+          description: "Code 204"
+          content:
+            application/json:
+              schema:
+                type: "null"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/tickets/qr/:qrCode:
+    get:
+      tags:
+        - Musée - Tickets
+      summary: "Récupère un ticket par son code QR (route publique)"
+      description: ""
+      operationId: "get_museum_tickets_qr_:qrCode"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID du ticket"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID du ticket"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  qr_code:
+                    type: "string"
+                  first_name:
+                    type:
+                      - string
+                    nullable: true
+                  last_name:
+                    type:
+                      - string
+                    nullable: true
+                  email:
+                    type: "string"
+                  reservation_date:
+                    type: "string"
+                  slot_start_time:
+                    type: "string"
+                  slot_end_time:
+                    type: "string"
+                  checkout_id:
+                    type:
+                      - string
+                    nullable: true
+                  checkout_reference:
+                    type:
+                      - string
+                    nullable: true
+                  transaction_status:
+                    type:
+                      - string
+                    nullable: true
+                  ticket_price:
+                    type: "number"
+                  donation_amount:
+                    type: "number"
+                  total_amount:
+                    type: "number"
+                  status:
+                    type: "string"
+                  used_at:
+                    type:
+                      - string
+                    nullable: true
+                  notes:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+  /museum/tickets/validate:
+    post:
+      tags:
+        - Musée - Tickets
+      summary: "Valide/utilise un ticket en scannant son code QR (route publique)"
+      description: ""
+      operationId: "post_museum_tickets_validate"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  qr_code:
+                    type: "string"
+                  first_name:
+                    type:
+                      - string
+                    nullable: true
+                  last_name:
+                    type:
+                      - string
+                    nullable: true
+                  email:
+                    type: "string"
+                  reservation_date:
+                    type: "string"
+                  slot_start_time:
+                    type: "string"
+                  slot_end_time:
+                    type: "string"
+                  checkout_id:
+                    type:
+                      - string
+                    nullable: true
+                  checkout_reference:
+                    type:
+                      - string
+                    nullable: true
+                  transaction_status:
+                    type:
+                      - string
+                    nullable: true
+                  ticket_price:
+                    type: "number"
+                  donation_amount:
+                    type: "number"
+                  total_amount:
+                    type: "number"
+                  status:
+                    type: "string"
+                  used_at:
+                    type:
+                      - string
+                    nullable: true
+                  notes:
+                    type:
+                      - string
+                    nullable: true
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - qr_code
+              properties:
+                qr_code:
+                  type: "string"
+                  minLength: 8
+                  maxLength: 8
+                  pattern: "^[A-Z0-9]{8}$"
+                  description: "Code QR du ticket à valider (8 caractères alphanumériques majuscules)"
+      security:
+        - cookieAuth:
+  /museum/tickets/payment:
+    post:
+      tags:
+        - Musée - Tickets
+      summary: "Crée plusieurs tickets avec paiement SumUp. Crée d'abord un checkout SumUp avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)"
+      description: ""
+      operationId: "post_museum_tickets_payment"
+      parameters:
+      responses:
+        201:
+          description: "Code 201"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  checkout_id:
+                    type: "string"
+                    description: "ID du checkout SumUp"
+                  checkout_reference:
+                    type: "string"
+                    description: "Référence du checkout SumUp"
+                  tickets:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        id:
+                          type: "string"
+                        qr_code:
+                          type: "string"
+                        first_name:
+                          type:
+                            - string
+                          nullable: true
+                        last_name:
+                          type:
+                            - string
+                          nullable: true
+                        email:
+                          type: "string"
+                        reservation_date:
+                          type: "string"
+                        slot_start_time:
+                          type: "string"
+                        slot_end_time:
+                          type: "string"
+                        checkout_id:
+                          type:
+                            - string
+                          nullable: true
+                        checkout_reference:
+                          type:
+                            - string
+                          nullable: true
+                        transaction_status:
+                          type:
+                            - string
+                          nullable: true
+                        ticket_price:
+                          type: "number"
+                        donation_amount:
+                          type: "number"
+                        total_amount:
+                          type: "number"
+                        status:
+                          type: "string"
+                        used_at:
+                          type:
+                            - string
+                          nullable: true
+                        notes:
+                          type:
+                            - string
+                          nullable: true
+                        created_at:
+                          type: "string"
+                        updated_at:
+                          type: "string"
+                    description: "Liste des tickets créés"
+                required:
+                  - checkout_id
+                  - checkout_reference
+                  - tickets
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - email
+                - tickets
+              properties:
+                email:
+                  type: "string"
+                  format: "email"
+                  maxLength: 255
+                  description: "Email commun pour tous les tickets (obligatoire)"
+                first_name:
+                  type: "string"
+                  maxLength: 255
+                  description: "Prénom commun pour tous les tickets (optionnel)"
+                last_name:
+                  type: "string"
+                  maxLength: 255
+                  description: "Nom commun pour tous les tickets (optionnel)"
+                tickets:
+                  type: "array"
+                  minItems: 1
+                  items:
+                    type: "object"
+                    required:
+                      - reservation_date
+                      - slot_start_time
+                      - slot_end_time
+                      - ticket_price
+                    properties:
+                      reservation_date:
+                        type: "string"
+                        format: "date"
+                        description: "Date de réservation (format YYYY-MM-DD)"
+                      slot_start_time:
+                        type: "string"
+                        pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                        description: "Heure de début du créneau horaire (format HH:MM:SS)"
+                      slot_end_time:
+                        type: "string"
+                        pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                        description: "Heure de fin du créneau horaire (format HH:MM:SS)"
+                      ticket_price:
+                        type: "number"
+                        minimum: 0
+                        description: "Prix du ticket en euros"
+                      donation_amount:
+                        type: "number"
+                        minimum: 0
+                        default: 0
+                        description: "Montant du don optionnel en euros (0 par défaut)"
+                      notes:
+                        type: "string"
+                        description: "Notes optionnelles pour ce ticket"
+                  description: "Liste des tickets à créer (au moins 1 ticket requis)"
+                currency:
+                  type: "string"
+                  default: "EUR"
+                  description: "Devise pour le paiement (défaut: EUR)"
+                description:
+                  type: "string"
+                  description: "Description du paiement (optionnel)"
+  /museum/tickets/checkout/:checkoutId:
+    get:
+      tags:
+        - Musée - Tickets
+      summary: "Récupère tous les tickets associés à un checkout_id donné (route publique)"
+      description: ""
+      operationId: "get_museum_tickets_checkout_:checkoutId"
+      parameters:
+        - name: "checkoutId"
+          in: "path"
+          description: "ID du checkout SumUp"
+          required: true
+          schema:
+            type: "string"
+            description: "ID du checkout SumUp"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    id:
+                      type: "string"
+                    qr_code:
+                      type: "string"
+                    first_name:
+                      type:
+                        - string
+                      nullable: true
+                    last_name:
+                      type:
+                        - string
+                      nullable: true
+                    email:
+                      type: "string"
+                    reservation_date:
+                      type: "string"
+                    slot_start_time:
+                      type: "string"
+                    slot_end_time:
+                      type: "string"
+                    checkout_id:
+                      type:
+                        - string
+                      nullable: true
+                    checkout_reference:
+                      type:
+                        - string
+                      nullable: true
+                    transaction_status:
+                      type:
+                        - string
+                      nullable: true
+                    ticket_price:
+                      type: "number"
+                    donation_amount:
+                      type: "number"
+                    total_amount:
+                      type: "number"
+                    status:
+                      type: "string"
+                    used_at:
+                      type:
+                        - string
+                      nullable: true
+                    notes:
+                      type:
+                        - string
+                      nullable: true
+                    created_at:
+                      type: "string"
+                    updated_at:
+                      type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+  /museum/slots:
+    get:
+      tags:
+        - Musée - Créneaux
+      summary: "Récupère les créneaux horaires disponibles pour une date donnée avec leurs capacités et taux d'occupation (route publique)"
+      description: ""
+      operationId: "get_museum_slots"
+      parameters:
+        - name: "date"
+          in: "query"
+          description: "Date au format YYYY-MM-DD (ex: 2025-12-23)"
+          required: true
+          schema:
+            type: "string"
+            pattern: "^\d{4}-\d{2}-\d{2}$"
+            description: "Date au format YYYY-MM-DD (ex: 2025-12-23)"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  date:
+                    type: "string"
+                    description: "Date au format YYYY-MM-DD"
+                  slots:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        start_time:
+                          type: "string"
+                          description: "Heure de début du créneau (HH:MM:SS)"
+                        end_time:
+                          type: "string"
+                          description: "Heure de fin du créneau (HH:MM:SS)"
+                        capacity:
+                          type: "number"
+                          description: "Capacité maximale du créneau"
+                        booked:
+                          type: "number"
+                          description: "Nombre de tickets réservés pour ce créneau"
+                        available:
+                          type: "number"
+                          description: "Nombre de places disponibles"
+                        occupancy_percentage:
+                          type: "number"
+                          description: "Pourcentage d'occupation (0-100)"
+                      required:
+                        - start_time
+                        - end_time
+                        - capacity
+                        - booked
+                        - available
+                        - occupancy_percentage
+                  total_capacity:
+                    type: "number"
+                    description: "Capacité totale de la journée"
+                  total_booked:
+                    type: "number"
+                    description: "Nombre total de tickets réservés"
+                  total_available:
+                    type: "number"
+                    description: "Nombre total de places disponibles"
+                required:
+                  - date
+                  - slots
+                  - total_capacity
+                  - total_booked
+                  - total_available
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
 components:
   securitySchemes:
     cookieAuth:

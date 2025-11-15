@@ -2,21 +2,32 @@ import fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import postgres from '@fastify/postgres';
+import websocket from '@fastify/websocket';
+
 import { registerAuthRoutes } from './features/auth/auth.ctrl.ts';
 import { registerDocsRoutes } from './features/docs/docs.ctrl.ts';
+import { registerPayRoutes } from './features/pay/pay.ctrl.ts';
+import { registerSchedulesRoutes } from './features/schedules/schedules.ctrl.ts';
+import { registerPricesRoutes } from './features/prices/prices.ctrl.ts';
+import { registerTicketsRoutes } from './features/tickets/tickets.ctrl.ts';
+import { registerSettingsRoutes } from './features/settings/settings.ctrl.ts';
+import { registerSlotsRoutes } from './features/slots/slots.ctrl.ts';
+import { registerWebSocketRoutes } from './features/websocket/websocket.ctrl.ts';
 import { registerErrorHandlers, registerProcessErrorHandlers } from './features/terror/error.handler.ts';
 
-const app = fastify({
-  logger: {
-    level: 'info',
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-      }
+
+
+const logger = {
+  level: 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
     }
-  },
-});
+  }
+};
+
+const app = fastify({});
 
 app.addHook('onRequest', async (_req, reply) => {
   reply.header('X-Content-Type-Options', 'nosniff');
@@ -25,23 +36,64 @@ app.addHook('onRequest', async (_req, reply) => {
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
 });
 
-// Enregistrer les gestionnaires d'erreurs
-registerErrorHandlers(app);
+// Hook pour parser le JSON même si le Content-Type n'est pas correct
+app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+  try {
+    const json = JSON.parse(body as string);
+    done(null, json);
+  } catch (err) {
+    done(err as Error, undefined);
+  }
+});
 
-registerAuthRoutes(app);
-registerDocsRoutes(app);
+app.addContentTypeParser('*', { parseAs: 'string' }, (req, body, done) => {
+  if (['POST', 'PUT', 'PATCH'].includes(req.method) && body && typeof body === 'string') {
+    const trimmed = (body as string).trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const json = JSON.parse(trimmed);
+        done(null, json);
+        return;
+      } catch {
+      }
+    }
+  }
+  done(null, body);
+});
 
 const start = async () => {
   try {
     const allowedOrigins = process.env.CORS_ORIGINS?.split(',').map(o => o.trim()) || [
-      'http://localhost:3000',
-      'http://localhost:4000'
+      'http://localhost:3000'
     ];
 
+    await app.register(websocket);
+
+    // Variable pour stocker l'URL de la requête actuelle (utilisée par la fonction origin)
+    let currentRequestUrl: string | null = null;
+
+    // Hook pour capturer l'URL de la requête avant le traitement CORS
+    app.addHook('onRequest', async (request) => {
+      currentRequestUrl = request.url;
+    });
+
+    // Enregistrer CORS EN PREMIER pour gérer les requêtes preflight OPTIONS
     await app.register(cors, {
       origin: (origin, callback) => {
+        // Extraire le pathname sans les query parameters
+        const pathname = currentRequestUrl ? currentRequestUrl.split('?')[0] : null;
+
+        // Routes qui peuvent être appelées sans origin même en production
+        const isPublicRoute = pathname && (
+          pathname === '/auth/signin' ||
+          pathname === '/auth/callback' ||
+          pathname.startsWith('/docs') ||
+          pathname === '/museum/schedules/public' ||
+          pathname === '/museum/slots'
+        );
+
         if (!origin) {
-          if (process.env.NODE_ENV === 'production') {
+          if (process.env.NODE_ENV === 'production' && !isPublicRoute) {
             callback(new Error('Origin required in production'), false);
             return;
           }
@@ -63,12 +115,24 @@ const start = async () => {
       maxAge: 86400
     });
 
+    registerErrorHandlers(app);
+    registerWebSocketRoutes(app);
+    registerAuthRoutes(app);
+    registerDocsRoutes(app);
+    registerPayRoutes(app);
+    registerSchedulesRoutes(app);
+    registerPricesRoutes(app);
+    registerTicketsRoutes(app);
+    registerSettingsRoutes(app);
+    registerSlotsRoutes(app);
+
     await app.register(cookie, {
       secret: process.env.COOKIE_SECRET || 'your-secret-key-change-in-production',
       parseOptions: {}
     });
 
-    // Configuration PostgreSQL
+    app.log.info('✅ Plugin WebSocket enregistré');
+
     const databaseUrl = process.env.DATABASE_URL;
     if (databaseUrl) {
       await app.register(postgres, {
@@ -107,7 +171,6 @@ const shutdown = async () => {
   }
 };
 
-// Enregistrer les gestionnaires d'erreurs pour les processus Node.js
 registerProcessErrorHandlers(app, shutdown);
 
 process.on('SIGINT', shutdown);

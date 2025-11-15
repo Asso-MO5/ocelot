@@ -86,6 +86,7 @@ export interface DiscordUserPublic {
   avatar: string | null;
   /** Email de l'utilisateur */
   email?: string;
+  roles: string[];
 }
 
 /**

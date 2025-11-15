@@ -3,8 +3,6 @@ import { test, describe, beforeEach, afterEach } from 'node:test';
 import type { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
 import {
   signinHandler,
-  loginHandler,
-  sessionHandler,
   meHandler,
   callbackHandler,
 } from './auth.ctrl.ts';
@@ -38,14 +36,23 @@ function createMockFn(returnValue?: any, chainTarget?: any): MockWithTracking {
 }
 
 // Mock pour FastifyInstance
-function createMockApp(): FastifyInstance {
-  return {
+function createMockApp(withDatabase: boolean = false): FastifyInstance {
+  const app: any = {
     log: {
       error: createMockFn(),
       info: createMockFn(),
       warn: createMockFn(),
+      debug: createMockFn(),
     },
-  } as unknown as FastifyInstance;
+  };
+
+  if (withDatabase) {
+    app.pg = {
+      query: createMockFn(Promise.resolve({ rows: [] })),
+    };
+  }
+
+  return app as unknown as FastifyInstance;
 }
 
 // Helper pour créer un mock FastifyRequest
@@ -137,6 +144,8 @@ describe('Auth Controller', () => {
     delete process.env.FRONTEND_URL;
     delete process.env.REFRESH_TOKEN_MAX_AGE_DAYS;
     delete process.env.NODE_ENV;
+    delete process.env.DISCORD_GUILD_ID;
+    delete process.env.DISCORD_TOKEN;
   });
 
   afterEach(() => {
@@ -193,63 +202,6 @@ describe('Auth Controller', () => {
     });
   });
 
-  describe('loginHandler', () => {
-    test('devrait rediriger vers Discord OAuth (identique à signinHandler)', async () => {
-      process.env.DISCORD_CLIENT_ID = 'test-client-id';
-
-      const req = createMockRequest();
-      const reply = createMockReply();
-
-      await loginHandler(req, reply);
-
-      assert.equal(reply.redirect.mock.callCount(), 1);
-      const redirectUrl = reply.redirect.mock.calls[0][0] as string;
-      const url = new URL(redirectUrl);
-      assert.equal(url.searchParams.get('client_id'), 'test-client-id');
-    });
-  });
-
-  describe('sessionHandler', () => {
-    test('devrait retourner authenticated: false si aucun token', async () => {
-      const req = createMockRequest({});
-      const reply = createMockReply();
-
-      await sessionHandler(req, reply);
-
-      assert.equal(reply.send.mock.callCount(), 1);
-      const response = reply.send.mock.calls[0][0];
-      assert.equal(response.authenticated, false);
-      assert.equal(response.hasRefreshToken, false);
-    });
-
-    test('devrait retourner authenticated: true si access_token existe', async () => {
-      const req = createMockRequest({
-        discord_access_token: 'test-token',
-      });
-      const reply = createMockReply();
-
-      await sessionHandler(req, reply);
-
-      const response = reply.send.mock.calls[0][0];
-      assert.equal(response.authenticated, true);
-      assert.equal(response.hasRefreshToken, false);
-    });
-
-    test('devrait retourner hasRefreshToken: true si refresh_token existe', async () => {
-      const req = createMockRequest({
-        discord_access_token: 'test-token',
-        discord_refresh_token: 'refresh-token',
-      });
-      const reply = createMockReply();
-
-      await sessionHandler(req, reply);
-
-      const response = reply.send.mock.calls[0][0];
-      assert.equal(response.authenticated, true);
-      assert.equal(response.hasRefreshToken, true);
-    });
-  });
-
   describe('meHandler', () => {
     test('devrait retourner 401 si aucun access_token', async () => {
       const req = createMockRequest({});
@@ -266,6 +218,9 @@ describe('Auth Controller', () => {
     });
 
     test('devrait retourner les données utilisateur si le token est valide', async () => {
+      process.env.DISCORD_GUILD_ID = 'test-guild-id';
+      process.env.DISCORD_TOKEN = 'test-bot-token';
+
       const userData: DiscordUser = {
         id: '123456789',
         username: 'testuser',
@@ -274,6 +229,20 @@ describe('Auth Controller', () => {
         email: 'test@example.com',
       };
 
+      const guildMember = {
+        roles: ['role1', 'role2'],
+      };
+
+      const guildRoles = [
+        { id: 'role1', name: 'Admin' },
+        { id: 'role2', name: 'Member' },
+        { id: 'role3', name: 'Guest' },
+      ];
+
+      // Réinitialiser le mock
+      fetchMock.mock.reset();
+
+      // Appel pour récupérer les données utilisateur
       fetchMock.mock.mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
@@ -282,25 +251,54 @@ describe('Auth Controller', () => {
         } as Response)
       );
 
+      // Appel pour récupérer le membre de la guild
+      fetchMock.mock.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => guildMember,
+        } as Response)
+      );
+
+      // Appel pour récupérer les rôles de la guild
+      fetchMock.mock.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => guildRoles,
+        } as Response)
+      );
+
       const req = createMockRequest({
         discord_access_token: 'valid-token',
       });
       const reply = createMockReply();
-      const app = createMockApp();
+      const app = createMockApp(true);
 
       await meHandler(req, reply, app);
 
-      assert.equal(fetchMock.mock.callCount(), 1);
-      assert.ok(fetchMock.mock.calls.length > 0);
+      assert.equal(fetchMock.mock.callCount(), 3);
       assert.equal(fetchMock.mock.calls[0][0], 'https://discord.com/api/users/@me');
+      assert.equal(fetchMock.mock.calls[1][0], `https://discord.com/api/guilds/${process.env.DISCORD_GUILD_ID}/members/${userData.id}`);
+      assert.equal(fetchMock.mock.calls[2][0], `https://discord.com/api/guilds/${process.env.DISCORD_GUILD_ID}/roles`);
+
       assert.equal(reply.send.mock.callCount(), 1);
       const response = reply.send.mock.calls[0][0];
       assert.equal(response.id, userData.id);
       assert.equal(response.username, userData.username);
       assert.equal(response.email, userData.email);
+      assert.ok(Array.isArray(response.roles));
+      assert.equal(response.roles.length, 2);
+      assert.ok(response.roles.includes('admin'));
+      assert.ok(response.roles.includes('member'));
     });
 
     test('devrait rafraîchir le token si le token est expiré', async () => {
+      process.env.DISCORD_CLIENT_ID = 'test-client-id';
+      process.env.DISCORD_CLIENT_SECRET = 'test-secret';
+      process.env.DISCORD_GUILD_ID = 'test-guild-id';
+      process.env.DISCORD_TOKEN = 'test-bot-token';
+
       const refreshData: DiscordTokenResponse = {
         access_token: 'new-access-token',
         refresh_token: 'new-refresh-token',
@@ -317,8 +315,13 @@ describe('Auth Controller', () => {
         email: 'test@example.com',
       };
 
-      process.env.DISCORD_CLIENT_ID = 'test-client-id';
-      process.env.DISCORD_CLIENT_SECRET = 'test-secret';
+      const guildMember = {
+        roles: ['role1'],
+      };
+
+      const guildRoles = [
+        { id: 'role1', name: 'Member' },
+      ];
 
       // Réinitialiser le mock
       fetchMock.mock.reset();
@@ -349,17 +352,35 @@ describe('Auth Controller', () => {
         } as Response)
       );
 
+      // Appel pour récupérer le membre de la guild
+      fetchMock.mock.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => guildMember,
+        } as Response)
+      );
+
+      // Appel pour récupérer les rôles de la guild
+      fetchMock.mock.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => guildRoles,
+        } as Response)
+      );
+
       const req = createMockRequest({
         discord_access_token: 'expired-token',
         discord_refresh_token: 'valid-refresh-token',
       });
       const reply = createMockReply();
-      const app = createMockApp();
+      const app = createMockApp(true);
 
       await meHandler(req, reply, app);
 
       // Vérifie que le refresh a été appelé
-      assert.equal(fetchMock.mock.callCount(), 3);
+      assert.equal(fetchMock.mock.callCount(), 5);
       assert.equal(reply.setCookie.mock.callCount(), 2); // access_token et refresh_token
       assert.equal(reply.send.mock.callCount(), 1);
       const response = reply.send.mock.calls[0][0];
@@ -395,7 +416,7 @@ describe('Auth Controller', () => {
         discord_refresh_token: 'invalid-refresh-token',
       });
       const reply = createMockReply();
-      const app = createMockApp();
+      const app = createMockApp(true);
 
       await meHandler(req, reply, app);
 
@@ -407,6 +428,8 @@ describe('Auth Controller', () => {
     });
 
     test('devrait retourner 401 si aucun refresh token disponible', async () => {
+      // Réinitialiser le mock
+      fetchMock.mock.reset();
       // Token expiré
       fetchMock.mock.mockImplementationOnce(() =>
         Promise.resolve({
@@ -419,7 +442,7 @@ describe('Auth Controller', () => {
         discord_access_token: 'expired-token',
       });
       const reply = createMockReply();
-      const app = createMockApp();
+      const app = createMockApp(true);
 
       await meHandler(req, reply, app);
 
@@ -481,6 +504,18 @@ describe('Auth Controller', () => {
         scope: 'identify email',
       };
 
+      const userData: DiscordUser = {
+        id: '123456789',
+        username: 'testuser',
+        discriminator: '0001',
+        avatar: 'avatar-hash',
+        email: 'test@example.com',
+      };
+
+      // Réinitialiser le mock
+      fetchMock.mock.reset();
+
+      // Appel pour échanger le code contre un token
       fetchMock.mock.mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
@@ -489,19 +524,31 @@ describe('Auth Controller', () => {
         } as Response)
       );
 
+      // Appel pour récupérer les données utilisateur
+      fetchMock.mock.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => userData,
+        } as Response)
+      );
+
       const req = createMockRequest({}, { code: 'test-code' }) as FastifyRequest<{ Querystring: DiscordOAuthCallbackQuery }>;
       const reply = createMockReply();
-      const app = createMockApp();
+      const app = createMockApp(true);
 
       await callbackHandler(req, reply, app);
 
-      // Vérifie que fetch a été appelé pour échanger le code
-      assert.equal(fetchMock.mock.callCount(), 1);
-      assert.ok(fetchMock.mock.calls.length > 0);
+      // Vérifie que fetch a été appelé pour échanger le code et récupérer les données utilisateur
+      assert.equal(fetchMock.mock.callCount(), 2);
       assert.equal(fetchMock.mock.calls[0][0], 'https://discord.com/api/v10/oauth2/token');
+      assert.equal(fetchMock.mock.calls[1][0], 'https://discord.com/api/users/@me');
 
       // Vérifie que les cookies ont été définis
       assert.equal(reply.setCookie.mock.callCount(), 2);
+
+      // Vérifie que l'utilisateur a été sauvegardé
+      assert.equal((app.pg.query as MockWithTracking).mock.callCount(), 1);
 
       // Vérifie la redirection vers le frontend
       assert.equal(reply.redirect.mock.callCount(), 1);
