@@ -53,8 +53,6 @@ export async function createSumUpCheckout(
     checkoutData.description = description;
   }
 
-  console.log(checkoutData);
-
   try {
     const response = await fetch(`${SUMUP_API_BASE}/checkouts`, {
       method: 'POST',

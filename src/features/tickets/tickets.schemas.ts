@@ -65,6 +65,11 @@ export const createTicketSchema = {
         type: 'string',
         description: 'Notes optionnelles',
       },
+      langue: {
+        type: 'string',
+        maxLength: 10,
+        description: 'Code de langue (ex: "fr", "en", "es")',
+      },
     },
   },
   response: {
@@ -88,6 +93,7 @@ export const createTicketSchema = {
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
+        langue: { type: ['string', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -189,6 +195,11 @@ export const updateTicketSchema = {
         type: ['string', 'null'],
         description: 'Notes optionnelles',
       },
+      language: {
+        type: ['string', 'null'],
+        maxLength: 10,
+        description: 'Code de langue (ex: "fr", "en", "es")',
+      },
     },
   },
   response: {
@@ -212,6 +223,7 @@ export const updateTicketSchema = {
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
+        langue: { type: ['string', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -289,6 +301,7 @@ export const getTicketsSchema = {
           status: { type: 'string' },
           used_at: { type: ['string', 'null'] },
           notes: { type: ['string', 'null'] },
+          langue: { type: ['string', 'null'] },
           created_at: { type: 'string' },
           updated_at: { type: 'string' },
         },
@@ -336,6 +349,7 @@ export const getTicketByIdSchema = {
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
+        langue: { type: ['string', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -390,6 +404,7 @@ export const validateTicketSchema = {
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
+        langue: { type: ['string', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -435,6 +450,11 @@ export const createTicketsWithPaymentSchema = {
         type: 'string',
         maxLength: 255,
         description: 'Nom commun pour tous les tickets (optionnel)',
+      },
+      language: {
+        type: 'string',
+        maxLength: 10,
+        description: 'Code de langue commun pour tous les tickets (ex: "fr", "en", "es")',
       },
       tickets: {
         type: 'array',
@@ -522,6 +542,7 @@ export const createTicketsWithPaymentSchema = {
               status: { type: 'string' },
               used_at: { type: ['string', 'null'] },
               notes: { type: ['string', 'null'] },
+              langue: { type: ['string', 'null'] },
               created_at: { type: 'string' },
               updated_at: { type: 'string' },
             },
@@ -580,10 +601,87 @@ export const getTicketsByCheckoutIdSchema = {
           status: { type: 'string' },
           used_at: { type: ['string', 'null'] },
           notes: { type: ['string', 'null'] },
+          langue: { type: ['string', 'null'] },
           created_at: { type: 'string' },
           updated_at: { type: 'string' },
         },
       },
+    },
+    500: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+  },
+};
+
+export const getTicketsStatsSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        tickets_stats: {
+          type: 'object',
+          properties: {
+            total_tickets_sold: {
+              type: 'number',
+              description: 'Nombre total de tickets vendus (status = paid)',
+            },
+            week_tickets_sold: {
+              type: 'number',
+              description: 'Nombre de tickets vendus cette semaine',
+            },
+            week_tickets_by_day: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  date: {
+                    type: 'string',
+                    description: 'Date au format YYYY-MM-DD',
+                  },
+                  day_name: {
+                    type: 'string',
+                    description: 'Nom du jour (lundi, mardi, etc.)',
+                  },
+                  tickets_count: {
+                    type: 'number',
+                    description: 'Nombre de tickets vendus ce jour',
+                  },
+                  amount: {
+                    type: 'number',
+                    description: 'Montant total des tickets vendus ce jour',
+                  },
+                },
+                required: ['date', 'day_name', 'tickets_count', 'amount'],
+              },
+              description: 'Répartition des tickets vendus par jour de la semaine',
+            },
+            total_amount: {
+              type: 'number',
+              description: 'Montant total de tous les tickets vendus',
+            },
+            week_amount: {
+              type: 'number',
+              description: 'Montant total des tickets vendus cette semaine',
+            },
+            month_amount: {
+              type: 'number',
+              description: 'Montant total des tickets vendus ce mois',
+            },
+          },
+          required: [
+            'total_tickets_sold',
+            'week_tickets_sold',
+            'week_tickets_by_day',
+            'total_amount',
+            'week_amount',
+            'month_amount',
+          ],
+        },
+      },
+      required: ['tickets_stats'],
     },
     500: {
       type: 'object',

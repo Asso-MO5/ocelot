@@ -3,6 +3,8 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import postgres from '@fastify/postgres';
 import websocket from '@fastify/websocket';
+import fastifySchedule from '@fastify/schedule';
+import { SimpleIntervalJob, AsyncTask } from 'toad-scheduler';
 
 import { registerAuthRoutes } from './features/auth/auth.ctrl.ts';
 import { registerDocsRoutes } from './features/docs/docs.ctrl.ts';
@@ -13,7 +15,9 @@ import { registerTicketsRoutes } from './features/tickets/tickets.ctrl.ts';
 import { registerSettingsRoutes } from './features/settings/settings.ctrl.ts';
 import { registerSlotsRoutes } from './features/slots/slots.ctrl.ts';
 import { registerWebSocketRoutes } from './features/websocket/websocket.ctrl.ts';
+import { sendToRoom } from './features/websocket/websocket.manager.ts';
 import { registerErrorHandlers, registerProcessErrorHandlers } from './features/terror/error.handler.ts';
+import { cancelExpiredPendingTickets } from './features/tickets/tickets.service.ts';
 
 
 
@@ -69,6 +73,7 @@ const start = async () => {
 
     await app.register(websocket);
 
+
     // Variable pour stocker l'URL de la requête actuelle (utilisée par la fonction origin)
     let currentRequestUrl: string | null = null;
 
@@ -89,6 +94,7 @@ const start = async () => {
           pathname === '/auth/callback' ||
           pathname.startsWith('/docs') ||
           pathname === '/museum/schedules/public' ||
+          pathname === '/pay/webhook' ||
           pathname === '/museum/slots'
         );
 
@@ -117,6 +123,9 @@ const start = async () => {
 
     registerErrorHandlers(app);
     registerWebSocketRoutes(app);
+
+    // Configurer app.ws.send pour utiliser sendToRoom
+    (app as any).ws = { send: sendToRoom };
     registerAuthRoutes(app);
     registerDocsRoutes(app);
     registerPayRoutes(app);
@@ -141,6 +150,38 @@ const start = async () => {
       app.log.info('✅ Connexion PostgreSQL établie');
     } else {
       app.log.warn('⚠️  DATABASE_URL non configuré, la base de données ne sera pas disponible');
+    }
+
+    // Configurer la tâche périodique pour nettoyer les tickets pending expirés
+    // S'exécute toutes les minutes
+    if (app.pg) {
+
+      const cleanupTask = new AsyncTask(
+        'cleanup-expired-pending-tickets',
+        async () => {
+          try {
+            const cancelledCount = await cancelExpiredPendingTickets(app);
+            if (cancelledCount > 0) {
+              // Notifier via WebSocket que les statistiques ont changé
+              (app.ws as any).send('tickets_stats', 'refetch');
+              (app.ws as any).send('slots', 'refetch');
+            }
+          } catch (err) {
+            app.log.error({ err }, 'Erreur lors du nettoyage des tickets expirés');
+          }
+        },
+        (err) => {
+          app.log.error({ err }, 'Erreur dans la tâche de nettoyage des tickets expirés');
+        }
+      );
+
+      const cleanupJob = new SimpleIntervalJob({ minutes: 15 }, cleanupTask);
+
+      await app.register(fastifySchedule);
+      // Attendre que l'app soit prête avant d'ajouter le job
+      await app.ready();
+      app.scheduler.addSimpleIntervalJob(cleanupJob);
+      app.log.info('✅ Tâche de nettoyage des tickets pending expirés configurée (toutes les minutes)');
     }
 
     const port = Number(process.env.PORT) || 3000;

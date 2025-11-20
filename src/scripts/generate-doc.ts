@@ -194,7 +194,8 @@ async function generateOpenAPIDoc(): Promise<void> {
 
   const {
     createCheckoutSchema,
-    getCheckoutStatusSchema
+    getCheckoutStatusSchema,
+    sumUpWebhookSchema
   } = await import('../features/pay/pay.schemas.ts');
 
   const {
@@ -234,6 +235,7 @@ async function generateOpenAPIDoc(): Promise<void> {
     getTicketsSchema,
     getTicketByIdSchema,
     getTicketsByCheckoutIdSchema,
+    getTicketsStatsSchema,
     validateTicketSchema,
     deleteTicketSchema
   } = await import('../features/tickets/tickets.schemas.ts');
@@ -284,6 +286,13 @@ async function generateOpenAPIDoc(): Promise<void> {
       path: '/pay/checkout/:checkoutId',
       schema: getCheckoutStatusSchema,
       description: 'Vérifie le statut d\'un checkout SumUp',
+      tag: 'Paiement',
+    },
+    {
+      method: 'POST',
+      path: '/pay/webhook',
+      schema: sumUpWebhookSchema,
+      description: 'Endpoint webhook pour recevoir les notifications de paiement SumUp. Met à jour automatiquement les tickets associés au checkout_id selon le statut du paiement (route publique)',
       tag: 'Paiement',
     },
     {
@@ -487,6 +496,13 @@ async function generateOpenAPIDoc(): Promise<void> {
       path: '/museum/tickets/checkout/:checkoutId',
       schema: getTicketsByCheckoutIdSchema,
       description: 'Récupère tous les tickets associés à un checkout_id donné (route publique)',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'GET',
+      path: '/museum/tickets/stats',
+      schema: getTicketsStatsSchema,
+      description: 'Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, montants total, semaine et mois (route publique)',
       tag: 'Musée - Tickets',
     },
     {
@@ -719,6 +735,8 @@ async function generateOpenAPIDoc(): Promise<void> {
         const isPublicRoute = path === '/museum/schedules/public' ||
           path === '/museum/slots' ||
           path === '/museum/tickets/payment' ||
+          path === '/museum/tickets/stats' ||
+          path === '/pay/webhook' ||
           path.startsWith('/museum/tickets/checkout/');
 
         if ((isProtected || (isWriteMethod && !isPublicWrite)) && !isPublicRoute) {

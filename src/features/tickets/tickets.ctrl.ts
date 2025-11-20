@@ -6,6 +6,7 @@ import {
   getTicketById,
   getTicketByQRCode,
   getTicketsByCheckoutId,
+  getTicketsStats,
   updateTicket,
   validateTicket,
   deleteTicket,
@@ -24,6 +25,7 @@ import {
   getTicketsSchema,
   getTicketByIdSchema,
   getTicketsByCheckoutIdSchema,
+  getTicketsStatsSchema,
   validateTicketSchema,
   deleteTicketSchema,
 } from './tickets.schemas.ts';
@@ -164,6 +166,23 @@ export async function getTicketsByCheckoutIdHandler(
   } catch (err: any) {
     app.log.error({ err, checkoutId: req.params.checkoutId }, 'Erreur lors de la récupération des tickets');
     return reply.code(500).send({ error: 'Erreur lors de la récupération des tickets' });
+  }
+}
+
+/**
+ * Handler pour récupérer les statistiques des tickets
+ */
+export async function getTicketsStatsHandler(
+  _req: FastifyRequest,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const stats = await getTicketsStats(app);
+    return reply.send({ tickets_stats: stats });
+  } catch (err: any) {
+    app.log.error({ err }, 'Erreur lors de la récupération des statistiques des tickets');
+    return reply.code(500).send({ error: 'Erreur lors de la récupération des statistiques des tickets' });
   }
 }
 
@@ -315,6 +334,15 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: getTicketsByCheckoutIdSchema,
     },
     async (req, reply) => getTicketsByCheckoutIdHandler(req, reply, app)
+  );
+
+  // Route publique : statistiques des tickets
+  app.get(
+    '/museum/tickets/stats',
+    {
+      schema: getTicketsStatsSchema,
+    },
+    async (_req, reply) => getTicketsStatsHandler(_req, reply, app)
   );
 
   // Route protégée membres : récupération par ID

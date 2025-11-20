@@ -196,6 +196,13 @@
     "@fastify/forwarded" "^3.0.0"
     ipaddr.js "^2.1.0"
 
+"@fastify/schedule@^6.0.0":
+  version "6.0.0"
+  resolved "https://registry.npmjs.org/@fastify/schedule/-/schedule-6.0.0.tgz#0a82d2c49e9f2411b9aee312c5eb178b1dceb3fc"
+  integrity sha512-q4mPXUtqISb+dH2cB7HE7DxXqQmxPee9k0G29ydvGOoj5Aqb+uzUCLtkMVAzpnkPE6oOFGon6+JzWEmfJNS8ig==
+  dependencies:
+    fastify-plugin "^5.0.0"
+
 "@fastify/websocket@^11.2.0":
   version "11.2.0"
   resolved "https://registry.npmjs.org/@fastify/websocket/-/websocket-11.2.0.tgz#db149a87f1938bed65bb0a50299386957fae94d4"
@@ -344,6 +351,11 @@ cookie@^1.0.0, cookie@^1.0.1:
   version "1.0.2"
   resolved "https://registry.npmjs.org/cookie/-/cookie-1.0.2.tgz"
   integrity sha512-9Kr/j4O16ISv8zBBhJoi4bXOYNTkFLOqSL3UDB0njXxCXNezjeyVrJyGOWtgfs/q2km1gwBcfH8q1yEGoMYunA==
+
+croner@^8.1.2:
+  version "8.1.2"
+  resolved "https://registry.npmjs.org/croner/-/croner-8.1.2.tgz#5c89ab65c109a1313275ff3b5300f242f4f31481"
+  integrity sha512-ypfPFcAXHuAZRCzo3vJL6ltENzniTjwe/qsLleH1V2/7SRDjgvRQyrLmumFTLmjFax4IuSxfGXEn79fozXcJog==
 
 cross-spawn@^7.0.6:
   version "7.0.6"
@@ -988,6 +1000,13 @@ toad-cache@^3.7.0:
   version "3.7.0"
   resolved "https://registry.npmjs.org/toad-cache/-/toad-cache-3.7.0.tgz"
   integrity sha512-/m8M+2BJUpoJdgAHoG+baCwBT+tf2VraSfkBgl0Y00qIWt41DJ8R5B8nsEw0I58YwF5IZH6z24/2TobDKnqSWw==
+
+toad-scheduler@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.npmjs.org/toad-scheduler/-/toad-scheduler-3.1.0.tgz#47e4313d5c35b3dd0e2497191008a1325f0e575e"
+  integrity sha512-ZTwsGMWyKTOokgTmIvjPIvkT3ZiPFgkAi8L0OLONOcSc/BUDPRzNMOfVWZzugIAxyntvY0Nzy1etNk+31Q4FXQ==
+  dependencies:
+    croner "^8.1.2"
 
 tsx@^4.7.0:
   version "4.20.6"

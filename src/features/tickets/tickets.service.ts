@@ -5,7 +5,8 @@ import type {
   CreateTicketsWithPaymentBody,
   UpdateTicketBody,
   GetTicketsQuery,
-  TicketStatus,
+  TicketsStats,
+  TicketsStatsByDay,
 } from './tickets.types.ts';
 import { createSumUpCheckout } from '../pay/pay.utils.ts';
 
@@ -101,8 +102,8 @@ export async function createTicket(
       qr_code, first_name, last_name, email, reservation_date,
       slot_start_time, slot_end_time, checkout_id, checkout_reference,
       transaction_status, ticket_price, donation_amount, total_amount,
-      status, notes
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      status, notes, language
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
     RETURNING *`,
     [
       qrCode,
@@ -120,6 +121,7 @@ export async function createTicket(
       totalAmount,
       'pending', // Statut initial
       data.notes ?? null,
+      data.language ?? null,
     ]
   );
 
@@ -347,6 +349,12 @@ export async function updateTicket(
     paramIndex++;
   }
 
+  if (data.language !== undefined) {
+    updates.push(`language = $${paramIndex}`);
+    params.push(data.language);
+    paramIndex++;
+  }
+
   if (updates.length === 0) {
     return existing;
   }
@@ -515,8 +523,8 @@ export async function createTicketsWithPayment(
           qr_code, first_name, last_name, email, reservation_date,
           slot_start_time, slot_end_time, checkout_id, checkout_reference,
           transaction_status, ticket_price, donation_amount, total_amount,
-          status, notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          status, notes, language
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *`,
         [
           qrCode,
@@ -534,6 +542,7 @@ export async function createTicketsWithPayment(
           ticketTotalAmount,
           'pending', // Statut initial
           ticketData.notes ?? null,
+          data.language ?? null,
         ]
       );
 
@@ -570,5 +579,181 @@ export async function getTicketsByCheckoutId(
   );
 
   return result.rows;
+}
+
+/**
+ * Met à jour les tickets associés à un checkout_id selon le statut du paiement
+ */
+export async function updateTicketsByCheckoutStatus(
+  app: FastifyInstance,
+  checkoutId: string,
+  checkoutStatus: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'SENT' | 'SUCCESS',
+  transactionStatus?: string
+): Promise<number> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  // Convertir le statut SumUp en statut de ticket
+  let ticketStatus: 'pending' | 'paid' | 'cancelled' = 'pending';
+  if (checkoutStatus === 'PAID' || checkoutStatus === 'SUCCESS') {
+    ticketStatus = 'paid';
+  } else if (checkoutStatus === 'CANCELLED' || checkoutStatus === 'FAILED') {
+    ticketStatus = 'cancelled';
+  }
+
+  // Mettre à jour tous les tickets associés à ce checkout
+  const result = await app.pg.query<{ count: string }>(
+    `UPDATE tickets 
+     SET status = $1, 
+         transaction_status = COALESCE($2, transaction_status),
+         updated_at = current_timestamp
+     WHERE checkout_id = $3
+     RETURNING id`,
+    [ticketStatus, transactionStatus || checkoutStatus, checkoutId]
+  );
+
+  return result.rows.length;
+}
+
+/**
+ * Récupère les statistiques des tickets
+ */
+export async function getTicketsStats(
+  app: FastifyInstance
+): Promise<TicketsStats> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  // Date du début de la semaine (lundi)
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = dimanche, 1 = lundi, etc.
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convertir dimanche en 6
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - daysFromMonday);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+
+  // Date du début du mois
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStartStr = monthStart.toISOString().split('T')[0];
+
+  // Statistiques totales (tous les tickets avec status = 'paid')
+  const totalResult = await app.pg.query<{ count: string; sum: string }>(
+    `SELECT 
+      COUNT(*) as count,
+      COALESCE(SUM(total_amount), 0) as sum
+     FROM tickets 
+     WHERE status = 'paid'`
+  );
+  const totalTicketsSold = parseInt(totalResult.rows[0].count, 10);
+  const totalAmount = parseFloat(totalResult.rows[0].sum || '0');
+
+  // Statistiques de la semaine (tickets payés depuis le début de la semaine)
+  const weekResult = await app.pg.query<{ count: string; sum: string }>(
+    `SELECT 
+      COUNT(*) as count,
+      COALESCE(SUM(total_amount), 0) as sum
+     FROM tickets 
+     WHERE status = 'paid' 
+     AND created_at >= $1`,
+    [weekStartStr]
+  );
+  const weekTicketsSold = parseInt(weekResult.rows[0].count, 10);
+  const weekAmount = parseFloat(weekResult.rows[0].sum || '0');
+
+  // Statistiques du mois (tickets payés depuis le début du mois)
+  const monthResult = await app.pg.query<{ count: string; sum: string }>(
+    `SELECT 
+      COUNT(*) as count,
+      COALESCE(SUM(total_amount), 0) as sum
+     FROM tickets 
+     WHERE status = 'paid' 
+     AND created_at >= $1`,
+    [monthStartStr]
+  );
+  const monthAmount = parseFloat(monthResult.rows[0].sum || '0');
+
+  // Statistiques par jour de la semaine
+  const weekByDayResult = await app.pg.query<{
+    date: string;
+    count: string;
+    sum: string;
+  }>(
+    `SELECT 
+      DATE(created_at) as date,
+      COUNT(*) as count,
+      COALESCE(SUM(total_amount), 0) as sum
+     FROM tickets 
+     WHERE status = 'paid' 
+     AND created_at >= $1
+     GROUP BY DATE(created_at)
+     ORDER BY date ASC`,
+    [weekStartStr]
+  );
+
+  // Noms des jours en français
+  const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+
+  const weekTicketsByDay: TicketsStatsByDay[] = weekByDayResult.rows.map((row) => {
+    const date = new Date(row.date);
+    const dayName = dayNames[date.getDay()];
+    return {
+      date: row.date,
+      day_name: dayName,
+      tickets_count: parseInt(row.count, 10),
+      amount: parseFloat(row.sum || '0'),
+    };
+  });
+
+  return {
+    total_tickets_sold: totalTicketsSold,
+    week_tickets_sold: weekTicketsSold,
+    week_tickets_by_day: weekTicketsByDay,
+    total_amount: totalAmount,
+    week_amount: weekAmount,
+    month_amount: monthAmount,
+  };
+}
+
+/**
+ * Annule les tickets en statut "pending" créés il y a plus de 15 minutes
+ * Libère les créneaux pour qu'ils soient à nouveau disponibles
+ */
+export async function cancelExpiredPendingTickets(
+  app: FastifyInstance
+): Promise<number> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+
+  // Calculer la date limite (15 minutes avant maintenant)
+  const fifteenMinutesAgo = new Date();
+  fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15);
+  const limitDate = fifteenMinutesAgo.toISOString();
+
+  // Mettre à jour les tickets pending de plus de 15 minutes
+  const result = await app.pg.query<{ count: string }>(
+    `UPDATE tickets 
+     SET status = 'cancelled', 
+         updated_at = current_timestamp
+     WHERE status = 'pending' 
+     AND created_at < $1
+     RETURNING id`,
+    [limitDate]
+  );
+
+  const cancelledCount = result.rows.length;
+
+  if (cancelledCount > 0) {
+    app.log.info(
+      { cancelledCount, limitDate },
+      `Tickets pending expirés annulés (${cancelledCount} ticket(s))`
+    );
+  }
+
+  return cancelledCount;
 }
 

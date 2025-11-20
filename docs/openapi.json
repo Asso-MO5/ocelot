@@ -506,6 +506,167 @@
         }
       }
     },
+    "/pay/webhook": {
+      "post": {
+        "tags": [
+          "Paiement"
+        ],
+        "summary": "Endpoint webhook pour recevoir les notifications de paiement SumUp. Met à jour automatiquement les tickets associés au checkout_id selon le statut du paiement (route publique)",
+        "description": "",
+        "operationId": "post_pay_webhook",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indique si le webhook a été traité avec succès"
+                    },
+                    "tickets_updated": {
+                      "type": "number",
+                      "description": "Nombre de tickets mis à jour"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Code 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "ID de l'événement webhook"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Type d'événement (checkout.payment.succeeded, checkout.payment.failed, etc.)"
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "description": "Timestamp de l'événement"
+                  },
+                  "checkout_id": {
+                    "type": "string",
+                    "description": "ID du checkout SumUp"
+                  },
+                  "checkout_reference": {
+                    "type": "string",
+                    "description": "Référence du checkout"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "Montant du paiement"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "description": "Devise"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "PENDING",
+                      "PAID",
+                      "FAILED",
+                      "CANCELLED"
+                    ],
+                    "description": "Statut du checkout"
+                  },
+                  "payment_type": {
+                    "type": "string",
+                    "description": "Type de paiement"
+                  },
+                  "transaction_code": {
+                    "type": "string",
+                    "description": "Code de transaction"
+                  },
+                  "merchant_code": {
+                    "type": "string",
+                    "description": "Code marchand"
+                  },
+                  "event": {
+                    "type": "object",
+                    "description": "Détails de l'événement",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "timestamp": {
+                        "type": "string"
+                      },
+                      "checkout_id": {
+                        "type": "string"
+                      },
+                      "checkout_reference": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "payment_type": {
+                        "type": "string"
+                      },
+                      "transaction_code": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/museum/schedules": {
       "post": {
         "tags": [
@@ -4854,6 +5015,113 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/museum/tickets/stats": {
+      "get": {
+        "tags": [
+          "Musée - Tickets"
+        ],
+        "summary": "Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, montants total, semaine et mois (route publique)",
+        "description": "",
+        "operationId": "get_museum_tickets_stats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tickets_stats": {
+                      "type": "object",
+                      "properties": {
+                        "total_tickets_sold": {
+                          "type": "number",
+                          "description": "Nombre total de tickets vendus (status = paid)"
+                        },
+                        "week_tickets_sold": {
+                          "type": "number",
+                          "description": "Nombre de tickets vendus cette semaine"
+                        },
+                        "week_tickets_by_day": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "description": "Date au format YYYY-MM-DD"
+                              },
+                              "day_name": {
+                                "type": "string",
+                                "description": "Nom du jour (lundi, mardi, etc.)"
+                              },
+                              "tickets_count": {
+                                "type": "number",
+                                "description": "Nombre de tickets vendus ce jour"
+                              },
+                              "amount": {
+                                "type": "number",
+                                "description": "Montant total des tickets vendus ce jour"
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "day_name",
+                              "tickets_count",
+                              "amount"
+                            ]
+                          },
+                          "description": "Répartition des tickets vendus par jour de la semaine"
+                        },
+                        "total_amount": {
+                          "type": "number",
+                          "description": "Montant total de tous les tickets vendus"
+                        },
+                        "week_amount": {
+                          "type": "number",
+                          "description": "Montant total des tickets vendus cette semaine"
+                        },
+                        "month_amount": {
+                          "type": "number",
+                          "description": "Montant total des tickets vendus ce mois"
+                        }
+                      },
+                      "required": [
+                        "total_tickets_sold",
+                        "week_tickets_sold",
+                        "week_tickets_by_day",
+                        "total_amount",
+                        "week_amount",
+                        "month_amount"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "tickets_stats"
+                  ]
                 }
               }
             }

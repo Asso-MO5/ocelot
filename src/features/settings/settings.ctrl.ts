@@ -231,7 +231,7 @@ export async function decrementVisitorsHandler(
   try {
     const decrement = req.body?.decrement ?? 1;
     const newCount = await decrementVisitors(app, decrement);
-    (app.ws as any).send('capacity', 'refetch')
+    (app.ws as any).send('current_visitors', 'refetch')
     return reply.send({ current_visitors: newCount });
   } catch (err: any) {
     app.log.error({ err }, 'Erreur lors de la décrémentation du nombre de visiteurs');

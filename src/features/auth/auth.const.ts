@@ -8,4 +8,5 @@ export const roles = {
   "twitch subscriber: tier 3": "twitch subscriber: tier 3",
   reviewer: "reviewer",
   publisher: "publisher",
+  "museum": "museum",
 }

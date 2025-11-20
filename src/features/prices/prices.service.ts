@@ -267,8 +267,6 @@ export async function getPrices(
   const params: any[] = [];
   let paramIndex = 1;
 
-  console.log('query', query);
-
   if (query.audience_type) {
     sql += ` AND audience_type = $${paramIndex}`;
     params.push(query.audience_type);

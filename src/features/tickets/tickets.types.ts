@@ -28,6 +28,7 @@ export interface Ticket {
   status: TicketStatus;
   used_at: string | null;
   notes: string | null;
+  language: string | null; // Code de langue (ex: 'fr', 'en', 'es')
   created_at: string;
   updated_at: string;
 }
@@ -48,6 +49,7 @@ export interface CreateTicketBody {
   checkout_reference?: string; // Référence du checkout SumUp (optionnel)
   transaction_status?: string; // Statut de la transaction (optionnel)
   notes?: string;
+  language?: string; // Code de langue (ex: 'fr', 'en', 'es')
 }
 
 /**
@@ -68,6 +70,7 @@ export interface UpdateTicketBody {
   status?: TicketStatus;
   used_at?: string | null;
   notes?: string | null;
+  language?: string | null; // Code de langue (ex: 'fr', 'en', 'es')
 }
 
 /**
@@ -95,6 +98,7 @@ export interface CreateTicketsWithPaymentBody {
   email: string; // Email commun pour tous les tickets
   first_name?: string; // Nom commun (optionnel)
   last_name?: string; // Prénom commun (optionnel)
+  language?: string; // Code de langue (ex: 'fr', 'en', 'es')
   tickets: Array<{
     reservation_date: string; // Format YYYY-MM-DD
     slot_start_time: string; // Format HH:MM:SS
@@ -105,5 +109,27 @@ export interface CreateTicketsWithPaymentBody {
   }>;
   currency?: string; // Devise pour le paiement (défaut: EUR)
   description?: string; // Description du paiement
+}
+
+/**
+ * Statistiques des tickets par jour de la semaine
+ */
+export interface TicketsStatsByDay {
+  date: string; // Format YYYY-MM-DD
+  day_name: string; // Nom du jour (lundi, mardi, etc.)
+  tickets_count: number;
+  amount: number;
+}
+
+/**
+ * Statistiques globales des tickets
+ */
+export interface TicketsStats {
+  total_tickets_sold: number; // Nombre total de tickets vendus (status = 'paid')
+  week_tickets_sold: number; // Nombre de tickets vendus cette semaine
+  week_tickets_by_day: TicketsStatsByDay[]; // Répartition par jour de la semaine
+  total_amount: number; // Montant total (ticket_price + donation_amount)
+  week_amount: number; // Montant de la semaine
+  month_amount: number; // Montant du mois
 }
 
