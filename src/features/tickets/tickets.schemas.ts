@@ -63,9 +63,77 @@ export const createTicketSchema = {
       },
       notes: {
         type: 'string',
-        description: 'Notes optionnelles',
+        description: 'Notes libres optionnelles. Si pricing_info est fourni, il sera automatiquement stocké dans notes au format JSON avec les notes libres.',
       },
-      langue: {
+      pricing_info: {
+        type: 'object',
+        description: 'Informations de tarif au moment de la création (sera stocké dans notes au format JSON). Permet de conserver les informations de tarif pour vérification ultérieure, notamment pour les membres avec places gratuites.',
+        properties: {
+          price_id: {
+            type: ['string', 'null'],
+            format: 'uuid',
+            description: 'ID du tarif utilisé (optionnel, peut être null pour les tarifs personnalisés)',
+          },
+          price_name: {
+            type: ['string', 'null'],
+            description: 'Nom du tarif au moment de la création (pour référence)',
+          },
+          price_amount: {
+            type: 'number',
+            minimum: 0,
+            description: 'Montant du tarif au moment de la création',
+          },
+          audience_type: {
+            type: ['string', 'null'],
+            enum: ['public', 'member'],
+            description: 'Type d\'audience',
+          },
+          requires_proof: {
+            type: ['boolean', 'null'],
+            description: 'Si un justificatif était requis',
+          },
+          proof_info: {
+            type: ['object', 'null'],
+            description: 'Informations sur le justificatif fourni',
+            properties: {
+              type: {
+                type: ['string', 'null'],
+                description: 'Type de justificatif (ex: "student_card", "senior_card", "member_card")',
+              },
+              reference: {
+                type: ['string', 'null'],
+                description: 'Référence du justificatif (numéro de carte, etc.)',
+              },
+              uploaded_at: {
+                type: ['string', 'null'],
+                format: 'date-time',
+                description: 'Date d\'upload du justificatif (format ISO)',
+              },
+              verified: {
+                type: ['boolean', 'null'],
+                description: 'Si le justificatif a été vérifié',
+              },
+              verified_by: {
+                type: ['string', 'null'],
+                description: 'ID ou nom de la personne qui a vérifié',
+              },
+              verified_at: {
+                type: ['string', 'null'],
+                format: 'date-time',
+                description: 'Date de vérification (format ISO)',
+              },
+            },
+          },
+          applied_at: {
+            type: 'string',
+            format: 'date-time',
+            default: new Date().toISOString(),
+            description: 'Date d\'application du tarif (format ISO). Générée automatiquement si non fournie.',
+          },
+        },
+        required: ['price_amount'],
+      },
+      language: {
         type: 'string',
         maxLength: 10,
         description: 'Code de langue (ex: "fr", "en", "es")',
@@ -93,7 +161,7 @@ export const createTicketSchema = {
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
-        langue: { type: ['string', 'null'] },
+        language: { type: ['string', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -223,7 +291,7 @@ export const updateTicketSchema = {
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
-        langue: { type: ['string', 'null'] },
+        language: { type: ['string', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -301,7 +369,7 @@ export const getTicketsSchema = {
           status: { type: 'string' },
           used_at: { type: ['string', 'null'] },
           notes: { type: ['string', 'null'] },
-          langue: { type: ['string', 'null'] },
+          language: { type: ['string', 'null'] },
           created_at: { type: 'string' },
           updated_at: { type: 'string' },
         },
@@ -349,7 +417,7 @@ export const getTicketByIdSchema = {
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
-        langue: { type: ['string', 'null'] },
+        language: { type: ['string', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -404,7 +472,7 @@ export const validateTicketSchema = {
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
-        langue: { type: ['string', 'null'] },
+        language: { type: ['string', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -491,7 +559,74 @@ export const createTicketsWithPaymentSchema = {
             },
             notes: {
               type: 'string',
-              description: 'Notes optionnelles pour ce ticket',
+              description: 'Notes libres optionnelles pour ce ticket. Si pricing_info est fourni, il sera automatiquement stocké dans notes au format JSON avec les notes libres.',
+            },
+            pricing_info: {
+              type: 'object',
+              description: 'Informations de tarif au moment de la création pour ce ticket (sera stocké dans notes au format JSON). Permet de conserver les informations de tarif pour vérification ultérieure, notamment pour les membres avec places gratuites.',
+              properties: {
+                price_id: {
+                  type: ['string', 'null'],
+                  format: 'uuid',
+                  description: 'ID du tarif utilisé (optionnel, peut être null pour les tarifs personnalisés)',
+                },
+                price_name: {
+                  type: ['string', 'null'],
+                  description: 'Nom du tarif au moment de la création (pour référence)',
+                },
+                price_amount: {
+                  type: 'number',
+                  minimum: 0,
+                  description: 'Montant du tarif au moment de la création',
+                },
+                audience_type: {
+                  type: ['string', 'null'],
+                  enum: ['public', 'member'],
+                  description: 'Type d\'audience',
+                },
+                requires_proof: {
+                  type: ['boolean', 'null'],
+                  description: 'Si un justificatif était requis',
+                },
+                proof_info: {
+                  type: ['object', 'null'],
+                  description: 'Informations sur le justificatif fourni',
+                  properties: {
+                    type: {
+                      type: ['string', 'null'],
+                      description: 'Type de justificatif (ex: "student_card", "senior_card", "member_card")',
+                    },
+                    reference: {
+                      type: ['string', 'null'],
+                      description: 'Référence du justificatif (numéro de carte, etc.)',
+                    },
+                    uploaded_at: {
+                      type: ['string', 'null'],
+                      format: 'date-time',
+                      description: 'Date d\'upload du justificatif (format ISO)',
+                    },
+                    verified: {
+                      type: ['boolean', 'null'],
+                      description: 'Si le justificatif a été vérifié',
+                    },
+                    verified_by: {
+                      type: ['string', 'null'],
+                      description: 'ID ou nom de la personne qui a vérifié',
+                    },
+                    verified_at: {
+                      type: ['string', 'null'],
+                      format: 'date-time',
+                      description: 'Date de vérification (format ISO)',
+                    },
+                  },
+                },
+                applied_at: {
+                  type: 'string',
+                  format: 'date-time',
+                  description: 'Date d\'application du tarif (format ISO). Générée automatiquement si non fournie.',
+                },
+              },
+              required: ['price_amount', 'applied_at'],
             },
           },
         },
@@ -513,12 +648,12 @@ export const createTicketsWithPaymentSchema = {
       type: 'object',
       properties: {
         checkout_id: {
-          type: 'string',
-          description: 'ID du checkout SumUp',
+          type: ['string', 'null'],
+          description: 'ID du checkout SumUp (null si la commande est gratuite)',
         },
         checkout_reference: {
-          type: 'string',
-          description: 'Référence du checkout SumUp',
+          type: ['string', 'null'],
+          description: 'Référence du checkout SumUp (null si la commande est gratuite)',
         },
         tickets: {
           type: 'array',
@@ -542,7 +677,7 @@ export const createTicketsWithPaymentSchema = {
               status: { type: 'string' },
               used_at: { type: ['string', 'null'] },
               notes: { type: ['string', 'null'] },
-              langue: { type: ['string', 'null'] },
+              language: { type: ['string', 'null'] },
               created_at: { type: 'string' },
               updated_at: { type: 'string' },
             },
@@ -550,7 +685,7 @@ export const createTicketsWithPaymentSchema = {
           description: 'Liste des tickets créés',
         },
       },
-      required: ['checkout_id', 'checkout_reference', 'tickets'],
+      required: ['tickets'],
     },
     400: {
       type: 'object',
@@ -601,7 +736,7 @@ export const getTicketsByCheckoutIdSchema = {
           status: { type: 'string' },
           used_at: { type: ['string', 'null'] },
           notes: { type: ['string', 'null'] },
-          langue: { type: ['string', 'null'] },
+          language: { type: ['string', 'null'] },
           created_at: { type: 'string' },
           updated_at: { type: 'string' },
         },

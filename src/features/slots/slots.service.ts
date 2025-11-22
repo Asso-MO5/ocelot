@@ -85,7 +85,6 @@ async function getScheduleForDate(
 ): Promise<Schedule | null> {
   const schedules = await getPublicSchedules(app, { date });
 
-  console.log('schedules', schedules);
   if (schedules.length === 0) {
     return null;
   }
@@ -127,8 +126,6 @@ export async function getSlotsForDate(
   // Récupérer l'horaire pour cette date
   const schedule = await getScheduleForDate(app, date);
 
-  console.log('schedule', schedule, date, new Date(date).getDay());
-
   if (!schedule) {
     // Pas d'horaire trouvé ou musée fermé
     return {
@@ -155,8 +152,6 @@ export async function getSlotsForDate(
   const slotCapacityHours = (await getSettingValue<number>(app, 'slot_capacity', 1)) || 1;
   const dailyCapacity = (await getSettingValue<number>(app, 'capacity', 100)) || 100;
 
-
-  console.log('schedule.start_time', schedule.start_time);
   // Générer les slots pour cet horaire
   const slotRanges = generateSlotsForSchedule(
     schedule.start_time,
@@ -167,7 +162,6 @@ export async function getSlotsForDate(
   // Pour chaque slot, compter les tickets et calculer la capacité
   const slots: Slot[] = [];
 
-  console.log('slotRanges', slotRanges);
   let totalBooked = 0;
 
   for (const slotRange of slotRanges) {

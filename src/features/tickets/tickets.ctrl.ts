@@ -31,6 +31,7 @@ import {
 } from './tickets.schemas.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
+import { handleStructuredError } from './tickets.errors.ts';
 
 /**
  * Handler pour créer un ticket
@@ -46,14 +47,9 @@ export async function createTicketHandler(
   } catch (err: any) {
     app.log.error({ err, body: req.body }, 'Erreur lors de la création du ticket');
 
-    if (
-      err.message?.includes('obligatoire') ||
-      err.message?.includes('doit être') ||
-      err.message?.includes('postérieure') ||
-      err.message?.includes('ne peut pas être vide')
-    ) {
-      return reply.code(400).send({ error: err.message });
-    }
+    // Gérer les erreurs structurées
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
 
     return reply.code(500).send({ error: 'Erreur lors de la création du ticket' });
   }
@@ -73,21 +69,18 @@ export async function createTicketsWithPaymentHandler(
   } catch (err: any) {
     app.log.error({ err, body: req.body }, 'Erreur lors de la création des tickets avec paiement');
 
-    if (
-      err.message?.includes('obligatoire') ||
-      err.message?.includes('doit être') ||
-      err.message?.includes('postérieure') ||
-      err.message?.includes('requis') ||
-      err.message?.includes('supérieur à 0')
-    ) {
-      return reply.code(400).send({ error: err.message });
-    }
+    // Gérer les erreurs structurées
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
 
+    // Erreurs spécifiques non structurées
     if (err.message?.includes('SUMUP_API_KEY') || err.message?.includes('SUMUP_MERCHANT_CODE')) {
       return reply.code(500).send({ error: 'Configuration SumUp manquante' });
     }
 
-    return reply.code(500).send({ error: 'Erreur lors de la création des tickets avec paiement' });
+    // Pour les erreurs non gérées, envoyer le message d'erreur ou un message générique
+    const errorMessage = err.message || err.toString() || 'Erreur lors de la création des tickets avec paiement';
+    return reply.code(500).send({ error: errorMessage });
   }
 }
 
@@ -104,6 +97,10 @@ export async function getTicketsHandler(
     return reply.send(tickets);
   } catch (err: any) {
     app.log.error({ err, query: req.query }, 'Erreur lors de la récupération des tickets');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+
     return reply.code(500).send({ error: 'Erreur lors de la récupération des tickets' });
   }
 }
@@ -126,6 +123,10 @@ export async function getTicketByIdHandler(
     return reply.send(ticket);
   } catch (err: any) {
     app.log.error({ err, id: req.params.id }, 'Erreur lors de la récupération du ticket');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+
     return reply.code(500).send({ error: 'Erreur lors de la récupération du ticket' });
   }
 }
@@ -148,7 +149,78 @@ export async function getTicketByQRCodeHandler(
     return reply.send(ticket);
   } catch (err: any) {
     app.log.error({ err, qrCode: req.params.qrCode }, 'Erreur lors de la récupération du ticket');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+
     return reply.code(500).send({ error: 'Erreur lors de la récupération du ticket' });
+  }
+}
+
+/**
+ * Handler pour afficher la page HTML de visualisation du ticket
+ */
+export async function viewTicketPageHandler(
+  req: FastifyRequest<{ Params: { qrCode: string } }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const { getTicketByQRCode } = await import('./tickets.service.ts');
+    const { generateTicketViewHTML } = await import('./tickets.email.ts');
+
+    const ticket = await getTicketByQRCode(app, req.params.qrCode);
+
+    if (!ticket) {
+      return reply.code(404).type('text/html').send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Ticket non trouvé</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            h1 { color: #e73b21; }
+          </style>
+        </head>
+        <body>
+          <h1>Ticket non trouvé</h1>
+          <p>Le ticket demandé n'existe pas ou a été supprimé.</p>
+        </body>
+        </html>
+      `);
+    }
+
+    // Vérifier la validité du ticket
+    const isValid = ticket.status === 'paid' && !ticket.used_at;
+    const reservationDate = new Date(ticket.reservation_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    reservationDate.setHours(0, 0, 0, 0);
+    const isDateValid = reservationDate >= today;
+
+    const html = await generateTicketViewHTML(ticket, isValid && isDateValid);
+
+    return reply.type('text/html').send(html);
+  } catch (err: any) {
+    app.log.error({ err, qrCode: req.params.qrCode }, 'Erreur lors de la génération de la page de visualisation');
+    return reply.code(500).type('text/html').send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Erreur</title>
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+          h1 { color: #e73b21; }
+        </style>
+      </head>
+      <body>
+        <h1>Erreur</h1>
+        <p>Une erreur est survenue lors du chargement du ticket.</p>
+      </body>
+      </html>
+    `);
   }
 }
 
@@ -165,6 +237,10 @@ export async function getTicketsByCheckoutIdHandler(
     return reply.send(tickets);
   } catch (err: any) {
     app.log.error({ err, checkoutId: req.params.checkoutId }, 'Erreur lors de la récupération des tickets');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+
     return reply.code(500).send({ error: 'Erreur lors de la récupération des tickets' });
   }
 }
@@ -182,6 +258,10 @@ export async function getTicketsStatsHandler(
     return reply.send({ tickets_stats: stats });
   } catch (err: any) {
     app.log.error({ err }, 'Erreur lors de la récupération des statistiques des tickets');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+
     return reply.code(500).send({ error: 'Erreur lors de la récupération des statistiques des tickets' });
   }
 }
@@ -199,6 +279,9 @@ export async function updateTicketHandler(
     return reply.send(ticket);
   } catch (err: any) {
     app.log.error({ err, id: req.params.id, body: req.body }, 'Erreur lors de la mise à jour du ticket');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
 
     if (err.message?.includes('non trouvé')) {
       return reply.code(404).send({ error: err.message });
@@ -228,6 +311,9 @@ export async function validateTicketHandler(
     return reply.send(ticket);
   } catch (err: any) {
     app.log.error({ err, qr_code: req.body.qr_code }, 'Erreur lors de la validation du ticket');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
 
     if (err.message?.includes('non trouvé')) {
       return reply.code(404).send({ error: err.message });
@@ -263,6 +349,10 @@ export async function deleteTicketHandler(
     return reply.code(204).send();
   } catch (err: any) {
     app.log.error({ err, id: req.params.id }, 'Erreur lors de la suppression du ticket');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+
     return reply.code(500).send({ error: 'Erreur lors de la suppression du ticket' });
   }
 }
@@ -334,6 +424,12 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: getTicketsByCheckoutIdSchema,
     },
     async (req, reply) => getTicketsByCheckoutIdHandler(req, reply, app)
+  );
+
+  // Route publique : page HTML de visualisation du ticket
+  app.get<{ Params: { qrCode: string } }>(
+    '/tickets/:qrCode',
+    async (req, reply) => viewTicketPageHandler(req, reply, app)
   );
 
   // Route publique : statistiques des tickets

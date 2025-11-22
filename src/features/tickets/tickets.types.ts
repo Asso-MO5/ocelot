@@ -8,6 +8,28 @@
 export type TicketStatus = 'pending' | 'paid' | 'cancelled' | 'used' | 'expired';
 
 /**
+ * Informations de tarif stockées dans le champ notes au format JSON
+ * Permet de conserver les informations de tarif au moment de la création
+ * pour vérification ultérieure (notamment pour les membres avec places gratuites)
+ */
+export interface TicketPricingInfo {
+  price_id?: string; // ID du tarif utilisé (optionnel, peut être null pour les tarifs personnalisés)
+  price_name?: string; // Nom du tarif au moment de la création (pour référence)
+  price_amount: number; // Montant du tarif au moment de la création
+  audience_type?: 'public' | 'member'; // Type d'audience
+  requires_proof?: boolean; // Si un justificatif était requis
+  proof_info?: {
+    type?: string; // Type de justificatif (ex: "student_card", "senior_card", "member_card")
+    reference?: string; // Référence du justificatif (numéro de carte, etc.)
+    uploaded_at?: string; // Date d'upload du justificatif (format ISO)
+    verified?: boolean; // Si le justificatif a été vérifié
+    verified_by?: string; // ID ou nom de la personne qui a vérifié
+    verified_at?: string; // Date de vérification (format ISO)
+  };
+  applied_at: string; // Date d'application du tarif (format ISO)
+}
+
+/**
  * Ticket du musée en base de données
  */
 export interface Ticket {
@@ -48,7 +70,8 @@ export interface CreateTicketBody {
   checkout_id?: string; // ID du checkout SumUp (optionnel au moment de la création)
   checkout_reference?: string; // Référence du checkout SumUp (optionnel)
   transaction_status?: string; // Statut de la transaction (optionnel)
-  notes?: string;
+  notes?: string; // Notes libres ou JSON stringifié contenant TicketPricingInfo
+  pricing_info?: TicketPricingInfo; // Informations de tarif (sera stocké dans notes au format JSON)
   language?: string; // Code de langue (ex: 'fr', 'en', 'es')
 }
 
@@ -105,7 +128,8 @@ export interface CreateTicketsWithPaymentBody {
     slot_end_time: string; // Format HH:MM:SS
     ticket_price: number;
     donation_amount?: number; // Optionnel, 0 par défaut
-    notes?: string; // Notes spécifiques à ce ticket
+    notes?: string; // Notes libres ou JSON stringifié contenant TicketPricingInfo
+    pricing_info?: TicketPricingInfo; // Informations de tarif (sera stocké dans notes au format JSON)
   }>;
   currency?: string; // Devise pour le paiement (défaut: EUR)
   description?: string; // Description du paiement

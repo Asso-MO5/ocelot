@@ -122,20 +122,43 @@ export async function sumUpWebhookHandler(
         } catch (wsError) {
           app.log.warn({ wsError }, 'Erreur lors de l\'envoi du message WebSocket');
         }
+
+        // Envoyer les emails de confirmation pour les tickets payés
+        try {
+          const { getTicketsByCheckoutId } = await import('../tickets/tickets.service.ts');
+          const { sendTicketsConfirmationEmails } = await import('../tickets/tickets.email.ts');
+          const tickets = await getTicketsByCheckoutId(app, checkoutId);
+          if (tickets.length > 0) {
+            await sendTicketsConfirmationEmails(app, tickets);
+          }
+        } catch (emailError) {
+          app.log.error({ emailError, checkoutId }, 'Erreur lors de l\'envoi des emails de confirmation');
+        }
       }
     } else if (status === 'SENT') {
       // Pour SENT, on peut juste logger mais ne pas mettre à jour les tickets
       app.log.info({ checkoutId, status }, 'Webhook SumUp reçu avec statut SENT (intermédiaire)');
     }
 
+    // Récupérer les QR codes des tickets associés au checkout
+    let qrCodes: string[] = [];
+    try {
+      const { getTicketsByCheckoutId } = await import('../tickets/tickets.service.ts');
+      const tickets = await getTicketsByCheckoutId(app, checkoutId);
+      qrCodes = tickets.map(ticket => ticket.qr_code);
+    } catch (error) {
+      app.log.warn({ error, checkoutId }, 'Erreur lors de la récupération des QR codes des tickets');
+    }
+
     app.log.info(
-      { checkoutId, status, ticketsUpdated, transactionCode },
+      { checkoutId, status, ticketsUpdated, transactionCode, qrCodesCount: qrCodes.length },
       'Webhook SumUp traité avec succès'
     );
 
     return reply.send({
       success: true,
       tickets_updated: ticketsUpdated,
+      qr_codes: qrCodes,
     });
   } catch (err: any) {
     app.log.error({

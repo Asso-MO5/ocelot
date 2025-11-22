@@ -31,7 +31,7 @@ const logger = {
   }
 };
 
-const app = fastify({});
+const app = fastify({ logger });
 
 app.addHook('onRequest', async (_req, reply) => {
   reply.header('X-Content-Type-Options', 'nosniff');
@@ -87,7 +87,6 @@ const start = async () => {
       origin: (origin, callback) => {
         // Extraire le pathname sans les query parameters
         const pathname = currentRequestUrl ? currentRequestUrl.split('?')[0] : null;
-
         // Routes qui peuvent être appelées sans origin même en production
         const isPublicRoute = pathname && (
           pathname === '/auth/signin' ||
@@ -95,7 +94,8 @@ const start = async () => {
           pathname.startsWith('/docs') ||
           pathname === '/museum/schedules/public' ||
           pathname === '/pay/webhook' ||
-          pathname === '/museum/slots'
+          pathname === '/museum/slots' ||
+          pathname.startsWith('/tickets/')
         );
 
         if (!origin) {

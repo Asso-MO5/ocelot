@@ -290,222 +290,6 @@
         ]
       }
     },
-    "/pay/checkout": {
-      "post": {
-        "tags": [
-          "Paiement"
-        ],
-        "summary": "Crée un nouveau checkout SumUp pour un paiement",
-        "description": "**Créer un checkout SumUp avec succès** : que je fournis un montant valide dans le body je reçois une réponse 200 la réponse contient un \"checkout_id\" la réponse contient le \"checkout_reference\" la réponse contient le \"amount\" la réponse contient la \"currency\" la réponse contient le \"status\"\n\n**Créer un checkout avec un montant invalide** : que je fournis un montant négatif ou nul dans le body je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0\n\n**Créer un checkout avec une devise personnalisée** : que je fournis un montant valide que je spécifie une devise dans le body(par exemple \"USD\") je reçois une réponse 200 la réponse contient la devise spécifiée\n\n**Créer un checkout avec une description** : que je fournis un montant valide que je fournis une description dans le body je reçois une réponse 200 le checkout est créé avec la description fournie\n\n**Créer un checkout avec une référence personnalisée** : que je fournis un montant valide que je fournis une \"checkout_reference\" personnalisée dans le body je reçois une réponse 200 la réponse contient la référence personnalisée fournie\n\n**Créer un checkout sans montant** : que je ne fournis pas de montant dans le body je reçois une réponse 400 la réponse contient un message d'erreur de validation\n\n**Créer un checkout avec configuration SumUp manquante** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message indiquant que la configuration SumUp est manquante\n\n**Gérer les erreurs de l'API SumUp** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message d'erreur générique les détails de l'erreur sont loggés côté serveur\n\n### Scénarios de test\n\n**Créer un checkout SumUp avec succès**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide dans le body\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient un \"checkout_id\"\n\n✅ la réponse contient le \"checkout_reference\"\n\n✅ la réponse contient le \"amount\"\n\n✅ la réponse contient la \"currency\"\n\n✅ la réponse contient le \"status\"\n\n**Créer un checkout avec un montant invalide**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant négatif ou nul dans le body\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0\n\n**Créer un checkout avec une devise personnalisée**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ que je spécifie une devise dans le body(par exemple \"USD\")\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient la devise spécifiée\n\n**Créer un checkout avec une description**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ que je fournis une description dans le body\n\n✅ je reçois une réponse 200\n\n✅ le checkout est créé avec la description fournie\n\n**Créer un checkout avec une référence personnalisée**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ que je fournis une \"checkout_reference\" personnalisée dans le body\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient la référence personnalisée fournie\n\n**Créer un checkout sans montant**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je ne fournis pas de montant dans le body\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur de validation\n\n**Créer un checkout avec configuration SumUp manquante**\n\n📋 que SUMUP_API_KEY n'est pas configurée\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ je reçois une réponse 500\n\n✅ la réponse contient un message indiquant que la configuration SumUp est manquante\n\n**Gérer les erreurs de l'API SumUp**\n\n📋 que l'API SumUp retourne une erreur\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ je reçois une réponse 500\n\n✅ la réponse contient un message d'erreur générique\n\n✅ les détails de l'erreur sont loggés côté serveur\n\n",
-        "operationId": "post_pay_checkout",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Succès - que je fournis un montant valide dans le body, je reçois une réponse 200, la réponse contient un \"checkout_id\", la réponse contient le \"checkout_reference\", la réponse contient le \"amount\", la réponse contient la \"currency\", la réponse contient le \"status\"",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "checkout_id": {
-                      "type": "string",
-                      "description": "ID du checkout SumUp"
-                    },
-                    "checkout_reference": {
-                      "type": "string",
-                      "description": "Référence du checkout"
-                    },
-                    "amount": {
-                      "type": "number",
-                      "description": "Montant du paiement"
-                    },
-                    "currency": {
-                      "type": "string",
-                      "description": "Devise"
-                    },
-                    "status": {
-                      "type": "string",
-                      "description": "Statut du checkout"
-                    }
-                  }
-                },
-                "example": {
-                  "checkout_id": "exemple_checkout_id",
-                  "checkout_reference": "exemple_checkout_reference",
-                  "amount": 123,
-                  "currency": "exemple_currency",
-                  "status": "exemple_status"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Code 400 - que je fournis un montant négatif ou nul dans le body, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "example": {
-                  "error": "exemple_error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur serveur - que je fournis un montant valide, je reçois une réponse 500, la réponse contient un message indiquant que la configuration SumUp est manquante",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "example": {
-                  "error": "exemple_error"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "amount"
-                ],
-                "properties": {
-                  "amount": {
-                    "type": "number",
-                    "minimum": 5,
-                    "maximum": 12,
-                    "description": "Montant du paiement"
-                  },
-                  "currency": {
-                    "type": "string",
-                    "default": "EUR",
-                    "description": "Devise du paiement (défaut: EUR)"
-                  },
-                  "description": {
-                    "type": "string",
-                    "description": "Description du paiement"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "cookieAuth": []
-          }
-        ]
-      }
-    },
-    "/pay/checkout/:checkoutId": {
-      "get": {
-        "tags": [
-          "Paiement"
-        ],
-        "summary": "Vérifie le statut d'un checkout SumUp",
-        "description": "",
-        "operationId": "get_pay_checkout_:checkoutId",
-        "parameters": [
-          {
-            "name": "checkoutId",
-            "in": "path",
-            "description": "ID du checkout SumUp",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "ID du checkout SumUp"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Succès",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "checkout_reference": {
-                      "type": "string"
-                    },
-                    "amount": {
-                      "type": "number"
-                    },
-                    "currency": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "PENDING",
-                        "PAID",
-                        "FAILED",
-                        "CANCELLED"
-                      ]
-                    },
-                    "payment_type": {
-                      "type": "string"
-                    },
-                    "transaction_code": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Code 404",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur serveur",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/pay/webhook": {
       "post": {
         "tags": [
@@ -608,7 +392,9 @@
                       "PENDING",
                       "PAID",
                       "FAILED",
-                      "CANCELLED"
+                      "CANCELLED",
+                      "SENT",
+                      "SUCCESS"
                     ],
                     "description": "Statut du checkout"
                   },
@@ -3546,6 +3332,12 @@
                       ],
                       "nullable": true
                     },
+                    "langue": {
+                      "type": [
+                        "string"
+                      ],
+                      "nullable": true
+                    },
                     "created_at": {
                       "type": "string"
                     },
@@ -3659,6 +3451,11 @@
                   "notes": {
                     "type": "string",
                     "description": "Notes optionnelles"
+                  },
+                  "langue": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "description": "Code de langue (ex: \"fr\", \"en\", \"es\")"
                   }
                 }
               }
@@ -3821,6 +3618,12 @@
                         ],
                         "nullable": true
                       },
+                      "langue": {
+                        "type": [
+                          "string"
+                        ],
+                        "nullable": true
+                      },
                       "created_at": {
                         "type": "string"
                       },
@@ -3952,6 +3755,12 @@
                       "nullable": true
                     },
                     "notes": {
+                      "type": [
+                        "string"
+                      ],
+                      "nullable": true
+                    },
+                    "langue": {
                       "type": [
                         "string"
                       ],
@@ -4100,6 +3909,12 @@
                       "nullable": true
                     },
                     "notes": {
+                      "type": [
+                        "string"
+                      ],
+                      "nullable": true
+                    },
+                    "langue": {
                       "type": [
                         "string"
                       ],
@@ -4261,6 +4076,14 @@
                       "string"
                     ],
                     "description": "Notes optionnelles",
+                    "nullable": true
+                  },
+                  "language": {
+                    "type": [
+                      "string"
+                    ],
+                    "maxLength": 10,
+                    "description": "Code de langue (ex: \"fr\", \"en\", \"es\")",
                     "nullable": true
                   }
                 }
@@ -4444,6 +4267,12 @@
                       ],
                       "nullable": true
                     },
+                    "langue": {
+                      "type": [
+                        "string"
+                      ],
+                      "nullable": true
+                    },
                     "created_at": {
                       "type": "string"
                     },
@@ -4572,6 +4401,12 @@
                       "nullable": true
                     },
                     "notes": {
+                      "type": [
+                        "string"
+                      ],
+                      "nullable": true
+                    },
+                    "langue": {
                       "type": [
                         "string"
                       ],
@@ -4765,6 +4600,12 @@
                             ],
                             "nullable": true
                           },
+                          "langue": {
+                            "type": [
+                              "string"
+                            ],
+                            "nullable": true
+                          },
                           "created_at": {
                             "type": "string"
                           },
@@ -4842,6 +4683,11 @@
                     "type": "string",
                     "maxLength": 255,
                     "description": "Nom commun pour tous les tickets (optionnel)"
+                  },
+                  "language": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "description": "Code de langue commun pour tous les tickets (ex: \"fr\", \"en\", \"es\")"
                   },
                   "tickets": {
                     "type": "array",
@@ -5002,6 +4848,12 @@
                         "nullable": true
                       },
                       "notes": {
+                        "type": [
+                          "string"
+                        ],
+                        "nullable": true
+                      },
+                      "langue": {
                         "type": [
                           "string"
                         ],

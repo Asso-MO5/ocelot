@@ -144,7 +144,15 @@ export const sumUpWebhookSchema = {
           type: 'number',
           description: 'Nombre de tickets mis à jour',
         },
+        qr_codes: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+          description: 'Liste des QR codes des tickets associés au checkout',
+        },
       },
+      required: ['success', 'tickets_updated', 'qr_codes'],
     },
     400: {
       type: 'object',

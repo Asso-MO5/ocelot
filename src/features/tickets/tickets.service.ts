@@ -7,8 +7,11 @@ import type {
   GetTicketsQuery,
   TicketsStats,
   TicketsStatsByDay,
+  TicketPricingInfo,
 } from './tickets.types.ts';
 import { createSumUpCheckout } from '../pay/pay.utils.ts';
+import { getPriceById } from '../prices/prices.service.ts';
+import { createStructuredError } from './tickets.errors.ts';
 
 /**
  * Génère un code QR unique (8 caractères alphanumériques majuscules)
@@ -48,12 +51,179 @@ async function generateUniqueQRCode(app: FastifyInstance): Promise<string> {
 }
 
 /**
+ * Construit le contenu du champ notes en combinant les notes libres et les informations de tarif
+ * Si pricing_info est fourni, il sera stocké dans notes au format JSON
+ */
+function buildNotesContent(
+  notes: string | null | undefined,
+  pricingInfo: TicketPricingInfo | undefined
+): string | null {
+  const parts: any = {};
+
+  // Si des notes libres existent, les ajouter
+  if (notes && notes.trim()) {
+    // Essayer de parser si c'est déjà du JSON
+    try {
+      const parsed = JSON.parse(notes);
+      Object.assign(parts, parsed);
+    } catch {
+      // Si ce n'est pas du JSON, l'ajouter comme note libre
+      parts.free_notes = notes;
+    }
+  }
+
+  // Si des informations de tarif sont fournies, les ajouter
+  if (pricingInfo) {
+    // Ajouter la date d'application si elle n'est pas déjà présente
+    if (!pricingInfo.applied_at) {
+      pricingInfo.applied_at = new Date().toISOString();
+    }
+    parts.pricing_info = pricingInfo;
+  }
+
+  // Si aucune information n'est présente, retourner null
+  if (Object.keys(parts).length === 0) {
+    return null;
+  }
+
+  // Retourner le JSON stringifié
+  return JSON.stringify(parts);
+}
+
+/**
+ * Extrait les informations de tarif depuis le champ notes
+ */
+export function extractPricingInfo(notes: string | null): TicketPricingInfo | null {
+  if (!notes) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(notes);
+    return parsed.pricing_info || null;
+  } catch {
+    // Si ce n'est pas du JSON valide, retourner null
+    return null;
+  }
+}
+
+/**
+ * Valide les informations de tarif au moment de la création du ticket
+ * Vérifie que le tarif existe, est actif, et que le montant correspond
+ */
+async function validatePricingInfo(
+  app: FastifyInstance,
+  pricingInfo: TicketPricingInfo | undefined,
+  ticketPrice: number,
+  reservationDate: string
+): Promise<void> {
+  // Si aucune information de tarif n'est fournie, on accepte (tarif personnalisé)
+  if (!pricingInfo || !pricingInfo.price_id) {
+    return;
+  }
+
+  // Récupérer le tarif depuis la base de données
+  const price = await getPriceById(app, pricingInfo.price_id);
+
+  if (!price) {
+    throw createStructuredError(
+      400,
+      `Le tarif spécifié (ID: ${pricingInfo.price_id}) n'existe pas`,
+      `The specified price (ID: ${pricingInfo.price_id}) does not exist`
+    );
+  }
+
+  // Vérifier que le tarif est actif
+  if (!price.is_active) {
+    throw createStructuredError(
+      400,
+      `Le tarif spécifié (ID: ${pricingInfo.price_id}) n'est pas actif`,
+      `The specified price (ID: ${pricingInfo.price_id}) is not active`
+    );
+  }
+
+  // Vérifier que les dates de validité du tarif couvrent la date de réservation
+  if (price.start_date || price.end_date) {
+    const reservationDateObj = new Date(reservationDate);
+    reservationDateObj.setHours(0, 0, 0, 0);
+
+    if (price.start_date) {
+      const startDate = new Date(price.start_date);
+      startDate.setHours(0, 0, 0, 0);
+      if (reservationDateObj < startDate) {
+        throw createStructuredError(
+          400,
+          `Le tarif spécifié n'est pas valide pour la date de réservation ${reservationDate}. Le tarif commence le ${price.start_date}`,
+          `The specified price is not valid for the reservation date ${reservationDate}. The price starts on ${price.start_date}`
+        );
+      }
+    }
+
+    if (price.end_date) {
+      const endDate = new Date(price.end_date);
+      endDate.setHours(0, 0, 0, 0);
+      if (reservationDateObj > endDate) {
+        throw createStructuredError(
+          400,
+          `Le tarif spécifié n'est pas valide pour la date de réservation ${reservationDate}. Le tarif se termine le ${price.end_date}`,
+          `The specified price is not valid for the reservation date ${reservationDate}. The price ends on ${price.end_date}`
+        );
+      }
+    }
+  }
+
+  // Vérifier que le montant correspond (avec une tolérance de 0.01€ pour les arrondis)
+  const expectedAmount = parseFloat(price.amount.toString());
+  const providedAmount = pricingInfo.price_amount;
+  const tolerance = 0.01;
+
+  if (Math.abs(expectedAmount - providedAmount) > tolerance) {
+    throw createStructuredError(
+      400,
+      `Le montant du tarif ne correspond pas. Montant attendu: ${expectedAmount}€, montant fourni: ${providedAmount}€`,
+      `The price amount does not match. Expected: ${expectedAmount}€, provided: ${providedAmount}€`
+    );
+  }
+
+  // Vérifier que le montant du ticket correspond au montant du tarif
+  if (Math.abs(expectedAmount - ticketPrice) > tolerance) {
+    throw createStructuredError(
+      400,
+      `Le montant du ticket (${ticketPrice}€) ne correspond pas au montant du tarif (${expectedAmount}€)`,
+      `The ticket amount (${ticketPrice}€) does not match the price amount (${expectedAmount}€)`
+    );
+  }
+
+  // Vérifier que le type d'audience correspond si fourni
+  if (pricingInfo.audience_type && pricingInfo.audience_type !== price.audience_type) {
+    throw createStructuredError(
+      400,
+      `Le type d'audience ne correspond pas. Attendu: ${price.audience_type}, fourni: ${pricingInfo.audience_type}`,
+      `The audience type does not match. Expected: ${price.audience_type}, provided: ${pricingInfo.audience_type}`
+    );
+  }
+
+  // Vérifier que requires_proof correspond si fourni
+  if (
+    pricingInfo.requires_proof !== undefined &&
+    pricingInfo.requires_proof !== price.requires_proof
+  ) {
+    throw createStructuredError(
+      400,
+      `La nécessité d'un justificatif ne correspond pas. Le tarif ${price.requires_proof ? 'requiert' : 'ne requiert pas'} un justificatif`,
+      `The proof requirement does not match. The price ${price.requires_proof ? 'requires' : 'does not require'} proof`
+    );
+  }
+}
+
+/**
  * Crée un nouveau ticket
  */
 export async function createTicket(
   app: FastifyInstance,
   data: CreateTicketBody
 ): Promise<Ticket> {
+
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
@@ -61,6 +231,10 @@ export async function createTicket(
   // Validation : email obligatoire
   if (!data.email || !data.email.trim()) {
     throw new Error('L\'email est obligatoire');
+  }
+
+  if (!data.pricing_info) {
+    throw new Error('Les informations de tarif sont obligatoires');
   }
 
   // Validation : montant du ticket doit être positif
@@ -93,8 +267,14 @@ export async function createTicket(
     throw new Error('L\'heure de fin doit être postérieure à l\'heure de début');
   }
 
+  // Validation : vérifier que le tarif existe et est valide si pricing_info est fourni
+  await validatePricingInfo(app, data.pricing_info, data.ticket_price, data.reservation_date);
+
   // Générer un code QR unique
   const qrCode = await generateUniqueQRCode(app);
+
+  // Construire le contenu de notes avec les informations de tarif
+  const notesContent = buildNotesContent(data.notes, data.pricing_info);
 
   // Créer le ticket
   const result = await app.pg.query<Ticket>(
@@ -120,7 +300,7 @@ export async function createTicket(
       donationAmount,
       totalAmount,
       'pending', // Statut initial
-      data.notes ?? null,
+      notesContent,
       data.language ?? null,
     ]
   );
@@ -445,7 +625,7 @@ export async function deleteTicket(
 export async function createTicketsWithPayment(
   app: FastifyInstance,
   data: CreateTicketsWithPaymentBody
-): Promise<{ checkout_id: string; checkout_reference: string; tickets: Ticket[] }> {
+): Promise<{ checkout_id: string | null; checkout_reference: string | null; tickets: Ticket[] }> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
@@ -460,49 +640,243 @@ export async function createTicketsWithPayment(
     throw new Error('Au moins un ticket est requis');
   }
 
+  // Séparer les tickets membres et non-membres
+  const memberTickets = data.tickets.filter(ticket => ticket.pricing_info?.price_name?.match(/membre/i));
+  const nonMemberFreeTickets = data.tickets.filter(ticket => ticket.ticket_price === 0 && !ticket.pricing_info?.price_name?.match(/membre/i));
+
+  // Vérification pour les places gratuites non-membres : 0 ou exactement 2 places (pour l'accompagnant)
+  if (nonMemberFreeTickets.length > 0 && nonMemberFreeTickets.length !== 2) {
+    throw createStructuredError(
+      400,
+      'Pour les non-membres, vous pouvez réserver exactement 2 places gratuites (pour vous et votre accompagnant) ou aucune',
+      'For non-members, you can reserve exactly 2 free tickets (for you and your companion) or none'
+    );
+  }
+
+  // Traitement des tickets membres
+  if (memberTickets.length > 0) {
+    // Récupérer les informations du membre depuis Galette
+    const params = new URLSearchParams();
+    params.set('email', data.email.trim());
+    const res = await fetch(process.env.GALETTE_URL + '/members?' + params.toString(), {
+      headers: {
+        'x-api-token': process.env.GALETTE_API_TOKEN || '',
+      },
+    });
+
+    if (!res.ok) {
+      throw createStructuredError(
+        500,
+        'Erreur lors de la vérification du membre',
+        'Error checking member status'
+      );
+    }
+
+    const memberData = await res.json();
+
+    if (!memberData.id_adh) {
+      throw createStructuredError(
+        400,
+        'L\'utilisateur n\'est pas un membre',
+        'The user is not a member'
+      );
+    }
+
+    // Compter le nombre d'enfants (children)
+    const numOfChildren = memberData.children?.length || 0;
+    let memberFreeTickets = memberTickets.filter(ticket => ticket.ticket_price === 0);
+
+    app.log.info({
+      email: data.email,
+      memberTicketsCount: memberFreeTickets.length,
+      numOfChildren,
+      totalTicketsBefore: data.tickets.length,
+    }, 'Vérification des places membres');
+
+    // Vérifier qu'il y a suffisamment d'enfants pour toutes les places membres
+    // Note: 1 place pour le parent + N places pour les enfants (minimum 1 si pas d'enfants)
+    const maxAllowedMemberTickets = numOfChildren + 1;
+
+    if (memberFreeTickets.length > maxAllowedMemberTickets) {
+      // Trouver les indices des tickets membres gratuits dans data.tickets
+      const memberFreeIndices: number[] = [];
+      for (let i = 0; i < data.tickets.length; i++) {
+        const ticket = data.tickets[i];
+        if (ticket.pricing_info?.price_name?.match(/membre/i) && ticket.ticket_price === 0) {
+          memberFreeIndices.push(i);
+        }
+      }
+
+      // Supprimer les tickets en trop en partant de la fin (pour ne pas décaler les indices)
+      const ticketsToRemove = memberFreeTickets.length - maxAllowedMemberTickets;
+      const indicesToRemove = memberFreeIndices.slice(-ticketsToRemove);
+
+      app.log.warn({
+        email: data.email,
+        memberTicketsCount: memberFreeTickets.length,
+        numOfChildren,
+        maxAllowedMemberTickets,
+        ticketsToRemove,
+      }, 'Suppression de places membres en trop (pas assez d\'enfants)');
+
+      // Retirer les tickets en trop avec splice (en partant de la fin)
+      for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+        data.tickets.splice(indicesToRemove[i], 1);
+      }
+
+      // Vérifier qu'il reste au moins un ticket après suppression
+      if (data.tickets.length === 0) {
+        throw createStructuredError(
+          400,
+          'Aucun ticket ne peut être créé. Vérifiez le nombre d\'enfants et les places disponibles.',
+          'No ticket can be created. Please check the number of children and available places.'
+        );
+      }
+
+      app.log.info({
+        email: data.email,
+        totalTicketsAfter: data.tickets.length,
+        removedCount: ticketsToRemove,
+      }, 'Places membres supprimées');
+
+      // Recalculer les tickets membres après suppression
+      memberFreeTickets = data.tickets.filter(
+        ticket => ticket.pricing_info?.price_name?.match(/membre/i) && ticket.ticket_price === 0
+      );
+    }
+
+    // Vérifier le délai de 2 semaines pour les membres
+    // On compte les dates différentes et les créneaux différents sur les 2 dernières semaines
+    if (memberFreeTickets.length > 0) {
+      // Utiliser la date la plus ancienne parmi les nouvelles réservations
+      const reservationDates = memberFreeTickets.map(t => new Date(t.reservation_date));
+      const earliestDate = new Date(Math.min(...reservationDates.map(d => d.getTime())));
+
+
+      // Trouver le lundi de la semaine de la date la plus ancienne
+      const earliestDay = earliestDate.getDay(); // 0 = dimanche, 1 = lundi, ..., 6 = samedi
+      const daysToMonday = earliestDay === 0 ? 6 : earliestDay - 1; // Nombre de jours à soustraire pour arriver au lundi
+
+      const weekMonday = new Date(earliestDate);
+      weekMonday.setHours(0, 0, 0, 0);
+      weekMonday.setDate(weekMonday.getDate() - daysToMonday);
+      const weekMondayStr = weekMonday.toISOString().split('T')[0];
+
+      // Récupérer tous les tickets membres payés de la même semaine (checkout_id = '0' = premier ticket de chaque commande)
+      const existingMemberTickets = await app.pg.query<{
+        reservation_date: string;
+      }>(
+        `SELECT reservation_date
+         FROM tickets
+         WHERE email = $1
+         AND checkout_id = '0'
+         AND ticket_price = 0
+         AND status = 'paid'
+         AND reservation_date >= $2
+         AND (
+           notes LIKE '%"price_name":"%Membre%"%'
+           OR notes LIKE '%"price_name":"%membre%"%'
+           OR notes::jsonb->'pricing_info'->>'price_name' ILIKE '%membre%'
+         )
+         ORDER BY reservation_date ASC`,
+        [data.email.trim(), weekMondayStr]
+      );
+
+      // Si un ticket existe déjà cette semaine, rejeter la commande
+      if (existingMemberTickets.rows.length > 0) {
+        throw createStructuredError(
+          400,
+          'Vous avez déjà réservé une date cette semaine. Limite : 1 réservation par semaine.',
+          'You have already reserved a date this week. Limit: 1 reservation per week.'
+        );
+      }
+    }
+  }
+
   // Calculer le montant total (somme de tous les ticket_price + donation_amount)
   let totalAmount = 0;
   for (const ticket of data.tickets) {
     if (ticket.ticket_price < 0) {
-      throw new Error('Le prix du ticket doit être positif ou nul');
+      throw createStructuredError(
+        400,
+        'Le prix du ticket doit être positif ou nul',
+        'The ticket price must be positive or null'
+      );
     }
     const donationAmount = ticket.donation_amount ?? 0;
     if (donationAmount < 0) {
-      throw new Error('Le montant du don doit être positif ou nul');
+      throw createStructuredError(
+        400,
+        'Le montant du don doit être positif ou nul',
+        'The donation amount must be positive or null'
+      );
     }
     totalAmount += ticket.ticket_price + donationAmount;
   }
 
-  if (totalAmount <= 0) {
-    throw new Error('Le montant total doit être supérieur à 0');
+  if (totalAmount < 0) {
+    throw createStructuredError(
+      400,
+      'Le montant total doit être supérieur ou égal à 0',
+      'The total amount must be greater than or equal to 0'
+    );
   }
 
   // Validation des dates et heures pour tous les tickets
   for (const ticket of data.tickets) {
     if (!ticket.reservation_date) {
-      throw new Error('La date de réservation est obligatoire pour tous les tickets');
+      throw createStructuredError(
+        400,
+        'La date de réservation est obligatoire pour tous les tickets',
+        'The reservation date is required for all tickets'
+      );
     }
     if (!ticket.slot_start_time || !ticket.slot_end_time) {
-      throw new Error('Les heures de début et de fin du créneau sont obligatoires pour tous les tickets');
+      throw createStructuredError(
+        400,
+        'Les heures de début et de fin du créneau sont obligatoires pour tous les tickets',
+        'The start and end time of the slot are required for all tickets'
+      );
+    }
+
+    if (!ticket.pricing_info) {
+      throw createStructuredError(
+        400,
+        'Les informations de tarif sont obligatoires pour tous les tickets',
+        'The pricing info is required for all tickets'
+      );
     }
     // Validation : heure de fin doit être après l'heure de début
     const startTime = new Date(`2000-01-01T${ticket.slot_start_time}`);
     const endTime = new Date(`2000-01-01T${ticket.slot_end_time}`);
     if (startTime >= endTime) {
-      throw new Error('L\'heure de fin doit être postérieure à l\'heure de début pour tous les tickets');
+      throw createStructuredError(
+        400,
+        'L\'heure de fin doit être postérieure à l\'heure de début pour tous les tickets',
+        'The end time must be after the start time for all tickets'
+      );
     }
+    // Validation : vérifier que le tarif existe et est valide si pricing_info est fourni
+    await validatePricingInfo(app, ticket.pricing_info, ticket.ticket_price, ticket.reservation_date);
   }
 
-  // Créer le checkout SumUp
-  const currency = data.currency || 'EUR';
-  const description = data.description || `Réservation de ${data.tickets.length} ticket(s)`;
+  // Si le montant total est 0, ne pas créer de checkout SumUp
+  // Les tickets seront créés directement avec le statut "paid"
+  let checkout: { id: string; checkout_reference: string; status: string } | null = null;
+  const isFreeOrder = totalAmount === 0;
 
-  const checkout = await createSumUpCheckout(
-    app,
-    totalAmount,
-    description,
-    currency
-  );
+  if (!isFreeOrder) {
+    // Créer le checkout SumUp uniquement si le montant est supérieur à 0
+    const currency = data.currency || 'EUR';
+    const description = data.description || `Réservation de ${data.tickets.length} ticket(s)`;
+
+    checkout = await createSumUpCheckout(
+      app,
+      totalAmount,
+      description,
+      currency
+    );
+  }
 
   // Créer tous les tickets dans une transaction
   const createdTickets: Ticket[] = [];
@@ -511,12 +885,24 @@ export async function createTicketsWithPayment(
     // Utiliser une transaction pour garantir que tous les tickets sont créés ou aucun
     await app.pg.query('BEGIN');
 
-    for (const ticketData of data.tickets) {
+    for (const [index, ticketData] of data.tickets.entries()) {
       const donationAmount = ticketData.donation_amount ?? 0;
       const ticketTotalAmount = ticketData.ticket_price + donationAmount;
 
       // Générer un code QR unique pour chaque ticket
       const qrCode = await generateUniqueQRCode(app);
+
+      // Construire le contenu de notes avec les informations de tarif pour ce ticket
+      const notesContent = buildNotesContent(ticketData.notes, ticketData.pricing_info);
+
+      // Si la commande est gratuite, les tickets sont directement payés
+      // Sinon, ils sont en attente de paiement
+      const ticketStatus = isFreeOrder ? 'paid' : 'pending';
+      // Pour les commandes gratuites, on utilise l'index comme checkout_id (converti en string)
+      // Le premier ticket a checkout_id = '0' pour identifier le premier ticket de chaque commande
+      const checkoutId = checkout?.id ?? String(index);
+      const checkoutReference = checkout?.checkout_reference ?? null;
+      const transactionStatus = checkout?.status ?? null;
 
       const result = await app.pg.query<Ticket>(
         `INSERT INTO tickets (
@@ -534,14 +920,14 @@ export async function createTicketsWithPayment(
           ticketData.reservation_date,
           ticketData.slot_start_time,
           ticketData.slot_end_time,
-          checkout.id,
-          checkout.checkout_reference,
-          checkout.status,
+          checkoutId,
+          checkoutReference,
+          transactionStatus,
           ticketData.ticket_price,
           donationAmount,
           ticketTotalAmount,
-          'pending', // Statut initial
-          ticketData.notes ?? null,
+          ticketStatus,
+          notesContent,
           data.language ?? null,
         ]
       );
@@ -555,9 +941,20 @@ export async function createTicketsWithPayment(
     throw err;
   }
 
+  // Si la commande est gratuite, envoyer les emails de confirmation immédiatement
+  if (isFreeOrder) {
+    try {
+      const { sendTicketsConfirmationEmails } = await import('./tickets.email.ts');
+      await sendTicketsConfirmationEmails(app, createdTickets);
+    } catch (emailError) {
+      app.log.error({ emailError }, 'Erreur lors de l\'envoi des emails de confirmation pour la commande gratuite');
+      // Ne pas faire échouer la création des tickets si l'email échoue
+    }
+  }
+
   return {
-    checkout_id: checkout.id,
-    checkout_reference: checkout.checkout_reference,
+    checkout_id: checkout?.id ?? null,
+    checkout_reference: checkout?.checkout_reference ?? null,
     tickets: createdTickets,
   };
 }
