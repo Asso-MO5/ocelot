@@ -12,11 +12,17 @@ import {
 
 /**
  * Génère un PDF du ticket
+ * Retourne null si le ticket n'est pas valide
  */
 export async function generateTicketPDF(
   ticket: Ticket,
   isValid: boolean = true
-): Promise<Buffer> {
+): Promise<Buffer | null> {
+  // Ne pas générer le PDF si le ticket n'est pas valide
+  if (!isValid) {
+    return null;
+  }
+
   const language = normalizeLanguage(ticket.language);
   const { visitorName, ticketPrice, donationAmount, totalAmount } = prepareTicketData(ticket);
 
@@ -71,24 +77,6 @@ export async function generateTicketPDF(
           align: 'center',
         })
         .moveDown(0.5);
-
-      // Badge de statut
-      const statusColor = isValid ? '#4caf50' : '#f44336';
-      const statusText = isValid
-        ? (language === 'fr' ? 'Billet valide' : 'Valid ticket')
-        : (language === 'fr' ? 'Billet invalide' : 'Invalid ticket');
-
-      doc.fontSize(14)
-        .fillColor('#ffffff')
-        .rect(50, doc.y, 495, 30)
-        .fill(statusColor)
-        .fillColor('#ffffff')
-        .fontSize(14)
-        .text(statusText, {
-          align: 'center',
-          width: 495,
-        })
-        .moveDown(1);
 
       // Nom du visiteur
       doc.fontSize(16)
@@ -234,9 +222,13 @@ export async function generateTicketPDF(
         })
         .moveDown(0.5);
 
-      // Centrer le QR code
+      // Centrer le QR code (en tenant compte des marges de 50 points de chaque côté)
       const qrSize = 200;
-      const qrX = (595 - qrSize) / 2; // A4 width = 595 points
+      const pageWidth = 595; // A4 width = 595 points
+      const leftMargin = 50;
+      const rightMargin = 50;
+      const usableWidth = pageWidth - leftMargin - rightMargin; // 495 points
+      const qrX = leftMargin + (usableWidth - qrSize) / 2; // Centré dans la zone utilisable
       doc.image(qrCodeBuffer, qrX, doc.y, {
         width: qrSize,
         height: qrSize,

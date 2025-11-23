@@ -229,23 +229,6 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       font-size: 18px;
       margin-bottom: 20px;
     }
-    .status-badge {
-      text-align: center;
-      margin-bottom: 30px;
-      padding: 10px 20px;
-      border-radius: 5px;
-      font-weight: bold;
-      display: inline-block;
-      width: 100%;
-    }
-    .status-badge.valid {
-      background-color: #4caf50;
-      color: white;
-    }
-    .status-badge.invalid {
-      background-color: #f44336;
-      color: white;
-    }
     .visitor-name {
       text-align: center;
       font-size: 18px;
@@ -346,14 +329,7 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
   <div class="container">
     ${logoBase64 ? `<div class="logo"><img src="${logoBase64}" alt="${t.museumName}" /></div>` : ''}
     <h1>${title}</h1>
-    ${statusBadge ? `
-    <div class="status-badge ${statusBadge.isValid ? 'valid' : 'invalid'}">
-      ${statusBadge.isValid ? statusBadge.validText : statusBadge.invalidText}
-    </div>
-    ${!statusBadge.isValid && statusBadge.invalidReason ? `<p style="text-align: center; color: #f44336; margin-bottom: 20px;">${statusBadge.invalidReason}</p>` : ''}
-    ` : ''}
     ${greeting ? `<div class="greeting">${greeting} ${visitorName},</div>` : ''}
-    ${statusBadge ? `<div class="visitor-name">${visitorName}</div>` : ''}
     ${intro ? `<p>${intro}</p>` : ''}
     
     <div class="ticket-details">
@@ -469,6 +445,11 @@ export async function sendTicketConfirmationEmail(
   baseUrl: string = process.env.BASE_URL || 'http://localhost:4000'
 ): Promise<void> {
   try {
+    // Ne pas envoyer d'email si le ticket n'est pas payé (non valide)
+    if (ticket.status !== 'paid') {
+      app.log.info({ ticketId: ticket.id, status: ticket.status }, 'Ticket non payé, email non envoyé');
+      return;
+    }
 
     const language = (ticket.language?.split('-')[0] ?? 'fr') as 'fr' | 'en';
     const ticketViewUrl = `${baseUrl}/tickets/${ticket.qr_code}`;
@@ -504,13 +485,16 @@ export async function sendTicketConfirmationEmail(
     try {
       const { generateTicketPDF } = await import('./tickets.pdf.ts');
       const pdfBuffer = await generateTicketPDF(ticket, ticket.status === 'paid');
-      const pdfBase64 = pdfBuffer.toString('base64');
 
-      pdfAttachment = {
-        name: `billet-${ticket.qr_code}.pdf`,
-        content: pdfBase64,
-        contentType: 'application/pdf',
-      };
+      // Si le PDF n'a pas été généré (ticket non valide), continuer sans PDF
+      if (pdfBuffer) {
+        const pdfBase64 = pdfBuffer.toString('base64');
+        pdfAttachment = {
+          name: `billet-${ticket.qr_code}.pdf`,
+          content: pdfBase64,
+          contentType: 'application/pdf',
+        };
+      }
     } catch (pdfError: any) {
       app.log.error({
         error: pdfError?.message || pdfError,
@@ -609,18 +593,17 @@ export async function generateTicketViewHTML(
     expired: t.statusExpired,
   };
 
+  // Ne pas générer la page si le ticket n'est pas valide
+  if (!isValid) {
+    throw new Error('Ce billet n\'est pas valide');
+  }
+
   return generateTicketHTMLBase({
     ticket,
     language,
     qrCodeBase64,
     logoBase64,
     title: `${t.title} - ${language === 'fr' ? 'Musée du Jeu Vidéo' : 'Video Game Museum'}`,
-    statusBadge: {
-      isValid,
-      validText: t.valid,
-      invalidText: t.invalid,
-      invalidReason: !isValid ? t.invalidReason : undefined,
-    },
     statusRow: {
       label: t.status,
       value: statusLabels[ticket.status as keyof typeof statusLabels] || ticket.status,

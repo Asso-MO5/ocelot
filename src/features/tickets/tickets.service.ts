@@ -642,6 +642,8 @@ export async function createTicketsWithPayment(
 
   // Séparer les tickets membres et non-membres
   const memberTickets = data.tickets.filter(ticket => ticket.pricing_info?.price_name?.match(/membre/i));
+
+  /*
   const nonMemberFreeTickets = data.tickets.filter(ticket => ticket.ticket_price === 0 && !ticket.pricing_info?.price_name?.match(/membre/i));
 
   // Vérification pour les places gratuites non-membres : 0 ou exactement 2 places (pour l'accompagnant)
@@ -652,6 +654,7 @@ export async function createTicketsWithPayment(
       'For non-members, you can reserve exactly 2 free tickets (for you and your companion) or none'
     );
   }
+  */
 
   // Traitement des tickets membres
   if (memberTickets.length > 0) {

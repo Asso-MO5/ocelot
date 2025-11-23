@@ -199,7 +199,28 @@ export async function viewTicketPageHandler(
     reservationDate.setHours(0, 0, 0, 0);
     const isDateValid = reservationDate >= today;
 
-    const html = await generateTicketViewHTML(ticket, isValid && isDateValid);
+    // Ne pas générer la page si le ticket n'est pas valide
+    if (!isValid || !isDateValid) {
+      return reply.code(404).type('text/html').send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Billet invalide</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            h1 { color: #e73b21; }
+          </style>
+        </head>
+        <body>
+          <h1>Billet invalide</h1>
+          <p>Ce billet n'est plus valide ou a expiré.</p>
+        </body>
+        </html>
+      `);
+    }
+
+    const html = await generateTicketViewHTML(ticket, true);
 
     return reply.type('text/html').send(html);
   } catch (err: any) {
