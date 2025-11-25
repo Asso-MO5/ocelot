@@ -19,8 +19,6 @@ import { sendToRoom } from './features/websocket/websocket.manager.ts';
 import { registerErrorHandlers, registerProcessErrorHandlers } from './features/terror/error.handler.ts';
 import { cancelExpiredPendingTickets } from './features/tickets/tickets.service.ts';
 
-
-
 const logger = {
   level: 'info',
   transport: {
@@ -73,16 +71,10 @@ const start = async () => {
 
     await app.register(websocket);
 
-
-    // Variable pour stocker l'URL de la requête actuelle (utilisée par la fonction origin)
-    let currentRequestUrl: string | null = null;
-
-    // Hook pour capturer l'URL de la requête avant le traitement CORS
+    let currentRequestUrl: string | null = null;    // Hook pour capturer l'URL de la requête avant le traitement CORS
     app.addHook('onRequest', async (request) => {
       currentRequestUrl = request.url;
     });
-
-    // Enregistrer CORS EN PREMIER pour gérer les requêtes preflight OPTIONS
     await app.register(cors, {
       origin: (origin, callback) => {
         // Extraire le pathname sans les query parameters
@@ -124,7 +116,6 @@ const start = async () => {
     registerErrorHandlers(app);
     registerWebSocketRoutes(app);
 
-    // Configurer app.ws.send pour utiliser sendToRoom
     (app as any).ws = { send: sendToRoom };
     registerAuthRoutes(app);
     registerDocsRoutes(app);
