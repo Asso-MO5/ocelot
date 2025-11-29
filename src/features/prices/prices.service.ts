@@ -5,6 +5,7 @@ import type {
   UpdatePriceBody,
   GetPricesQuery,
   Translation,
+  ReorderPricesBody,
 } from './prices.types.ts';
 
 /**
@@ -197,6 +198,12 @@ export async function createPrice(
         paramIndex++;
       }
 
+      if (data.position !== undefined) {
+        updates.push(`position = $${paramIndex}`);
+        params.push(data.position);
+        paramIndex++;
+      }
+
       updates.push(`updated_at = current_timestamp`);
       params.push(data.id);
 
@@ -207,11 +214,20 @@ export async function createPrice(
 
       price = result.rows[0];
     } else {
+      // Si position n'est pas fournie, on l'assigne automatiquement à la fin
+      let position = data.position;
+      if (position === undefined) {
+        const maxPositionResult = await app.pg.query<{ max_position: number | null }>(
+          'SELECT MAX(position) as max_position FROM prices'
+        );
+        position = (maxPositionResult.rows[0]?.max_position ?? 0) + 1;
+      }
+
       // Créer un nouveau tarif avec l'ID fourni
       const result = await app.pg.query<Price>(
         `INSERT INTO prices (
-          id, amount, audience_type, start_date, end_date, is_active, requires_proof
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          id, amount, audience_type, start_date, end_date, is_active, requires_proof, position
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *`,
         [
           data.id,
@@ -221,16 +237,26 @@ export async function createPrice(
           data.end_date ?? null,
           data.is_active ?? true,
           data.requires_proof ?? false,
+          position,
         ]
       );
       price = result.rows[0];
     }
   } else {
+    // Si position n'est pas fournie, on l'assigne automatiquement à la fin
+    let position = data.position;
+    if (position === undefined) {
+      const maxPositionResult = await app.pg.query<{ max_position: number | null }>(
+        'SELECT MAX(position) as max_position FROM prices'
+      );
+      position = (maxPositionResult.rows[0]?.max_position ?? 0) + 1;
+    }
+
     // Créer un nouveau tarif sans ID (génération automatique)
     const result = await app.pg.query<Price>(
       `INSERT INTO prices (
-        amount, audience_type, start_date, end_date, is_active, requires_proof
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        amount, audience_type, start_date, end_date, is_active, requires_proof, position
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *`,
       [
         data.amount,
@@ -239,6 +265,7 @@ export async function createPrice(
         data.end_date ?? null,
         data.is_active ?? true,
         data.requires_proof ?? false,
+        position,
       ]
     );
     price = result.rows[0];
@@ -292,7 +319,7 @@ export async function getPrices(
     paramIndex += 2;
   }
 
-  sql += ' ORDER BY audience_type ASC, amount ASC';
+  sql += ' ORDER BY position ASC, audience_type ASC, amount ASC';
 
   const result = await app.pg.query<Price>(sql, params);
 
@@ -415,6 +442,12 @@ export async function updatePrice(
     paramIndex++;
   }
 
+  if (data.position !== undefined) {
+    updates.push(`position = $${paramIndex}`);
+    params.push(data.position);
+    paramIndex++;
+  }
+
   // Mettre à jour le tarif si nécessaire
   if (updates.length > 0) {
     updates.push(`updated_at = current_timestamp`);
@@ -464,5 +497,67 @@ export async function deletePrice(
   );
 
   return result.rowCount !== null && result.rowCount > 0;
+}
+
+/**
+ * Réordonne les tarifs selon l'ordre fourni
+ * Met à jour les positions de tous les tarifs selon l'ordre des IDs fournis
+ */
+export async function reorderPrices(
+  app: FastifyInstance,
+  data: ReorderPricesBody
+): Promise<Price[]> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  if (!data.price_ids || data.price_ids.length === 0) {
+    throw new Error('Le tableau price_ids ne peut pas être vide');
+  }
+
+  // Vérifier que tous les IDs existent
+  const placeholders = data.price_ids.map((_, i) => `$${i + 1}`).join(', ');
+  const existingPrices = await app.pg.query<Price>(
+    `SELECT id FROM prices WHERE id IN (${placeholders})`,
+    data.price_ids
+  );
+
+  if (existingPrices.rows.length !== data.price_ids.length) {
+    throw new Error('Un ou plusieurs IDs de tarifs sont invalides');
+  }
+
+  // Mettre à jour les positions dans une transaction
+  try {
+    await app.pg.query('BEGIN');
+
+    // Mettre à jour chaque tarif avec sa nouvelle position
+    for (let i = 0; i < data.price_ids.length; i++) {
+      const priceId = data.price_ids[i];
+      const newPosition = i + 1; // Position commence à 1
+
+      await app.pg.query(
+        'UPDATE prices SET position = $1, updated_at = current_timestamp WHERE id = $2',
+        [newPosition, priceId]
+      );
+    }
+
+    await app.pg.query('COMMIT');
+
+    // Récupérer tous les tarifs mis à jour dans l'ordre
+    const result = await app.pg.query<Price>(
+      `SELECT * FROM prices WHERE id IN (${placeholders}) ORDER BY position ASC`,
+      data.price_ids
+    );
+
+    // Enrichir avec les traductions
+    const enrichedPrices = await Promise.all(
+      result.rows.map(price => enrichPriceWithTranslations(app, price))
+    );
+
+    return enrichedPrices;
+  } catch (err) {
+    await app.pg.query('ROLLBACK');
+    throw err;
+  }
 }
 

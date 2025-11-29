@@ -52,6 +52,11 @@ export const createScheduleSchema = {
         type: 'string',
         description: 'Description de l\'exception ou du changement d\'horaire',
       },
+      position: {
+        type: 'integer',
+        minimum: 1,
+        description: 'Position pour l\'ordre d\'affichage (optionnel, sera auto-assignée si non fournie)',
+      },
     },
   },
   response: {
@@ -68,6 +73,7 @@ export const createScheduleSchema = {
         is_exception: { type: 'boolean' },
         is_closed: { type: 'boolean' },
         description: { type: ['string', 'null'] },
+        position: { type: 'integer' },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -86,6 +92,7 @@ export const createScheduleSchema = {
         is_exception: { type: 'boolean' },
         is_closed: { type: 'boolean' },
         description: { type: ['string', 'null'] },
+        position: { type: 'integer' },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -164,6 +171,11 @@ export const updateScheduleSchema = {
         type: ['string', 'null'],
         description: 'Description de l\'exception ou du changement d\'horaire',
       },
+      position: {
+        type: 'integer',
+        minimum: 1,
+        description: 'Position pour l\'ordre d\'affichage',
+      },
     },
   },
   response: {
@@ -180,6 +192,7 @@ export const updateScheduleSchema = {
         is_exception: { type: 'boolean' },
         is_closed: { type: 'boolean' },
         description: { type: ['string', 'null'] },
+        position: { type: 'integer' },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -248,6 +261,7 @@ export const getSchedulesSchema = {
           is_exception: { type: 'boolean' },
           is_closed: { type: 'boolean' },
           description: { type: ['string', 'null'] },
+          position: { type: 'integer' },
           created_at: { type: 'string' },
           updated_at: { type: 'string' },
         },
@@ -300,6 +314,7 @@ export const getPublicSchedulesSchema = {
           is_exception: { type: 'boolean' },
           is_closed: { type: 'boolean' },
           description: { type: ['string', 'null'] },
+          position: { type: 'integer' },
           created_at: { type: 'string' },
           updated_at: { type: 'string' },
         },
@@ -340,6 +355,7 @@ export const getScheduleByIdSchema = {
         is_exception: { type: 'boolean' },
         is_closed: { type: 'boolean' },
         description: { type: ['string', 'null'] },
+        position: { type: 'integer' },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
       },
@@ -390,3 +406,56 @@ export const deleteScheduleSchema = {
   },
 };
 
+export const reorderSchedulesSchema = {
+  body: {
+    type: 'object',
+    required: ['schedule_ids'],
+    properties: {
+      schedule_ids: {
+        type: 'array',
+        items: {
+          type: 'string',
+          format: 'uuid',
+        },
+        minItems: 1,
+        description: 'Tableau d\'IDs d\'horaires dans l\'ordre souhaité. Les positions seront mises à jour selon cet ordre (premier ID = position 1, deuxième ID = position 2, etc.)',
+      },
+    },
+  },
+  response: {
+    200: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          day_of_week: { type: ['integer', 'null'] },
+          start_time: { type: 'string' },
+          end_time: { type: 'string' },
+          audience_type: { type: 'string' },
+          start_date: { type: ['string', 'null'] },
+          end_date: { type: ['string', 'null'] },
+          is_exception: { type: 'boolean' },
+          is_closed: { type: 'boolean' },
+          description: { type: ['string', 'null'] },
+          position: { type: 'integer' },
+          created_at: { type: 'string' },
+          updated_at: { type: 'string' },
+        },
+      },
+      description: 'Liste des horaires réordonnés avec leurs nouvelles positions',
+    },
+    400: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+    500: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+  },
+};

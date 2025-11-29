@@ -198,41 +198,4 @@ export async function setMaxCapacity(app: FastifyInstance, capacity: number): Pr
   });
 }
 
-/**
- * Récupère le nombre actuel de visiteurs
- */
-export async function getCurrentVisitors(app: FastifyInstance): Promise<number> {
-  return (await getSettingValue<number>(app, 'current_visitors', 0)) || 0;
-}
-
-/**
- * Définit le nombre actuel de visiteurs
- */
-export async function setCurrentVisitors(app: FastifyInstance, count: number): Promise<MuseumSetting> {
-  return await upsertSetting(app, {
-    key: 'current_visitors',
-    value: count,
-    description: 'Nombre actuel de visiteurs dans le musée',
-  });
-}
-
-/**
- * Incrémente le nombre de visiteurs
- */
-export async function incrementVisitors(app: FastifyInstance, increment: number = 1): Promise<number> {
-  const current = await getCurrentVisitors(app);
-  const newCount = current + increment;
-  await setCurrentVisitors(app, newCount);
-  return newCount;
-}
-
-/**
- * Décrémente le nombre de visiteurs
- */
-export async function decrementVisitors(app: FastifyInstance, decrement: number = 1): Promise<number> {
-  const current = await getCurrentVisitors(app);
-  const newCount = Math.max(0, current - decrement);
-  await setCurrentVisitors(app, newCount);
-  return newCount;
-}
 

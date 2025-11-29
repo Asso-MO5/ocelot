@@ -23,6 +23,7 @@ export interface Schedule {
   is_exception: boolean;
   is_closed: boolean;
   description: string | null;
+  position: number; // Position pour l'ordre d'affichage
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +41,7 @@ export interface CreateScheduleBody {
   is_exception?: boolean;
   is_closed?: boolean;
   description?: string;
+  position?: number; // Position pour l'ordre d'affichage (optionnel, sera auto-assignée si non fournie)
 }
 
 /**
@@ -55,6 +57,14 @@ export interface UpdateScheduleBody {
   is_exception?: boolean;
   is_closed?: boolean;
   description?: string | null;
+  position?: number;
+}
+
+/**
+ * Corps de requête pour réordonner les horaires
+ */
+export interface ReorderSchedulesBody {
+  schedule_ids: string[]; // Tableau d'IDs dans l'ordre souhaité
 }
 
 /**

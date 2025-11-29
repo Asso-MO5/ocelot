@@ -204,7 +204,8 @@ async function generateOpenAPIDoc(): Promise<void> {
     getSchedulesSchema,
     getPublicSchedulesSchema,
     getScheduleByIdSchema,
-    deleteScheduleSchema
+    deleteScheduleSchema,
+    reorderSchedulesSchema
   } = await import('../features/schedules/schedules.schemas.ts');
 
   const {
@@ -212,7 +213,8 @@ async function generateOpenAPIDoc(): Promise<void> {
     updatePriceSchema,
     getPricesSchema,
     getPriceByIdSchema,
-    deletePriceSchema
+    deletePriceSchema,
+    reorderPricesSchema
   } = await import('../features/prices/prices.schemas.ts');
 
   const {
@@ -222,10 +224,7 @@ async function generateOpenAPIDoc(): Promise<void> {
     deleteSettingSchema,
     getMaxCapacitySchema,
     setMaxCapacitySchema,
-    getCurrentVisitorsSchema,
-    setCurrentVisitorsSchema,
-    incrementVisitorsSchema,
-    decrementVisitorsSchema
+    getValidatedTicketsBySlotSchema
   } = await import('../features/settings/settings.schemas.ts');
 
   const {
@@ -339,6 +338,13 @@ async function generateOpenAPIDoc(): Promise<void> {
     },
     {
       method: 'POST',
+      path: '/museum/schedules/reorder',
+      schema: reorderSchedulesSchema,
+      description: 'Réordonne les horaires selon l\'ordre fourni. Met à jour les positions de tous les horaires selon l\'ordre des IDs fournis (premier ID = position 1, deuxième ID = position 2, etc.)',
+      tag: 'Musée - Horaires',
+    },
+    {
+      method: 'POST',
       path: '/museum/prices',
       schema: createPriceSchema,
       description: 'Crée ou met à jour un tarif (upsert). Si un id est fourni et existe, met à jour le tarif (retourne 200). Sinon, crée un nouveau tarif (retourne 201).',
@@ -370,6 +376,13 @@ async function generateOpenAPIDoc(): Promise<void> {
       path: '/museum/prices/:id',
       schema: deletePriceSchema,
       description: 'Supprime un tarif',
+      tag: 'Musée - Tarifs',
+    },
+    {
+      method: 'POST',
+      path: '/museum/prices/reorder',
+      schema: reorderPricesSchema,
+      description: 'Réordonne les tarifs selon l\'ordre fourni. Met à jour les positions de tous les tarifs selon l\'ordre des IDs fournis (premier ID = position 1, deuxième ID = position 2, etc.)',
       tag: 'Musée - Tarifs',
     },
     {
@@ -423,30 +436,9 @@ async function generateOpenAPIDoc(): Promise<void> {
     },
     {
       method: 'GET',
-      path: '/museum/capacity/current',
-      schema: getCurrentVisitorsSchema,
-      description: 'Récupère le nombre actuel de visiteurs',
-      tag: 'Musée - Capacité',
-    },
-    {
-      method: 'POST',
-      path: '/museum/capacity/current',
-      schema: setCurrentVisitorsSchema,
-      description: 'Définit le nombre actuel de visiteurs',
-      tag: 'Musée - Capacité',
-    },
-    {
-      method: 'POST',
-      path: '/museum/capacity/increment',
-      schema: incrementVisitorsSchema,
-      description: 'Incrémente le nombre de visiteurs',
-      tag: 'Musée - Capacité',
-    },
-    {
-      method: 'POST',
-      path: '/museum/capacity/decrement',
-      schema: decrementVisitorsSchema,
-      description: 'Décrémente le nombre de visiteurs',
+      path: '/museum/capacity/validated-tickets',
+      schema: getValidatedTicketsBySlotSchema,
+      description: 'Récupère les tickets validés pour un créneau donné. Retourne le nombre de tickets validés (count) et la liste complète des tickets (tickets) pour le créneau spécifié. Peut inclure les créneaux adjacents si include_adjacent_slots est true.',
       tag: 'Musée - Capacité',
     },
     {
@@ -703,15 +695,16 @@ async function generateOpenAPIDoc(): Promise<void> {
     '/museum/settings', // POST, PUT, DELETE
     '/museum/settings/:key', // DELETE
     '/museum/capacity/max', // POST
-    '/museum/capacity/current', // POST
-    '/museum/capacity/increment', // POST
-    '/museum/capacity/decrement', // POST
+    '/museum/capacity/validated-tickets', // GET (dev, bureau, museum)
     '/museum/schedules', // GET (membres), POST
     '/museum/schedules/:id', // PUT, DELETE
+    '/museum/schedules/reorder', // POST
     '/museum/prices', // POST
     '/museum/prices/:id', // PUT, DELETE
+    '/museum/prices/reorder', // POST
     '/museum/tickets', // POST
     '/museum/tickets/:id', // PUT, DELETE
+    '/museum/tickets/validate', // POST (dev, bureau, museum)
   ];
 
   for (const path in openApiDoc.paths) {

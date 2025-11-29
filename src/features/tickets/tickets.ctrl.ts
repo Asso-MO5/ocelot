@@ -329,6 +329,7 @@ export async function validateTicketHandler(
 ) {
   try {
     const ticket = await validateTicket(app, req.body.qr_code);
+    (app.ws as any).send('capacity', 'refetch')
     return reply.send(ticket);
   } catch (err: any) {
     app.log.error({ err, qr_code: req.body.qr_code }, 'Erreur lors de la validation du ticket');
@@ -384,13 +385,12 @@ export async function deleteTicketHandler(
  * Routes publiques : 
  *   - GET /museum/tickets (lecture avec filtres)
  *   - GET /museum/tickets/qr/:qrCode (récupération par code QR)
- *   - POST /museum/tickets/validate (validation/scan QR)
  * 
  * Routes protégées membres : 
  *   - GET /museum/tickets/:id (récupération par ID)
  * 
  * Routes protégées : 
- *   - POST, PUT, DELETE (écriture) - uniquement pour les rôles "bureau" et "dev"
+ *   - POST, PUT, DELETE, POST /museum/tickets/validate (écriture) - uniquement pour les rôles "bureau", "museum" et "dev"
  */
 export function registerTicketsRoutes(app: FastifyInstance) {
   // Routes publiques : lecture des tickets
@@ -429,11 +429,15 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => getTicketByQRCodeHandler(req, reply, app)
   );
 
-  // Route publique : validation/scan QR
+  // Route protégée : validation/scan QR (uniquement bureau et dev)
   app.post<{ Body: ValidateTicketBody }>(
     '/museum/tickets/validate',
     {
       schema: validateTicketSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+      ],
     },
     async (req, reply) => validateTicketHandler(req, reply, app)
   );
@@ -500,7 +504,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: updateTicketSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => updateTicketHandler(req, reply, app)
@@ -512,7 +516,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: deleteTicketSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => deleteTicketHandler(req, reply, app)

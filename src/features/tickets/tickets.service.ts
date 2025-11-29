@@ -1157,3 +1157,58 @@ export async function cancelExpiredPendingTickets(
   return cancelledCount;
 }
 
+/**
+ * Récupère les tickets validés pour un créneau donné
+ * Retourne le nombre de tickets validés et la liste complète des tickets
+ * 
+ * @param reservation_date Date de réservation (format YYYY-MM-DD)
+ * @param slot_start_time Heure de début du créneau (format HH:MM:SS)
+ * @param slot_end_time Heure de fin du créneau (format HH:MM:SS)
+ * @param includeAdjacentSlots Si true, inclut les créneaux adjacents (un peu avant et après)
+ */
+export async function getValidatedTicketsBySlot(
+  app: FastifyInstance,
+  reservation_date: string,
+  slot_start_time: string,
+  slot_end_time: string,
+  includeAdjacentSlots: boolean = true
+): Promise<{ count: number; tickets: Ticket[] }> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  let sql = `
+    SELECT * FROM tickets 
+    WHERE reservation_date = $1
+    AND status = 'used'
+    AND used_at IS NOT NULL
+  `;
+  const params: any[] = [reservation_date];
+  let paramIndex = 2;
+
+  if (includeAdjacentSlots) {
+    // Inclure les créneaux qui se chevauchent avec le créneau demandé
+    // Un créneau se chevauche s'il commence avant la fin du créneau demandé
+    // et se termine après le début du créneau demandé
+    sql += ` AND (
+      (slot_start_time < $${paramIndex + 1} AND slot_end_time > $${paramIndex})
+    )`;
+    params.push(slot_start_time, slot_end_time);
+    paramIndex += 2;
+  } else {
+    // Filtrer exactement sur le créneau
+    sql += ` AND slot_start_time = $${paramIndex} AND slot_end_time = $${paramIndex + 1}`;
+    params.push(slot_start_time, slot_end_time);
+    paramIndex += 2;
+  }
+
+  sql += ' ORDER BY used_at DESC';
+
+  const result = await app.pg.query<Ticket>(sql, params);
+
+  return {
+    count: result.rows.length,
+    tickets: result.rows,
+  };
+}
+

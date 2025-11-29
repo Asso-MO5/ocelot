@@ -224,35 +224,30 @@ export const setMaxCapacitySchema = {
   },
 };
 
-export const getCurrentVisitorsSchema = {
-  response: {
-    200: {
-      type: 'object',
-      properties: {
-        current_visitors: {
-          type: 'number',
-          description: 'Nombre actuel de visiteurs dans le musée',
-        },
-      },
-    },
-    500: {
-      type: 'object',
-      properties: {
-        error: { type: 'string' },
-      },
-    },
-  },
-};
-
-export const setCurrentVisitorsSchema = {
-  body: {
+export const getValidatedTicketsBySlotSchema = {
+  querystring: {
     type: 'object',
-    required: ['current_visitors'],
+    required: ['reservation_date', 'slot_start_time', 'slot_end_time'],
     properties: {
-      current_visitors: {
-        type: 'number',
-        minimum: 0,
-        description: 'Nombre actuel de visiteurs (doit être positif ou nul)',
+      reservation_date: {
+        type: 'string',
+        format: 'date',
+        description: 'Date de réservation (format YYYY-MM-DD)',
+      },
+      slot_start_time: {
+        type: 'string',
+        pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$',
+        description: 'Heure de début du créneau (format HH:MM:SS)',
+      },
+      slot_end_time: {
+        type: 'string',
+        pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$',
+        description: 'Heure de fin du créneau (format HH:MM:SS)',
+      },
+      include_adjacent_slots: {
+        type: 'boolean',
+        default: true,
+        description: 'Inclure les créneaux adjacents (par défaut: true)',
       },
     },
   },
@@ -260,79 +255,45 @@ export const setCurrentVisitorsSchema = {
     200: {
       type: 'object',
       properties: {
-        id: { type: 'string' },
-        key: { type: 'string' },
-        value: { type: 'string' },
-        value_type: { type: 'string' },
-        description: { type: ['string', 'null'] },
-        created_at: { type: 'string' },
-        updated_at: { type: 'string' },
+        count: {
+          type: 'number',
+          description: 'Nombre de tickets validés pour le créneau',
+        },
+        tickets: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              qr_code: { type: 'string' },
+              first_name: { type: ['string', 'null'] },
+              last_name: { type: ['string', 'null'] },
+              email: { type: 'string' },
+              reservation_date: { type: 'string' },
+              slot_start_time: { type: 'string' },
+              slot_end_time: { type: 'string' },
+              checkout_id: { type: ['string', 'null'] },
+              checkout_reference: { type: ['string', 'null'] },
+              transaction_status: { type: ['string', 'null'] },
+              ticket_price: { type: 'number' },
+              donation_amount: { type: 'number' },
+              total_amount: { type: 'number' },
+              status: { type: 'string' },
+              used_at: { type: ['string', 'null'] },
+              notes: { type: ['string', 'null'] },
+              language: { type: ['string', 'null'] },
+              created_at: { type: 'string' },
+              updated_at: { type: 'string' },
+            },
+          },
+          description: 'Liste des tickets validés pour le créneau',
+        },
       },
     },
     400: {
       type: 'object',
       properties: {
         error: { type: 'string' },
-      },
-    },
-    500: {
-      type: 'object',
-      properties: {
-        error: { type: 'string' },
-      },
-    },
-  },
-};
-
-export const incrementVisitorsSchema = {
-  body: {
-    type: 'object',
-    properties: {
-      increment: {
-        type: 'number',
-        default: 1,
-        description: 'Valeur d\'incrémentation (par défaut: 1)',
-      },
-    },
-  },
-  response: {
-    200: {
-      type: 'object',
-      properties: {
-        current_visitors: {
-          type: 'number',
-          description: 'Nouveau nombre de visiteurs après incrémentation',
-        },
-      },
-    },
-    500: {
-      type: 'object',
-      properties: {
-        error: { type: 'string' },
-      },
-    },
-  },
-};
-
-export const decrementVisitorsSchema = {
-  body: {
-    type: 'object',
-    properties: {
-      decrement: {
-        type: 'number',
-        default: 1,
-        description: 'Valeur de décrémentation (par défaut: 1)',
-      },
-    },
-  },
-  response: {
-    200: {
-      type: 'object',
-      properties: {
-        current_visitors: {
-          type: 'number',
-          description: 'Nouveau nombre de visiteurs après décrémentation',
-        },
       },
     },
     500: {

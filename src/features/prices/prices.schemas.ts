@@ -42,6 +42,11 @@ export const createPriceSchema = {
         default: false,
         description: 'Indique si le tarif nécessite un justificatif (ex: tarif réduit étudiant, senior, etc.)',
       },
+      position: {
+        type: 'integer',
+        minimum: 1,
+        description: 'Position pour l\'ordre d\'affichage (optionnel, sera auto-assignée si non fournie)',
+      },
       translations: {
         type: 'array',
         minItems: 1,
@@ -83,6 +88,7 @@ export const createPriceSchema = {
         end_date: { type: ['string', 'null'] },
         is_active: { type: 'boolean' },
         requires_proof: { type: 'boolean' },
+        position: { type: 'integer' },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
         translations: {
@@ -108,6 +114,7 @@ export const createPriceSchema = {
         end_date: { type: ['string', 'null'] },
         is_active: { type: 'boolean' },
         requires_proof: { type: 'boolean' },
+        position: { type: 'integer' },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
         translations: {
@@ -180,6 +187,11 @@ export const updatePriceSchema = {
         type: 'boolean',
         description: 'Indique si le tarif nécessite un justificatif',
       },
+      position: {
+        type: 'integer',
+        minimum: 1,
+        description: 'Position pour l\'ordre d\'affichage',
+      },
       translations: {
         type: 'array',
         description: 'Traductions du tarif',
@@ -219,6 +231,7 @@ export const updatePriceSchema = {
         end_date: { type: ['string', 'null'] },
         is_active: { type: 'boolean' },
         requires_proof: { type: 'boolean' },
+        position: { type: 'integer' },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
         translations: {
@@ -351,6 +364,7 @@ export const getPriceByIdSchema = {
         end_date: { type: ['string', 'null'] },
         is_active: { type: 'boolean' },
         requires_proof: { type: 'boolean' },
+        position: { type: 'integer' },
         created_at: { type: 'string' },
         updated_at: { type: 'string' },
         translations: {
@@ -397,6 +411,67 @@ export const deletePriceSchema = {
       type: 'null',
     },
     404: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+    500: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+  },
+};
+
+export const reorderPricesSchema = {
+  body: {
+    type: 'object',
+    required: ['price_ids'],
+    properties: {
+      price_ids: {
+        type: 'array',
+        items: {
+          type: 'string',
+          format: 'uuid',
+        },
+        minItems: 1,
+        description: 'Tableau d\'IDs de tarifs dans l\'ordre souhaité. Les positions seront mises à jour selon cet ordre (premier ID = position 1, deuxième ID = position 2, etc.)',
+      },
+    },
+  },
+  response: {
+    200: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          amount: { type: 'number' },
+          audience_type: { type: 'string' },
+          start_date: { type: ['string', 'null'] },
+          end_date: { type: ['string', 'null'] },
+          is_active: { type: 'boolean' },
+          requires_proof: { type: 'boolean' },
+          position: { type: 'integer' },
+          created_at: { type: 'string' },
+          updated_at: { type: 'string' },
+          translations: {
+            type: 'object',
+            description: 'Traductions organisées par langue et champ',
+            additionalProperties: {
+              type: 'object',
+              additionalProperties: { type: 'string' },
+            },
+          },
+          name: { type: 'string' },
+          description: { type: ['string', 'null'] },
+        },
+      },
+      description: 'Liste des tarifs réordonnés avec leurs nouvelles positions',
+    },
+    400: {
       type: 'object',
       properties: {
         error: { type: 'string' },

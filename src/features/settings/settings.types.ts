@@ -42,3 +42,13 @@ export interface GetSettingsQuery {
  */
 export type ParsedSettingValue = string | number | boolean | object;
 
+/**
+ * Paramètres de requête pour récupérer les tickets validés d'un créneau
+ */
+export interface GetValidatedTicketsBySlotQuery {
+  reservation_date: string; // Format YYYY-MM-DD
+  slot_start_time: string; // Format HH:MM:SS
+  slot_end_time: string; // Format HH:MM:SS
+  include_adjacent_slots?: boolean; // Inclure les créneaux adjacents (par défaut: true)
+}
+

@@ -4,6 +4,7 @@ import type {
   CreateScheduleBody,
   UpdateScheduleBody,
   GetSchedulesQuery,
+  ReorderSchedulesBody,
 } from './schedules.types.ts';
 
 /**
@@ -27,11 +28,20 @@ export async function createSchedule(
     throw new Error('start_date et end_date sont requis pour les exceptions');
   }
 
+  // Si position n'est pas fournie, on l'assigne automatiquement à la fin
+  let position = data.position;
+  if (position === undefined) {
+    const maxPositionResult = await app.pg.query<{ max_position: number | null }>(
+      'SELECT MAX(position) as max_position FROM schedules'
+    );
+    position = (maxPositionResult.rows[0]?.max_position ?? 0) + 1;
+  }
+
   const result = await app.pg.query<Schedule>(
     `INSERT INTO schedules (
       day_of_week, start_time, end_time, audience_type,
-      start_date, end_date, is_exception, is_closed, description
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      start_date, end_date, is_exception, is_closed, description, position
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *`,
     [
       data.day_of_week ?? null,
@@ -43,6 +53,7 @@ export async function createSchedule(
       data.is_exception ?? false,
       data.is_closed ?? false,
       data.description ?? null,
+      position,
     ]
   );
 
@@ -128,6 +139,12 @@ export async function upsertSchedule(
       paramIndex++;
     }
 
+    if (data.position !== undefined) {
+      updates.push(`position = $${paramIndex}`);
+      params.push(data.position);
+      paramIndex++;
+    }
+
     updates.push(`updated_at = current_timestamp`);
     params.push(existing.id);
 
@@ -191,7 +208,7 @@ export async function getSchedules(
     sql += ' AND is_exception = false';
   }
 
-  sql += ' ORDER BY is_exception ASC, day_of_week ASC, start_time ASC';
+  sql += ' ORDER BY position ASC, is_exception ASC, day_of_week ASC, start_time ASC';
 
   const result = await app.pg.query<Schedule>(sql, params);
   return result.rows;
@@ -235,7 +252,7 @@ export async function getPublicSchedules(
     sql += ' AND is_exception = false';
   }
 
-  sql += ' ORDER BY is_exception ASC, day_of_week ASC, start_time ASC';
+  sql += ' ORDER BY position ASC, is_exception ASC, day_of_week ASC, start_time ASC';
 
   const result = await app.pg.query<Schedule>(sql, params);
   return result.rows;
@@ -337,6 +354,12 @@ export async function updateSchedule(
     paramIndex++;
   }
 
+  if (data.position !== undefined) {
+    updates.push(`position = $${paramIndex}`);
+    params.push(data.position);
+    paramIndex++;
+  }
+
   if (updates.length === 0) {
     return existing;
   }
@@ -369,5 +392,62 @@ export async function deleteSchedule(
   );
 
   return result.rowCount !== null && result.rowCount > 0;
+}
+
+/**
+ * Réordonne les horaires selon l'ordre fourni
+ * Met à jour les positions de tous les horaires selon l'ordre des IDs fournis
+ */
+export async function reorderSchedules(
+  app: FastifyInstance,
+  data: ReorderSchedulesBody
+): Promise<Schedule[]> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  if (!data.schedule_ids || data.schedule_ids.length === 0) {
+    throw new Error('Le tableau schedule_ids ne peut pas être vide');
+  }
+
+  // Vérifier que tous les IDs existent
+  const placeholders = data.schedule_ids.map((_, i) => `$${i + 1}`).join(', ');
+  const existingSchedules = await app.pg.query<Schedule>(
+    `SELECT id FROM schedules WHERE id IN (${placeholders})`,
+    data.schedule_ids
+  );
+
+  if (existingSchedules.rows.length !== data.schedule_ids.length) {
+    throw new Error('Un ou plusieurs IDs d\'horaires sont invalides');
+  }
+
+  // Mettre à jour les positions dans une transaction
+  try {
+    await app.pg.query('BEGIN');
+
+    // Mettre à jour chaque horaire avec sa nouvelle position
+    for (let i = 0; i < data.schedule_ids.length; i++) {
+      const scheduleId = data.schedule_ids[i];
+      const newPosition = i + 1; // Position commence à 1
+
+      await app.pg.query(
+        'UPDATE schedules SET position = $1, updated_at = current_timestamp WHERE id = $2',
+        [newPosition, scheduleId]
+      );
+    }
+
+    await app.pg.query('COMMIT');
+
+    // Récupérer tous les horaires mis à jour dans l'ordre
+    const result = await app.pg.query<Schedule>(
+      `SELECT * FROM schedules WHERE id IN (${placeholders}) ORDER BY position ASC`,
+      data.schedule_ids
+    );
+
+    return result.rows;
+  } catch (err) {
+    await app.pg.query('ROLLBACK');
+    throw err;
+  }
 }
 

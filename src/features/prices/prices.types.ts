@@ -24,6 +24,7 @@ export interface Price {
   end_date: string | null; // Format YYYY-MM-DD
   is_active: boolean;
   requires_proof: boolean; // Indique si le tarif nécessite un justificatif
+  position: number; // Position pour l'ordre d'affichage
   created_at: string;
   updated_at: string;
   // Traductions (peuvent être présentes selon la langue demandée)
@@ -45,6 +46,7 @@ export interface CreatePriceBody {
   is_active?: boolean;
   requires_proof?: boolean;
   translations: Translation[]; // Traductions pour name et description
+  position?: number; // Position pour l'ordre d'affichage (optionnel, sera auto-assignée si non fournie)
 }
 
 /**
@@ -58,6 +60,14 @@ export interface UpdatePriceBody {
   is_active?: boolean;
   requires_proof?: boolean;
   translations?: Translation[]; // Traductions pour name et description
+  position?: number;
+}
+
+/**
+ * Corps de requête pour réordonner les tarifs
+ */
+export interface ReorderPricesBody {
+  price_ids: string[]; // Tableau d'IDs dans l'ordre souhaité
 }
 
 /**

@@ -6,14 +6,11 @@ import {
   deleteSetting,
   getMaxCapacity,
   setMaxCapacity,
-  getCurrentVisitors,
-  setCurrentVisitors,
-  incrementVisitors,
-  decrementVisitors,
 } from './settings.service.ts';
 import type {
   UpsertSettingBody,
   GetSettingsQuery,
+  GetValidatedTicketsBySlotQuery,
 } from './settings.types.ts';
 import {
   upsertSettingSchema,
@@ -22,13 +19,11 @@ import {
   deleteSettingSchema,
   getMaxCapacitySchema,
   setMaxCapacitySchema,
-  getCurrentVisitorsSchema,
-  setCurrentVisitorsSchema,
-  incrementVisitorsSchema,
-  decrementVisitorsSchema,
+  getValidatedTicketsBySlotSchema,
 } from './settings.schemas.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
+import { getValidatedTicketsBySlot } from '../tickets/tickets.service.ts';
 
 /**
  * Handler pour créer ou mettre à jour un paramètre
@@ -159,83 +154,37 @@ export async function setMaxCapacityHandler(
 }
 
 /**
- * Handler pour récupérer le nombre actuel de visiteurs
+ * Handler pour récupérer les tickets validés d'un créneau
  */
-export async function getCurrentVisitorsHandler(
-  _req: FastifyRequest,
+export async function getValidatedTicketsBySlotHandler(
+  req: FastifyRequest<{ Querystring: GetValidatedTicketsBySlotQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
 ) {
   try {
-    const visitors = await getCurrentVisitors(app);
-    return reply.send({ current_visitors: visitors });
-  } catch (err: any) {
-    app.log.error({ err }, 'Erreur lors de la récupération du nombre de visiteurs');
-    return reply.code(500).send({ error: 'Erreur lors de la récupération du nombre de visiteurs' });
-  }
-}
+    const { reservation_date, slot_start_time, slot_end_time, include_adjacent_slots = true } = req.query;
 
-/**
- * Handler pour définir le nombre actuel de visiteurs
- */
-export async function setCurrentVisitorsHandler(
-  req: FastifyRequest<{ Body: { current_visitors: number } }>,
-  reply: FastifyReply,
-  app: FastifyInstance
-) {
-  try {
-    const { current_visitors } = req.body;
-
-    if (current_visitors < 0) {
-      return reply.code(400).send({ error: 'Le nombre de visiteurs doit être positif ou nul' });
+    if (!reservation_date || !slot_start_time || !slot_end_time) {
+      return reply.code(400).send({
+        error: 'Les paramètres reservation_date, slot_start_time et slot_end_time sont requis'
+      });
     }
 
-    const setting = await setCurrentVisitors(app, current_visitors);
+    const result = await getValidatedTicketsBySlot(
+      app,
+      reservation_date,
+      slot_start_time,
+      slot_end_time,
+      include_adjacent_slots
+    );
 
-    (app.ws as any).send('capacity', 'refetch')
-    return reply.send(setting);
+    return reply.send({
+      count: result.count,
+      tickets: result.tickets,
+    });
   } catch (err: any) {
-    app.log.error({ err, body: req.body }, 'Erreur lors de la définition du nombre de visiteurs');
-    return reply.code(500).send({ error: 'Erreur lors de la définition du nombre de visiteurs' });
-  }
-}
-
-/**
- * Handler pour incrémenter le nombre de visiteurs
- */
-export async function incrementVisitorsHandler(
-  req: FastifyRequest<{ Body?: { increment?: number } }>,
-  reply: FastifyReply,
-  app: FastifyInstance
-) {
-  try {
-    const increment = req.body?.increment ?? 1;
-    const newCount = await incrementVisitors(app, increment);
-    // Diffuser le changement via WebSocket
-    (app.ws as any).send('capacity', 'refetch')
-    return reply.send({ current_visitors: newCount });
-  } catch (err: any) {
-    app.log.error({ err }, 'Erreur lors de l\'incrémentation du nombre de visiteurs');
-    return reply.code(500).send({ error: 'Erreur lors de l\'incrémentation du nombre de visiteurs' });
-  }
-}
-
-/**
- * Handler pour décrémenter le nombre de visiteurs
- */
-export async function decrementVisitorsHandler(
-  req: FastifyRequest<{ Body?: { decrement?: number } }>,
-  reply: FastifyReply,
-  app: FastifyInstance
-) {
-  try {
-    const decrement = req.body?.decrement ?? 1;
-    const newCount = await decrementVisitors(app, decrement);
-    (app.ws as any).send('current_visitors', 'refetch')
-    return reply.send({ current_visitors: newCount });
-  } catch (err: any) {
-    app.log.error({ err }, 'Erreur lors de la décrémentation du nombre de visiteurs');
-    return reply.code(500).send({ error: 'Erreur lors de la décrémentation du nombre de visiteurs' });
+    app.log.error({ err, query: req.query }, 'Erreur lors de la récupération des tickets validés');
+    return reply.code(500).send({ error: 'Erreur lors de la récupération des tickets validés' });
   }
 }
 
@@ -271,15 +220,6 @@ export function registerSettingsRoutes(app: FastifyInstance) {
     },
     async (_req, reply) => getMaxCapacityHandler(_req, reply, app)
   );
-
-  app.get(
-    '/museum/capacity/current',
-    {
-      schema: getCurrentVisitorsSchema,
-    },
-    async (_req, reply) => getCurrentVisitorsHandler(_req, reply, app)
-  );
-
 
   // Routes protégées : modification des paramètres (uniquement bureau et dev)
   app.post<{ Body: UpsertSettingBody }>(
@@ -331,40 +271,17 @@ export function registerSettingsRoutes(app: FastifyInstance) {
     async (req, reply) => setMaxCapacityHandler(req, reply, app)
   );
 
-  app.post<{ Body: { current_visitors: number } }>(
-    '/museum/capacity/current',
+  // Route protégée : récupération des tickets validés d'un créneau (dev, bureau, museum)
+  app.get<{ Querystring: GetValidatedTicketsBySlotQuery }>(
+    '/museum/capacity/validated-tickets',
     {
-      schema: setCurrentVisitorsSchema,
+      schema: getValidatedTicketsBySlotSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
-    async (req, reply) => setCurrentVisitorsHandler(req, reply, app)
-  );
-
-  app.post<{ Body?: { increment?: number } }>(
-    '/museum/capacity/increment',
-    {
-      schema: incrementVisitorsSchema,
-      preHandler: [
-        authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
-      ],
-    },
-    async (req, reply) => incrementVisitorsHandler(req, reply, app)
-  );
-
-  app.post<{ Body?: { decrement?: number } }>(
-    '/museum/capacity/decrement',
-    {
-      schema: decrementVisitorsSchema,
-      preHandler: [
-        authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
-      ],
-    },
-    async (req, reply) => decrementVisitorsHandler(req, reply, app)
+    async (req, reply) => getValidatedTicketsBySlotHandler(req, reply, app)
   );
 }
 

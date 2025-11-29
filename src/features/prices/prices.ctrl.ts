@@ -5,11 +5,13 @@ import {
   getPriceById,
   updatePrice,
   deletePrice,
+  reorderPrices,
 } from './prices.service.ts';
 import type {
   CreatePriceBody,
   UpdatePriceBody,
   GetPricesQuery,
+  ReorderPricesBody,
 } from './prices.types.ts';
 import {
   createPriceSchema,
@@ -17,6 +19,7 @@ import {
   getPricesSchema,
   getPriceByIdSchema,
   deletePriceSchema,
+  reorderPricesSchema,
 } from './prices.schemas.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
@@ -140,6 +143,28 @@ export async function deletePriceHandler(
 }
 
 /**
+ * Handler pour réordonner les tarifs
+ */
+export async function reorderPricesHandler(
+  req: FastifyRequest<{ Body: ReorderPricesBody }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const prices = await reorderPrices(app, req.body);
+    return reply.send(prices);
+  } catch (err: any) {
+    app.log.error({ err, body: req.body }, 'Erreur lors du réordonnancement des tarifs');
+
+    if (err.message?.includes('vide') || err.message?.includes('invalides')) {
+      return reply.code(400).send({ error: err.message });
+    }
+
+    return reply.code(500).send({ error: 'Erreur lors du réordonnancement des tarifs' });
+  }
+}
+
+/**
  * Enregistre les routes pour les tarifs
  * 
  * Routes publiques : GET (lecture)
@@ -203,6 +228,19 @@ export function registerPricesRoutes(app: FastifyInstance) {
       ],
     },
     async (req, reply) => deletePriceHandler(req, reply, app)
+  );
+
+  // Route protégée : réordonner les tarifs (uniquement bureau et dev)
+  app.post<{ Body: ReorderPricesBody }>(
+    '/museum/prices/reorder',
+    {
+      schema: reorderPricesSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
+    },
+    async (req, reply) => reorderPricesHandler(req, reply, app)
   );
 }
 

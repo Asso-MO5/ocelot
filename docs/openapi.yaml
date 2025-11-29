@@ -349,6 +349,277 @@ paths:
           headers: null
       security:
         - cookieAuth:
+  /pay/checkout:
+    post:
+      tags:
+        - Paiement
+      summary: "Crée un nouveau checkout SumUp pour un paiement"
+      description: "**Créer un checkout SumUp avec succès** : que je fournis un montant valide dans le body je reçois une réponse 200 la réponse contient un \"checkout_id\" la réponse contient le \"checkout_reference\" la réponse contient le \"amount\" la réponse contient la \"currency\" la réponse contient le \"status\"
+
+**Créer un checkout avec un montant invalide** : que je fournis un montant négatif ou nul dans le body je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0
+
+**Créer un checkout avec une devise personnalisée** : que je fournis un montant valide que je spécifie une devise dans le body(par exemple \"USD\") je reçois une réponse 200 la réponse contient la devise spécifiée
+
+**Créer un checkout avec une description** : que je fournis un montant valide que je fournis une description dans le body je reçois une réponse 200 le checkout est créé avec la description fournie
+
+**Créer un checkout avec une référence personnalisée** : que je fournis un montant valide que je fournis une \"checkout_reference\" personnalisée dans le body je reçois une réponse 200 la réponse contient la référence personnalisée fournie
+
+**Créer un checkout sans montant** : que je ne fournis pas de montant dans le body je reçois une réponse 400 la réponse contient un message d'erreur de validation
+
+**Créer un checkout avec configuration SumUp manquante** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message indiquant que la configuration SumUp est manquante
+
+**Gérer les erreurs de l'API SumUp** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message d'erreur générique les détails de l'erreur sont loggés côté serveur
+
+### Scénarios de test
+
+**Créer un checkout SumUp avec succès**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide dans le body
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un \"checkout_id\"
+
+✅ la réponse contient le \"checkout_reference\"
+
+✅ la réponse contient le \"amount\"
+
+✅ la réponse contient la \"currency\"
+
+✅ la réponse contient le \"status\"
+
+**Créer un checkout avec un montant invalide**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant négatif ou nul dans le body
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0
+
+**Créer un checkout avec une devise personnalisée**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ que je spécifie une devise dans le body(par exemple \"USD\")
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient la devise spécifiée
+
+**Créer un checkout avec une description**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ que je fournis une description dans le body
+
+✅ je reçois une réponse 200
+
+✅ le checkout est créé avec la description fournie
+
+**Créer un checkout avec une référence personnalisée**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ que je fournis une \"checkout_reference\" personnalisée dans le body
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient la référence personnalisée fournie
+
+**Créer un checkout sans montant**
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je ne fournis pas de montant dans le body
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur de validation
+
+**Créer un checkout avec configuration SumUp manquante**
+
+📋 que SUMUP_API_KEY n'est pas configurée
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ je reçois une réponse 500
+
+✅ la réponse contient un message indiquant que la configuration SumUp est manquante
+
+**Gérer les erreurs de l'API SumUp**
+
+📋 que l'API SumUp retourne une erreur
+
+⚡ je fais une requête POST vers \"/pay/checkout\"
+
+✅ que je fournis un montant valide
+
+✅ je reçois une réponse 500
+
+✅ la réponse contient un message d'erreur générique
+
+✅ les détails de l'erreur sont loggés côté serveur
+
+"
+      operationId: "post_pay_checkout"
+      parameters:
+      responses:
+        200:
+          description: "Succès - que je fournis un montant valide dans le body, je reçois une réponse 200, la réponse contient un \"checkout_id\", la réponse contient le \"checkout_reference\", la réponse contient le \"amount\", la réponse contient la \"currency\", la réponse contient le \"status\""
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  checkout_id:
+                    type: "string"
+                    description: "ID du checkout SumUp"
+                  checkout_reference:
+                    type: "string"
+                    description: "Référence du checkout"
+                  amount:
+                    type: "number"
+                    description: "Montant du paiement"
+                  currency:
+                    type: "string"
+                    description: "Devise"
+                  status:
+                    type: "string"
+                    description: "Statut du checkout"
+              example:
+                checkout_id: "exemple_checkout_id"
+                checkout_reference: "exemple_checkout_reference"
+                amount: 123
+                currency: "exemple_currency"
+                status: "exemple_status"
+          headers: null
+        400:
+          description: "Code 400 - que je fournis un montant négatif ou nul dans le body, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        500:
+          description: "Erreur serveur - que je fournis un montant valide, je reçois une réponse 500, la réponse contient un message indiquant que la configuration SumUp est manquante"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - amount
+              properties:
+                amount:
+                  type: "number"
+                  minimum: 5
+                  maximum: 12
+                  description: "Montant du paiement"
+                currency:
+                  type: "string"
+                  default: "EUR"
+                  description: "Devise du paiement (défaut: EUR)"
+                description:
+                  type: "string"
+                  description: "Description du paiement"
+      security:
+        - cookieAuth:
+  /pay/checkout/:checkoutId:
+    get:
+      tags:
+        - Paiement
+      summary: "Vérifie le statut d'un checkout SumUp"
+      description: ""
+      operationId: "get_pay_checkout_:checkoutId"
+      parameters:
+        - name: "checkoutId"
+          in: "path"
+          description: "ID du checkout SumUp"
+          required: true
+          schema:
+            type: "string"
+            description: "ID du checkout SumUp"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  checkout_reference:
+                    type: "string"
+                  amount:
+                    type: "number"
+                  currency:
+                    type: "string"
+                  status:
+                    type: "string"
+                    enum:
+                      - PENDING
+                      - PAID
+                      - FAILED
+                      - CANCELLED
+                      - SENT
+                      - SUCCESS
+                  payment_type:
+                    type: "string"
+                  transaction_code:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
   /pay/webhook:
     post:
       tags:
@@ -371,6 +642,15 @@ paths:
                   tickets_updated:
                     type: "number"
                     description: "Nombre de tickets mis à jour"
+                  qr_codes:
+                    type: "array"
+                    items:
+                      type: "string"
+                    description: "Liste des QR codes des tickets associés au checkout"
+                required:
+                  - success
+                  - tickets_updated
+                  - qr_codes
               example: null
           headers: null
         400:
@@ -626,6 +906,8 @@ paths:
                     type:
                       - string
                     nullable: true
+                  position:
+                    type: "integer"
                   created_at:
                     type: "string"
                   updated_at:
@@ -668,6 +950,8 @@ paths:
                     type:
                       - string
                     nullable: true
+                  position:
+                    type: "integer"
                   created_at:
                     type: "string"
                   updated_at:
@@ -755,6 +1039,10 @@ paths:
                 description:
                   type: "string"
                   description: "Description de l'exception ou du changement d'horaire"
+                position:
+                  type: "integer"
+                  minimum: 1
+                  description: "Position pour l'ordre d'affichage (optionnel, sera auto-assignée si non fournie)"
       security:
         - cookieAuth:
     get:
@@ -851,6 +1139,8 @@ paths:
                       type:
                         - string
                       nullable: true
+                    position:
+                      type: "integer"
                     created_at:
                       type: "string"
                     updated_at:
@@ -941,6 +1231,8 @@ paths:
                       type:
                         - string
                       nullable: true
+                    position:
+                      type: "integer"
                     created_at:
                       type: "string"
                     updated_at:
@@ -1036,6 +1328,8 @@ paths:
                     type:
                       - string
                     nullable: true
+                  position:
+                    type: "integer"
                   created_at:
                     type: "string"
                   updated_at:
@@ -1142,6 +1436,8 @@ paths:
                     type:
                       - string
                     nullable: true
+                  position:
+                    type: "integer"
                   created_at:
                     type: "string"
                   updated_at:
@@ -1240,6 +1536,10 @@ paths:
                     - string
                   description: "Description de l'exception ou du changement d'horaire"
                   nullable: true
+                position:
+                  type: "integer"
+                  minimum: 1
+                  description: "Position pour l'ordre d'affichage"
       security:
         - cookieAuth:
     delete:
@@ -1315,6 +1615,101 @@ paths:
                     type: "string"
               example: null
           headers: null
+      security:
+        - cookieAuth:
+  /museum/schedules/reorder:
+    post:
+      tags:
+        - Musée - Horaires
+      summary: "Réordonne les horaires selon l'ordre fourni. Met à jour les positions de tous les horaires selon l'ordre des IDs fournis (premier ID = position 1, deuxième ID = position 2, etc.)"
+      description: ""
+      operationId: "post_museum_schedules_reorder"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    id:
+                      type: "string"
+                    day_of_week:
+                      type:
+                        - integer
+                      nullable: true
+                    start_time:
+                      type: "string"
+                    end_time:
+                      type: "string"
+                    audience_type:
+                      type: "string"
+                    start_date:
+                      type:
+                        - string
+                      nullable: true
+                    end_date:
+                      type:
+                        - string
+                      nullable: true
+                    is_exception:
+                      type: "boolean"
+                    is_closed:
+                      type: "boolean"
+                    description:
+                      type:
+                        - string
+                      nullable: true
+                    position:
+                      type: "integer"
+                    created_at:
+                      type: "string"
+                    updated_at:
+                      type: "string"
+                description: "Liste des horaires réordonnés avec leurs nouvelles positions"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - schedule_ids
+              properties:
+                schedule_ids:
+                  type: "array"
+                  items:
+                    type: "string"
+                    format: "uuid"
+                  minItems: 1
+                  description: "Tableau d'IDs d'horaires dans l'ordre souhaité. Les positions seront mises à jour selon cet ordre (premier ID = position 1, deuxième ID = position 2, etc.)"
       security:
         - cookieAuth:
   /museum/prices:
@@ -1506,6 +1901,8 @@ paths:
                     type: "boolean"
                   requires_proof:
                     type: "boolean"
+                  position:
+                    type: "integer"
                   created_at:
                     type: "string"
                   updated_at:
@@ -1551,6 +1948,8 @@ paths:
                     type: "boolean"
                   requires_proof:
                     type: "boolean"
+                  position:
+                    type: "integer"
                   created_at:
                     type: "string"
                   updated_at:
@@ -1642,6 +2041,10 @@ paths:
                   type: "boolean"
                   default: false
                   description: "Indique si le tarif nécessite un justificatif (ex: tarif réduit étudiant, senior, etc.)"
+                position:
+                  type: "integer"
+                  minimum: 1
+                  description: "Position pour l'ordre d'affichage (optionnel, sera auto-assignée si non fournie)"
                 translations:
                   type: "array"
                   minItems: 1
@@ -1864,6 +2267,8 @@ paths:
                     type: "boolean"
                   requires_proof:
                     type: "boolean"
+                  position:
+                    type: "integer"
                   created_at:
                     type: "string"
                   updated_at:
@@ -1987,6 +2392,8 @@ paths:
                     type: "boolean"
                   requires_proof:
                     type: "boolean"
+                  position:
+                    type: "integer"
                   created_at:
                     type: "string"
                   updated_at:
@@ -2082,6 +2489,10 @@ paths:
                 requires_proof:
                   type: "boolean"
                   description: "Indique si le tarif nécessite un justificatif"
+                position:
+                  type: "integer"
+                  minimum: 1
+                  description: "Position pour l'ordre d'affichage"
                 translations:
                   type: "array"
                   description: "Traductions du tarif"
@@ -2182,6 +2593,104 @@ paths:
                     type: "string"
               example: null
           headers: null
+      security:
+        - cookieAuth:
+  /museum/prices/reorder:
+    post:
+      tags:
+        - Musée - Tarifs
+      summary: "Réordonne les tarifs selon l'ordre fourni. Met à jour les positions de tous les tarifs selon l'ordre des IDs fournis (premier ID = position 1, deuxième ID = position 2, etc.)"
+      description: ""
+      operationId: "post_museum_prices_reorder"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    id:
+                      type: "string"
+                    amount:
+                      type: "number"
+                    audience_type:
+                      type: "string"
+                    start_date:
+                      type:
+                        - string
+                      nullable: true
+                    end_date:
+                      type:
+                        - string
+                      nullable: true
+                    is_active:
+                      type: "boolean"
+                    requires_proof:
+                      type: "boolean"
+                    position:
+                      type: "integer"
+                    created_at:
+                      type: "string"
+                    updated_at:
+                      type: "string"
+                    translations:
+                      type: "object"
+                      description: "Traductions organisées par langue et champ"
+                      additionalProperties:
+                        type: "object"
+                        additionalProperties:
+                          type: "string"
+                    name:
+                      type: "string"
+                    description:
+                      type:
+                        - string
+                      nullable: true
+                description: "Liste des tarifs réordonnés avec leurs nouvelles positions"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - price_ids
+              properties:
+                price_ids:
+                  type: "array"
+                  items:
+                    type: "string"
+                    format: "uuid"
+                  minItems: 1
+                  description: "Tableau d'IDs de tarifs dans l'ordre souhaité. Les positions seront mises à jour selon cet ordre (premier ID = position 1, deuxième ID = position 2, etc.)"
       security:
         - cookieAuth:
   /museum/settings:
@@ -2668,14 +3177,46 @@ paths:
                   description: "Capacité maximale du musée (doit être positive ou nulle)"
       security:
         - cookieAuth:
-  /museum/capacity/current:
+  /museum/capacity/validated-tickets:
     get:
       tags:
         - Musée - Capacité
-      summary: "Récupère le nombre actuel de visiteurs"
+      summary: "Récupère les tickets validés pour un créneau donné. Retourne le nombre de tickets validés (count) et la liste complète des tickets (tickets) pour le créneau spécifié. Peut inclure les créneaux adjacents si include_adjacent_slots est true."
       description: ""
-      operationId: "get_museum_capacity_current"
+      operationId: "get_museum_capacity_validated-tickets"
       parameters:
+        - name: "reservation_date"
+          in: "query"
+          description: "Date de réservation (format YYYY-MM-DD)"
+          required: true
+          schema:
+            type: "string"
+            format: "date"
+            description: "Date de réservation (format YYYY-MM-DD)"
+        - name: "slot_start_time"
+          in: "query"
+          description: "Heure de début du créneau (format HH:MM:SS)"
+          required: true
+          schema:
+            type: "string"
+            pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+            description: "Heure de début du créneau (format HH:MM:SS)"
+        - name: "slot_end_time"
+          in: "query"
+          description: "Heure de fin du créneau (format HH:MM:SS)"
+          required: true
+          schema:
+            type: "string"
+            pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+            description: "Heure de fin du créneau (format HH:MM:SS)"
+        - name: "include_adjacent_slots"
+          in: "query"
+          description: "Inclure les créneaux adjacents (par défaut: true)"
+          required: false
+          schema:
+            type: "boolean"
+            default: true
+            description: "Inclure les créneaux adjacents (par défaut: true)"
       responses:
         200:
           description: "Succès"
@@ -2684,55 +3225,71 @@ paths:
               schema:
                 type: "object"
                 properties:
-                  current_visitors:
+                  count:
                     type: "number"
-                    description: "Nombre actuel de visiteurs dans le musée"
-              example: null
-          headers: null
-        500:
-          description: "Erreur serveur"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  error:
-                    type: "string"
-              example: null
-          headers: null
-      security:
-        - cookieAuth:
-    post:
-      tags:
-        - Musée - Capacité
-      summary: "Définit le nombre actuel de visiteurs"
-      description: ""
-      operationId: "post_museum_capacity_current"
-      parameters:
-      responses:
-        200:
-          description: "Succès"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  id:
-                    type: "string"
-                  key:
-                    type: "string"
-                  value:
-                    type: "string"
-                  value_type:
-                    type: "string"
-                  description:
-                    type:
-                      - string
-                    nullable: true
-                  created_at:
-                    type: "string"
-                  updated_at:
-                    type: "string"
+                    description: "Nombre de tickets validés pour le créneau"
+                  tickets:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        id:
+                          type: "string"
+                        qr_code:
+                          type: "string"
+                        first_name:
+                          type:
+                            - string
+                          nullable: true
+                        last_name:
+                          type:
+                            - string
+                          nullable: true
+                        email:
+                          type: "string"
+                        reservation_date:
+                          type: "string"
+                        slot_start_time:
+                          type: "string"
+                        slot_end_time:
+                          type: "string"
+                        checkout_id:
+                          type:
+                            - string
+                          nullable: true
+                        checkout_reference:
+                          type:
+                            - string
+                          nullable: true
+                        transaction_status:
+                          type:
+                            - string
+                          nullable: true
+                        ticket_price:
+                          type: "number"
+                        donation_amount:
+                          type: "number"
+                        total_amount:
+                          type: "number"
+                        status:
+                          type: "string"
+                        used_at:
+                          type:
+                            - string
+                          nullable: true
+                        notes:
+                          type:
+                            - string
+                          nullable: true
+                        language:
+                          type:
+                            - string
+                          nullable: true
+                        created_at:
+                          type: "string"
+                        updated_at:
+                          type: "string"
+                    description: "Liste des tickets validés pour le créneau"
               example: null
           headers: null
         400:
@@ -2757,109 +3314,6 @@ paths:
                     type: "string"
               example: null
           headers: null
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: "object"
-              required:
-                - current_visitors
-              properties:
-                current_visitors:
-                  type: "number"
-                  minimum: 0
-                  description: "Nombre actuel de visiteurs (doit être positif ou nul)"
-      security:
-        - cookieAuth:
-  /museum/capacity/increment:
-    post:
-      tags:
-        - Musée - Capacité
-      summary: "Incrémente le nombre de visiteurs"
-      description: ""
-      operationId: "post_museum_capacity_increment"
-      parameters:
-      responses:
-        200:
-          description: "Succès"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  current_visitors:
-                    type: "number"
-                    description: "Nouveau nombre de visiteurs après incrémentation"
-              example: null
-          headers: null
-        500:
-          description: "Erreur serveur"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  error:
-                    type: "string"
-              example: null
-          headers: null
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: "object"
-              properties:
-                increment:
-                  type: "number"
-                  default: 1
-                  description: "Valeur d'incrémentation (par défaut: 1)"
-      security:
-        - cookieAuth:
-  /museum/capacity/decrement:
-    post:
-      tags:
-        - Musée - Capacité
-      summary: "Décrémente le nombre de visiteurs"
-      description: ""
-      operationId: "post_museum_capacity_decrement"
-      parameters:
-      responses:
-        200:
-          description: "Succès"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  current_visitors:
-                    type: "number"
-                    description: "Nouveau nombre de visiteurs après décrémentation"
-              example: null
-          headers: null
-        500:
-          description: "Erreur serveur"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  error:
-                    type: "string"
-              example: null
-          headers: null
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: "object"
-              properties:
-                decrement:
-                  type: "number"
-                  default: 1
-                  description: "Valeur de décrémentation (par défaut: 1)"
       security:
         - cookieAuth:
   /museum/tickets:
@@ -2926,7 +3380,7 @@ paths:
                     type:
                       - string
                     nullable: true
-                  langue:
+                  language:
                     type:
                       - string
                     nullable: true
@@ -3016,8 +3470,85 @@ paths:
                   description: "Statut de la transaction SumUp (optionnel)"
                 notes:
                   type: "string"
-                  description: "Notes optionnelles"
-                langue:
+                  description: "Notes libres optionnelles. Si pricing_info est fourni, il sera automatiquement stocké dans notes au format JSON avec les notes libres."
+                pricing_info:
+                  type: "object"
+                  description: "Informations de tarif au moment de la création (sera stocké dans notes au format JSON). Permet de conserver les informations de tarif pour vérification ultérieure, notamment pour les membres avec places gratuites."
+                  properties:
+                    price_id:
+                      type:
+                        - string
+                      format: "uuid"
+                      description: "ID du tarif utilisé (optionnel, peut être null pour les tarifs personnalisés)"
+                      nullable: true
+                    price_name:
+                      type:
+                        - string
+                      description: "Nom du tarif au moment de la création (pour référence)"
+                      nullable: true
+                    price_amount:
+                      type: "number"
+                      minimum: 0
+                      description: "Montant du tarif au moment de la création"
+                    audience_type:
+                      type:
+                        - string
+                      enum:
+                        - public
+                        - member
+                      description: "Type d'audience"
+                      nullable: true
+                    requires_proof:
+                      type:
+                        - boolean
+                      description: "Si un justificatif était requis"
+                      nullable: true
+                    proof_info:
+                      type:
+                        - object
+                      description: "Informations sur le justificatif fourni"
+                      properties:
+                        type:
+                          type:
+                            - string
+                          description: "Type de justificatif (ex: \"student_card\", \"senior_card\", \"member_card\")"
+                          nullable: true
+                        reference:
+                          type:
+                            - string
+                          description: "Référence du justificatif (numéro de carte, etc.)"
+                          nullable: true
+                        uploaded_at:
+                          type:
+                            - string
+                          format: "date-time"
+                          description: "Date d'upload du justificatif (format ISO)"
+                          nullable: true
+                        verified:
+                          type:
+                            - boolean
+                          description: "Si le justificatif a été vérifié"
+                          nullable: true
+                        verified_by:
+                          type:
+                            - string
+                          description: "ID ou nom de la personne qui a vérifié"
+                          nullable: true
+                        verified_at:
+                          type:
+                            - string
+                          format: "date-time"
+                          description: "Date de vérification (format ISO)"
+                          nullable: true
+                      nullable: true
+                    applied_at:
+                      type: "string"
+                      format: "date-time"
+                      default: "2025-11-29T00:33:44.950Z"
+                      description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
+                  required:
+                    - price_amount
+                language:
                   type: "string"
                   maxLength: 10
                   description: "Code de langue (ex: \"fr\", \"en\", \"es\")"
@@ -3131,7 +3662,7 @@ paths:
                       type:
                         - string
                       nullable: true
-                    langue:
+                    language:
                       type:
                         - string
                       nullable: true
@@ -3226,7 +3757,7 @@ paths:
                     type:
                       - string
                     nullable: true
-                  langue:
+                  language:
                     type:
                       - string
                     nullable: true
@@ -3331,7 +3862,7 @@ paths:
                     type:
                       - string
                     nullable: true
-                  langue:
+                  language:
                     type:
                       - string
                     nullable: true
@@ -3581,7 +4112,7 @@ paths:
                     type:
                       - string
                     nullable: true
-                  langue:
+                  language:
                     type:
                       - string
                     nullable: true
@@ -3677,7 +4208,7 @@ paths:
                     type:
                       - string
                     nullable: true
-                  langue:
+                  language:
                     type:
                       - string
                     nullable: true
@@ -3754,11 +4285,15 @@ paths:
                 type: "object"
                 properties:
                   checkout_id:
-                    type: "string"
-                    description: "ID du checkout SumUp"
+                    type:
+                      - string
+                    description: "ID du checkout SumUp (null si la commande est gratuite)"
+                    nullable: true
                   checkout_reference:
-                    type: "string"
-                    description: "Référence du checkout SumUp"
+                    type:
+                      - string
+                    description: "Référence du checkout SumUp (null si la commande est gratuite)"
+                    nullable: true
                   tickets:
                     type: "array"
                     items:
@@ -3812,7 +4347,7 @@ paths:
                           type:
                             - string
                           nullable: true
-                        langue:
+                        language:
                           type:
                             - string
                           nullable: true
@@ -3822,8 +4357,6 @@ paths:
                           type: "string"
                     description: "Liste des tickets créés"
                 required:
-                  - checkout_id
-                  - checkout_reference
                   - tickets
               example: null
           headers: null
@@ -3910,7 +4443,84 @@ paths:
                         description: "Montant du don optionnel en euros (0 par défaut)"
                       notes:
                         type: "string"
-                        description: "Notes optionnelles pour ce ticket"
+                        description: "Notes libres optionnelles pour ce ticket. Si pricing_info est fourni, il sera automatiquement stocké dans notes au format JSON avec les notes libres."
+                      pricing_info:
+                        type: "object"
+                        description: "Informations de tarif au moment de la création pour ce ticket (sera stocké dans notes au format JSON). Permet de conserver les informations de tarif pour vérification ultérieure, notamment pour les membres avec places gratuites."
+                        properties:
+                          price_id:
+                            type:
+                              - string
+                            format: "uuid"
+                            description: "ID du tarif utilisé (optionnel, peut être null pour les tarifs personnalisés)"
+                            nullable: true
+                          price_name:
+                            type:
+                              - string
+                            description: "Nom du tarif au moment de la création (pour référence)"
+                            nullable: true
+                          price_amount:
+                            type: "number"
+                            minimum: 0
+                            description: "Montant du tarif au moment de la création"
+                          audience_type:
+                            type:
+                              - string
+                            enum:
+                              - public
+                              - member
+                            description: "Type d'audience"
+                            nullable: true
+                          requires_proof:
+                            type:
+                              - boolean
+                            description: "Si un justificatif était requis"
+                            nullable: true
+                          proof_info:
+                            type:
+                              - object
+                            description: "Informations sur le justificatif fourni"
+                            properties:
+                              type:
+                                type:
+                                  - string
+                                description: "Type de justificatif (ex: \"student_card\", \"senior_card\", \"member_card\")"
+                                nullable: true
+                              reference:
+                                type:
+                                  - string
+                                description: "Référence du justificatif (numéro de carte, etc.)"
+                                nullable: true
+                              uploaded_at:
+                                type:
+                                  - string
+                                format: "date-time"
+                                description: "Date d'upload du justificatif (format ISO)"
+                                nullable: true
+                              verified:
+                                type:
+                                  - boolean
+                                description: "Si le justificatif a été vérifié"
+                                nullable: true
+                              verified_by:
+                                type:
+                                  - string
+                                description: "ID ou nom de la personne qui a vérifié"
+                                nullable: true
+                              verified_at:
+                                type:
+                                  - string
+                                format: "date-time"
+                                description: "Date de vérification (format ISO)"
+                                nullable: true
+                            nullable: true
+                          applied_at:
+                            type: "string"
+                            format: "date-time"
+                            description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
+                        required:
+                          - price_amount
+                          - applied_at
                   description: "Liste des tickets à créer (au moins 1 ticket requis)"
                 currency:
                   type: "string"
@@ -3992,7 +4602,7 @@ paths:
                       type:
                         - string
                       nullable: true
-                    langue:
+                    language:
                       type:
                         - string
                       nullable: true

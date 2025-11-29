@@ -7,12 +7,14 @@ import {
   getScheduleById,
   updateSchedule,
   deleteSchedule,
+  reorderSchedules,
 } from './schedules.service.ts';
 import type {
   CreateScheduleBody,
   UpdateScheduleBody,
   GetSchedulesQuery,
   GetPublicSchedulesQuery,
+  ReorderSchedulesBody,
 } from './schedules.types.ts';
 import {
   createScheduleSchema,
@@ -21,6 +23,7 @@ import {
   getPublicSchedulesSchema,
   getScheduleByIdSchema,
   deleteScheduleSchema,
+  reorderSchedulesSchema,
 } from './schedules.schemas.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
@@ -175,6 +178,28 @@ export async function deleteScheduleHandler(
 }
 
 /**
+ * Handler pour réordonner les horaires
+ */
+export async function reorderSchedulesHandler(
+  req: FastifyRequest<{ Body: ReorderSchedulesBody }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const schedules = await reorderSchedules(app, req.body);
+    return reply.send(schedules);
+  } catch (err: any) {
+    app.log.error({ err, body: req.body }, 'Erreur lors du réordonnancement des horaires');
+
+    if (err.message?.includes('vide') || err.message?.includes('invalides')) {
+      return reply.code(400).send({ error: err.message });
+    }
+
+    return reply.code(500).send({ error: 'Erreur lors du réordonnancement des horaires' });
+  }
+}
+
+/**
  * Enregistre les routes pour les horaires
  * 
  * Routes publiques : GET /museum/schedules/public (horaires publics uniquement)
@@ -245,6 +270,19 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       ],
     },
     async (req, reply) => deleteScheduleHandler(req, reply, app)
+  );
+
+  // Route protégée : réordonner les horaires (uniquement bureau et dev)
+  app.post<{ Body: ReorderSchedulesBody }>(
+    '/museum/schedules/reorder',
+    {
+      schema: reorderSchedulesSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
+    },
+    async (req, reply) => reorderSchedulesHandler(req, reply, app)
   );
 }
 
