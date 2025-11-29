@@ -552,10 +552,12 @@ export async function updateTicket(
 
 /**
  * Valide/utilise un ticket (scan QR)
+ * Vérifie que le ticket est valide pour aujourd'hui et le créneau horaire (avec tolérance)
  */
 export async function validateTicket(
   app: FastifyInstance,
-  qrCode: string
+  qrCode: string,
+  toleranceMinutes: number = 30 // Tolérance en minutes (par défaut 30 minutes avant/après le créneau)
 ): Promise<Ticket> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
@@ -577,14 +579,55 @@ export async function validateTicket(
     throw new Error('Ce ticket a déjà été utilisé');
   }
 
-  // Vérifier que la date de réservation n'est pas passée
+  // Vérifier que c'est bien le bon jour (aujourd'hui = date de réservation)
   const reservationDate = new Date(ticket.reservation_date);
-  const today = new Date();
+  const now = new Date();
+  const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   reservationDate.setHours(0, 0, 0, 0);
 
   if (reservationDate < today) {
     throw new Error('La date de réservation est passée');
+  }
+
+  if (reservationDate > today) {
+    throw new Error(`Ce ticket est valable pour le ${ticket.reservation_date}, pas pour aujourd'hui`);
+  }
+
+  // Vérifier que c'est bien le bon créneau (avec tolérance)
+  const currentTime = now.toTimeString().substring(0, 8); // Format HH:MM:SS
+  const slotStartTime = ticket.slot_start_time;
+  const slotEndTime = ticket.slot_end_time;
+
+  // Convertir les heures en minutes depuis minuit pour faciliter les comparaisons
+  function timeToMinutes(timeStr: string): number {
+    const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes + (seconds || 0) / 60;
+  }
+
+  const currentMinutes = timeToMinutes(currentTime);
+  const slotStartMinutes = timeToMinutes(slotStartTime);
+  const slotEndMinutes = timeToMinutes(slotEndTime);
+
+  // Vérifier que l'heure actuelle est dans le créneau avec tolérance
+  // Tolérance avant le début et après la fin
+  const minAllowedTime = slotStartMinutes - toleranceMinutes;
+  const maxAllowedTime = slotEndMinutes + toleranceMinutes;
+
+  if (currentMinutes < minAllowedTime) {
+    const minutesEarly = Math.round(slotStartMinutes - currentMinutes);
+    throw new Error(
+      `Ce ticket est valable pour le créneau ${slotStartTime} - ${slotEndTime}. ` +
+      `Il est trop tôt (${minutesEarly} minute${minutesEarly > 1 ? 's' : ''} avant le début du créneau).`
+    );
+  }
+
+  if (currentMinutes > maxAllowedTime) {
+    const minutesLate = Math.round(currentMinutes - slotEndMinutes);
+    throw new Error(
+      `Ce ticket est valable pour le créneau ${slotStartTime} - ${slotEndTime}. ` +
+      `Il est trop tard (${minutesLate} minute${minutesLate > 1 ? 's' : ''} après la fin du créneau).`
+    );
   }
 
   // Marquer le ticket comme utilisé
@@ -595,6 +638,7 @@ export async function validateTicket(
      RETURNING *`,
     [ticket.id]
   );
+  (app.ws as any).send('capacity', 'refetch')
 
   return result.rows[0];
 }
