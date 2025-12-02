@@ -243,6 +243,10 @@ async function generateOpenAPIDoc(): Promise<void> {
     getSlotsSchema
   } = await import('../features/slots/slots.schemas.ts');
 
+  const {
+    generateDonationProofSchema
+  } = await import('../features/donation-proof/donation-proof.schemas.ts');
+
   // Définir les routes avec leurs schémas
   const routes = [
     {
@@ -518,6 +522,13 @@ async function generateOpenAPIDoc(): Promise<void> {
       description: 'Récupère les créneaux horaires disponibles pour une date donnée avec leurs capacités et taux d\'occupation (route publique)',
       tag: 'Musée - Créneaux',
     },
+    {
+      method: 'GET',
+      path: '/museum/donation-proof/generate',
+      schema: generateDonationProofSchema,
+      description: 'Génère et télécharge un certificat de don CERFA 11580 en PDF pour un ticket donné. Le ticket doit contenir un don (donation_amount > 0). Les paramètres address, postal_code et city sont optionnels et permettent de compléter les informations du donateur.',
+      tag: 'Musée - Certificats de don',
+    },
   ];
 
   // Générer le document OpenAPI
@@ -705,6 +716,7 @@ async function generateOpenAPIDoc(): Promise<void> {
     '/museum/tickets', // POST
     '/museum/tickets/:id', // PUT, DELETE
     '/museum/tickets/validate', // POST (dev, bureau, museum)
+    '/museum/donation-proof/generate', // GET (dev, bureau, museum)
   ];
 
   for (const path in openApiDoc.paths) {

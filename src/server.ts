@@ -15,6 +15,7 @@ import { registerTicketsRoutes } from './features/tickets/tickets.ctrl.ts';
 import { registerSettingsRoutes } from './features/settings/settings.ctrl.ts';
 import { registerSlotsRoutes } from './features/slots/slots.ctrl.ts';
 import { registerWebSocketRoutes } from './features/websocket/websocket.ctrl.ts';
+import { registerDonationProofRoutes } from './features/donation-proof/donation-proof.ctrl.ts';
 import { sendToRoom } from './features/websocket/websocket.manager.ts';
 import { registerErrorHandlers, registerProcessErrorHandlers } from './features/terror/error.handler.ts';
 import { cancelExpiredPendingTickets } from './features/tickets/tickets.service.ts';
@@ -125,6 +126,7 @@ const start = async () => {
     registerTicketsRoutes(app);
     registerSettingsRoutes(app);
     registerSlotsRoutes(app);
+    registerDonationProofRoutes(app);
 
     await app.register(cookie, {
       secret: process.env.COOKIE_SECRET || 'your-secret-key-change-in-production',

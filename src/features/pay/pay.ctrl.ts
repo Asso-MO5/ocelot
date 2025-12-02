@@ -130,6 +130,62 @@ export async function sumUpWebhookHandler(
           const tickets = await getTicketsByCheckoutId(app, checkoutId);
           if (tickets.length > 0) {
             await sendTicketsConfirmationEmails(app, tickets);
+
+            // Générer automatiquement les certificats de don pour les tickets avec don
+            try {
+              const { generateDonationProofFromTicket } = await import('../donation-proof/donation-proof.service.ts');
+              const { emailUtils } = await import('../email/email.utils.ts');
+
+              for (const ticket of tickets) {
+                const donationAmount = typeof ticket.donation_amount === 'string'
+                  ? parseFloat(ticket.donation_amount)
+                  : ticket.donation_amount;
+
+                if (donationAmount && donationAmount > 0) {
+                  try {
+                    // Générer le PDF du certificat de don
+                    const pdfBuffer = await generateDonationProofFromTicket(ticket);
+                    if (pdfBuffer) {
+                      // Convertir le buffer en base64
+                      const pdfBase64 = pdfBuffer.toString('base64');
+                      const fileName = `certificat-don-${ticket.id.substring(0, 8)}.pdf`;
+
+                      // Préparer le nom du visiteur
+                      const visitorName = ticket.first_name && ticket.last_name
+                        ? `${ticket.first_name} ${ticket.last_name}`
+                        : ticket.email;
+
+                      // Envoyer le certificat par email
+                      await emailUtils.sendEmail({
+                        email: ticket.email,
+                        name: visitorName,
+                        subject: 'Certificat de don - Association MO5.com',
+                        body: `<p>Bonjour,</p><p>Merci pour votre don de ${donationAmount.toFixed(2)}€.</p><p>Veuillez trouver ci-joint votre certificat de don CERFA 11580.</p><p>Cordialement,<br>L'équipe MO5.com</p>`,
+                        language: (ticket.language?.split('-')[0]?.toLowerCase() === 'en' ? 'en' : 'fr') as 'fr' | 'en',
+                        attachments: [{
+                          name: fileName,
+                          content: pdfBase64,
+                          contentType: 'application/pdf'
+                        }]
+                      });
+                      app.log.info({ ticketId: ticket.id, email: ticket.email }, 'Certificat de don généré et envoyé par email');
+                    }
+                  } catch (donationError: any) {
+                    app.log.error({
+                      donationError,
+                      errorMessage: donationError?.message,
+                      errorStack: donationError?.stack,
+                      ticketId: ticket.id,
+                      donationAmount
+                    }, 'Erreur lors de la génération/envoi du certificat de don');
+                    // Ne pas faire échouer le processus si la génération du certificat échoue
+                  }
+                }
+              }
+            } catch (donationProofError) {
+              app.log.error({ donationProofError, checkoutId }, 'Erreur lors de la génération des certificats de don');
+              // Ne pas faire échouer le processus si la génération des certificats échoue
+            }
           }
         } catch (emailError) {
           app.log.error({ emailError, checkoutId }, 'Erreur lors de l\'envoi des emails de confirmation');

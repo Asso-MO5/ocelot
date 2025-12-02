@@ -3544,7 +3544,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2025-11-29T00:33:44.950Z"
+                      default: "2025-12-02T20:50:52.427Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -4798,6 +4798,92 @@ paths:
                     type: "string"
               example: null
           headers: null
+  /museum/donation-proof/generate:
+    get:
+      tags:
+        - Musée - Certificats de don
+      summary: "Génère et télécharge un certificat de don CERFA 11580 en PDF pour un ticket donné. Le ticket doit contenir un don (donation_amount > 0). Les paramètres address, postal_code et city sont optionnels et permettent de compléter les informations du donateur."
+      description: ""
+      operationId: "get_museum_donation-proof_generate"
+      parameters:
+        - name: "ticket_id"
+          in: "query"
+          description: "ID du ticket pour lequel générer le certificat de don"
+          required: true
+          schema:
+            type: "string"
+            description: "ID du ticket pour lequel générer le certificat de don"
+        - name: "address"
+          in: "query"
+          description: "Adresse du donateur (optionnel)"
+          required: false
+          schema:
+            type: "string"
+            description: "Adresse du donateur (optionnel)"
+        - name: "postal_code"
+          in: "query"
+          description: "Code postal du donateur (optionnel)"
+          required: false
+          schema:
+            type: "string"
+            description: "Code postal du donateur (optionnel)"
+        - name: "city"
+          in: "query"
+          description: "Ville du donateur (optionnel)"
+          required: false
+          schema:
+            type: "string"
+            description: "Ville du donateur (optionnel)"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                description: "PDF du certificat de don"
+                content:
+                  application/pdf:
+                    schema:
+                      type: "string"
+                      format: "binary"
+              example: null
+          headers: null
+        400:
+          description: "Code 400"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        404:
+          description: "Code 404"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
 components:
   securitySchemes:
     cookieAuth:
