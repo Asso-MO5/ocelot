@@ -566,17 +566,29 @@ export async function validateTicket(
   const ticket = await getTicketByQRCode(app, qrCode);
 
   if (!ticket) {
-    throw new Error('Ticket non trouvé');
-  }
-
-  // Vérifier que le ticket est payé
-  if (ticket.status !== 'paid') {
-    throw new Error(`Le ticket n'est pas valide. Statut actuel: ${ticket.status}`);
+    throw createStructuredError(
+      404,
+      'Le ticket n\'a pas été trouvé',
+      'The ticket has not been found'
+    );
   }
 
   // Vérifier que le ticket n'a pas déjà été utilisé
   if (ticket.used_at) {
-    throw new Error('Ce ticket a déjà été utilisé');
+    throw createStructuredError(
+      400,
+      'Ce ticket a déjà été utilisé',
+      'The ticket has already been used'
+    );
+  }
+
+  // Vérifier que le ticket est payé
+  if (ticket.status !== 'paid') {
+    throw createStructuredError(
+      400,
+      `Le ticket n'est pas valide. Statut actuel: ${ticket.status}`,
+      `The ticket is not valid. Current status: ${ticket.status}`
+    );
   }
 
   // Vérifier que c'est bien le bon jour (aujourd'hui = date de réservation)
@@ -616,17 +628,23 @@ export async function validateTicket(
 
   if (currentMinutes < minAllowedTime) {
     const minutesEarly = Math.round(slotStartMinutes - currentMinutes);
-    throw new Error(
-      `Ce ticket est valable pour le créneau ${slotStartTime} - ${slotEndTime}. ` +
-      `Il est trop tôt (${minutesEarly} minute${minutesEarly > 1 ? 's' : ''} avant le début du créneau).`
+    throw createStructuredError(
+      400,
+      `Le ticket est valable pour le créneau ${slotStartTime} - ${slotEndTime}. ` +
+      `Il est trop tôt (${minutesEarly} minute${minutesEarly > 1 ? 's' : ''} avant le début du créneau).`,
+      `The ticket is valid for the slot ${slotStartTime} - ${slotEndTime}. ` +
+      `It is too early (${minutesEarly} minute${minutesEarly > 1 ? 's' : ''} before the start of the slot).`
     );
   }
 
   if (currentMinutes > maxAllowedTime) {
     const minutesLate = Math.round(currentMinutes - slotEndMinutes);
-    throw new Error(
+    throw createStructuredError(
+      400,
       `Ce ticket est valable pour le créneau ${slotStartTime} - ${slotEndTime}. ` +
-      `Il est trop tard (${minutesLate} minute${minutesLate > 1 ? 's' : ''} après la fin du créneau).`
+      `Il est trop tard (${minutesLate} minute${minutesLate > 1 ? 's' : ''} après la fin du créneau).`,
+      `The ticket is valid for the slot ${slotStartTime} - ${slotEndTime}. ` +
+      `It is too late (${minutesLate} minute${minutesLate > 1 ? 's' : ''} after the end of the slot).`
     );
   }
 
