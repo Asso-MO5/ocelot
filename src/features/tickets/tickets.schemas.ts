@@ -321,10 +321,9 @@ export const getTicketsSchema = {
   querystring: {
     type: 'object',
     properties: {
-      email: {
+      search: {
         type: 'string',
-        format: 'email',
-        description: 'Filtrer par email',
+        description: 'Recherche textuelle dans email, first_name, last_name, checkout_id, checkout_reference et qr_code (insensible à la casse, recherche partielle). Exemple: "gmail" trouvera tous les tickets avec un email contenant "gmail".',
       },
       reservation_date: {
         type: 'string',
@@ -335,14 +334,6 @@ export const getTicketsSchema = {
         type: 'string',
         enum: ['pending', 'paid', 'cancelled', 'used', 'expired'],
         description: 'Filtrer par statut',
-      },
-      checkout_id: {
-        type: 'string',
-        description: 'Filtrer par checkout ID',
-      },
-      qr_code: {
-        type: 'string',
-        description: 'Filtrer par code QR',
       },
       page: {
         type: 'integer',

@@ -3544,7 +3544,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2025-12-03T18:48:38.107Z"
+                      default: "2025-12-03T19:03:45.256Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -3561,14 +3561,13 @@ paths:
       description: ""
       operationId: "get_museum_tickets"
       parameters:
-        - name: "email"
+        - name: "search"
           in: "query"
-          description: "Filtrer par email"
+          description: "Recherche textuelle dans email, first_name, last_name, checkout_id, checkout_reference et qr_code (insensible à la casse, recherche partielle). Exemple: \"gmail\" trouvera tous les tickets avec un email contenant \"gmail\"."
           required: false
           schema:
             type: "string"
-            format: "email"
-            description: "Filtrer par email"
+            description: "Recherche textuelle dans email, first_name, last_name, checkout_id, checkout_reference et qr_code (insensible à la casse, recherche partielle). Exemple: \"gmail\" trouvera tous les tickets avec un email contenant \"gmail\"."
         - name: "reservation_date"
           in: "query"
           description: "Filtrer par date de réservation (format YYYY-MM-DD)"
@@ -3590,20 +3589,6 @@ paths:
               - used
               - expired
             description: "Filtrer par statut"
-        - name: "checkout_id"
-          in: "query"
-          description: "Filtrer par checkout ID"
-          required: false
-          schema:
-            type: "string"
-            description: "Filtrer par checkout ID"
-        - name: "qr_code"
-          in: "query"
-          description: "Filtrer par code QR"
-          required: false
-          schema:
-            type: "string"
-            description: "Filtrer par code QR"
         - name: "page"
           in: "query"
           description: "Numéro de page (commence à 1, par défaut 1)"

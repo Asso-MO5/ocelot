@@ -330,9 +330,18 @@ export async function getTickets(
   const params: any[] = [];
   let paramIndex = 1;
 
-  if (query.email) {
-    whereClause += ` AND email = $${paramIndex}`;
-    params.push(query.email);
+  // Recherche textuelle dans plusieurs champs (email, first_name, last_name, checkout_id, qr_code)
+  if (query.search) {
+    const searchPattern = `%${query.search}%`;
+    whereClause += ` AND (
+      email ILIKE $${paramIndex} OR
+      first_name ILIKE $${paramIndex} OR
+      last_name ILIKE $${paramIndex} OR
+      checkout_id ILIKE $${paramIndex} OR
+      checkout_reference ILIKE $${paramIndex} OR
+      qr_code ILIKE $${paramIndex}
+    )`;
+    params.push(searchPattern);
     paramIndex++;
   }
 
@@ -345,18 +354,6 @@ export async function getTickets(
   if (query.status) {
     whereClause += ` AND status = $${paramIndex}`;
     params.push(query.status);
-    paramIndex++;
-  }
-
-  if (query.checkout_id) {
-    whereClause += ` AND checkout_id = $${paramIndex}`;
-    params.push(query.checkout_id);
-    paramIndex++;
-  }
-
-  if (query.qr_code) {
-    whereClause += ` AND qr_code = $${paramIndex}`;
-    params.push(query.qr_code);
     paramIndex++;
   }
 

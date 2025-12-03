@@ -100,11 +100,9 @@ export interface UpdateTicketBody {
  * Paramètres de requête pour récupérer les tickets
  */
 export interface GetTicketsQuery {
-  email?: string; // Filtrer par email
+  search?: string; // Recherche textuelle dans email, first_name, last_name, checkout_id, qr_code (insensible à la casse)
   reservation_date?: string; // Filtrer par date de réservation
   status?: TicketStatus; // Filtrer par statut
-  checkout_id?: string; // Filtrer par checkout ID
-  qr_code?: string; // Filtrer par code QR
   page?: number; // Numéro de page (commence à 1, optionnel, par défaut 1)
   limit?: number; // Nombre d'éléments par page (optionnel, par défaut 500)
 }
