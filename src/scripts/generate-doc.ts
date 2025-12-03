@@ -255,6 +255,12 @@ async function generateOpenAPIDoc(): Promise<void> {
     validateGiftCodeSchema
   } = await import('../features/gift-codes/gift-codes.schemas.ts');
 
+  const {
+    createSpecialPeriodSchema,
+    updateSpecialPeriodSchema,
+    getSpecialPeriodsSchema
+  } = await import('../features/special-periods/special-periods.schemas.ts');
+
   // Définir les routes avec leurs schémas
   const routes = [
     {
@@ -572,6 +578,98 @@ async function generateOpenAPIDoc(): Promise<void> {
       description: 'Valide un code cadeau (route publique). Vérifie que le code existe, n\'est pas utilisé et n\'est pas expiré. Permet au frontend de valider un code avant de l\'utiliser dans une commande.',
       tag: 'Musée - Codes cadeaux',
     },
+    {
+      method: 'POST',
+      path: '/museum/special-periods',
+      schema: createSpecialPeriodSchema,
+      description: 'Crée une période spéciale (vacances scolaires ou fermeture). Les périodes de vacances permettent d\'afficher automatiquement les horaires avec audience_type="holiday" en plus des horaires publics. Les périodes de fermeture masquent les horaires normaux.',
+      tag: 'Musée - Périodes spéciales',
+    },
+    {
+      method: 'GET',
+      path: '/museum/special-periods',
+      schema: getSpecialPeriodsSchema,
+      description: 'Récupère la liste des périodes spéciales (vacances et fermetures) avec filtres optionnels (type, date, zone). Permet de vérifier si une date est dans une période spéciale.',
+      tag: 'Musée - Périodes spéciales',
+    },
+    {
+      method: 'GET',
+      path: '/museum/special-periods/:id',
+      schema: {
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID de la période spéciale',
+            },
+          },
+        },
+        response: {
+          200: createSpecialPeriodSchema.response[201],
+          404: {
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+            },
+          },
+          500: {
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
+      description: 'Récupère une période spéciale par son ID.',
+      tag: 'Musée - Périodes spéciales',
+    },
+    {
+      method: 'PUT',
+      path: '/museum/special-periods/:id',
+      schema: updateSpecialPeriodSchema,
+      description: 'Met à jour une période spéciale (vacances ou fermeture).',
+      tag: 'Musée - Périodes spéciales',
+    },
+    {
+      method: 'DELETE',
+      path: '/museum/special-periods/:id',
+      schema: {
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID de la période spéciale',
+            },
+          },
+        },
+        response: {
+          204: {
+            type: 'null',
+            description: 'Période spéciale supprimée avec succès',
+          },
+          404: {
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+            },
+          },
+          500: {
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
+      description: 'Supprime une période spéciale.',
+      tag: 'Musée - Périodes spéciales',
+    },
   ];
 
   // Générer le document OpenAPI
@@ -763,6 +861,8 @@ async function generateOpenAPIDoc(): Promise<void> {
     '/museum/gift-codes/packs', // POST (dev, bureau), GET (dev, bureau, museum)
     '/museum/gift-codes/distribute', // POST (dev, bureau)
     '/museum/gift-codes', // GET (dev, bureau, museum)
+    '/museum/special-periods', // POST, GET (dev, bureau, museum)
+    '/museum/special-periods/:id', // GET, PUT, DELETE (dev, bureau, museum)
   ];
 
   for (const path in openApiDoc.paths) {

@@ -727,19 +727,6 @@ export async function createTicketsWithPayment(
   // Séparer les tickets membres et non-membres
   const memberTickets = data.tickets.filter(ticket => ticket.pricing_info?.price_name?.match(/membre/i));
 
-  /*
-  const nonMemberFreeTickets = data.tickets.filter(ticket => ticket.ticket_price === 0 && !ticket.pricing_info?.price_name?.match(/membre/i));
-
-  // Vérification pour les places gratuites non-membres : 0 ou exactement 2 places (pour l'accompagnant)
-  if (nonMemberFreeTickets.length > 0 && nonMemberFreeTickets.length !== 2) {
-    throw createStructuredError(
-      400,
-      'Pour les non-membres, vous pouvez réserver exactement 2 places gratuites (pour vous et votre accompagnant) ou aucune',
-      'For non-members, you can reserve exactly 2 free tickets (for you and your companion) or none'
-    );
-  }
-  */
-
   // Traitement des tickets membres
   if (memberTickets.length > 0) {
     // Récupérer les informations du membre depuis Galette
@@ -797,14 +784,6 @@ export async function createTicketsWithPayment(
       // Supprimer les tickets en trop en partant de la fin (pour ne pas décaler les indices)
       const ticketsToRemove = memberFreeTickets.length - maxAllowedMemberTickets;
       const indicesToRemove = memberFreeIndices.slice(-ticketsToRemove);
-
-      app.log.warn({
-        email: data.email,
-        memberTicketsCount: memberFreeTickets.length,
-        numOfChildren,
-        maxAllowedMemberTickets,
-        ticketsToRemove,
-      }, 'Suppression de places membres en trop (pas assez d\'enfants)');
 
       // Retirer les tickets en trop avec splice (en partant de la fin)
       for (let i = indicesToRemove.length - 1; i >= 0; i--) {

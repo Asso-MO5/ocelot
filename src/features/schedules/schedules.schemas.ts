@@ -25,8 +25,8 @@ export const createScheduleSchema = {
       },
       audience_type: {
         type: 'string',
-        enum: ['public', 'member'],
-        description: 'Type d\'audience (public ou member)',
+        enum: ['public', 'member', 'holiday'],
+        description: 'Type d\'audience (public, member ou holiday)',
       },
       start_date: {
         type: 'string',
@@ -146,8 +146,8 @@ export const updateScheduleSchema = {
       },
       audience_type: {
         type: 'string',
-        enum: ['public', 'member'],
-        description: 'Type d\'audience (public ou member)',
+        enum: ['public', 'member', 'holiday'],
+        description: 'Type d\'audience (public, member ou holiday)',
       },
       start_date: {
         type: ['string', 'null'],
@@ -230,7 +230,7 @@ export const getSchedulesSchema = {
       },
       audience_type: {
         type: 'string',
-        enum: ['public', 'member'],
+        enum: ['public', 'member', 'holiday'],
         description: 'Filtrer par type d\'audience',
       },
       date: {
@@ -308,7 +308,7 @@ export const getPublicSchedulesSchema = {
           day_of_week: { type: ['integer', 'null'] },
           start_time: { type: 'string' },
           end_time: { type: 'string' },
-          audience_type: { type: 'string' },
+          audience_type: { type: 'string', enum: ['public', 'member', 'holiday'] },
           start_date: { type: ['string', 'null'] },
           end_date: { type: ['string', 'null'] },
           is_exception: { type: 'boolean' },
@@ -317,6 +317,34 @@ export const getPublicSchedulesSchema = {
           position: { type: 'integer' },
           created_at: { type: 'string' },
           updated_at: { type: 'string' },
+          holiday_periods: {
+            type: 'array',
+            description: 'Tableau des périodes de vacances associées à cet horaire. Peut contenir plusieurs périodes si elles se chevauchent ou sont consécutives.',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: ['string', 'null'] },
+                start_date: { type: 'string' },
+                end_date: { type: 'string' },
+                zone: { type: ['string', 'null'] },
+              },
+            },
+          },
+          closure_periods: {
+            type: 'array',
+            description: 'Tableau des périodes de fermeture associées à cet horaire. Peut contenir plusieurs périodes si elles se chevauchent ou sont consécutives.',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: ['string', 'null'] },
+                start_date: { type: 'string' },
+                end_date: { type: 'string' },
+                zone: { type: ['string', 'null'] },
+              },
+            },
+          },
         },
       },
     },

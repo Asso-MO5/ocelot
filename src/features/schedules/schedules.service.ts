@@ -5,6 +5,7 @@ import type {
   UpdateScheduleBody,
   GetSchedulesQuery,
   ReorderSchedulesBody,
+  PublicSchedule,
 } from './schedules.types.ts';
 
 /**
@@ -216,17 +217,149 @@ export async function getSchedules(
 
 /**
  * Récupère uniquement les horaires publics (pour le site public)
+ * Inclut toujours les horaires 'holiday' avec les informations des périodes de vacances
  */
 export async function getPublicSchedules(
   app: FastifyInstance,
   query: Omit<GetSchedulesQuery, 'audience_type'> = {}
-): Promise<Schedule[]> {
+): Promise<PublicSchedule[]> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
 
-  let sql = 'SELECT * FROM schedules WHERE audience_type = $1';
-  const params: any[] = ['public'];
+  // Récupérer toutes les périodes spéciales actives (vacances et fermetures)
+  let holidayPeriods: Array<{ id: string; name: string | null; start_date: string; end_date: string; zone: string | null }> = [];
+  let closurePeriods: Array<{ id: string; name: string | null; start_date: string; end_date: string; zone: string | null }> = [];
+  try {
+    const { getSpecialPeriods } = await import('../special-periods/special-periods.service.ts');
+    const allPeriods = await getSpecialPeriods(app, { is_active: true });
+
+    holidayPeriods = allPeriods
+      .filter(p => p.type === 'holiday')
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        start_date: p.start_date,
+        end_date: p.end_date,
+        zone: p.zone,
+      }));
+
+    closurePeriods = allPeriods
+      .filter(p => p.type === 'closure')
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        start_date: p.start_date,
+        end_date: p.end_date,
+        zone: p.zone,
+      }));
+  } catch (err) {
+    app.log.warn({ err }, 'Erreur lors de la récupération des périodes spéciales');
+  }
+
+  // Vérifier si on est dans une période de vacances (pour la logique de filtrage)
+  let isHoliday = false;
+  if (query.date) {
+    try {
+      const { isHolidayPeriod } = await import('../special-periods/special-periods.service.ts');
+      isHoliday = await isHolidayPeriod(app, query.date);
+    } catch (err) {
+      app.log.warn({ err, date: query.date }, 'Erreur lors de la vérification des vacances');
+    }
+  }
+
+  // Vérifier si on est dans une période de fermeture
+  let isClosed = false;
+  if (query.date) {
+    const { isClosurePeriod } = await import('../special-periods/special-periods.service.ts');
+    try {
+      isClosed = await isClosurePeriod(app, query.date);
+    } catch (err) {
+      app.log.warn({ err, date: query.date }, 'Erreur lors de la vérification des fermetures');
+    }
+  }
+
+  // Si on est en fermeture, retourner uniquement les horaires avec is_closed = true
+  if (isClosed) {
+    let sql = `SELECT * FROM schedules WHERE is_closed = true`;
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (query.day_of_week !== undefined) {
+      sql += ` AND day_of_week = $${paramIndex}`;
+      params.push(query.day_of_week);
+      paramIndex++;
+    }
+
+    if (query.date) {
+      const dateObj = new Date(query.date);
+      const dayOfWeek = dateObj.getDay();
+      sql += ` AND (
+        (is_exception = false AND day_of_week = $${paramIndex})
+        OR
+        (is_exception = true AND start_date <= $${paramIndex + 1} AND end_date >= $${paramIndex + 1})
+      )`;
+      params.push(dayOfWeek, query.date);
+      paramIndex += 2;
+    }
+
+    sql += ' ORDER BY position ASC, is_exception ASC, day_of_week ASC, start_time ASC';
+    const result = await app.pg.query<Schedule>(sql, params);
+
+    // Enrichir les horaires de fermeture avec les périodes de fermeture
+    const enrichedClosureSchedules: PublicSchedule[] = result.rows.map(schedule => {
+      // Trouver toutes les périodes de fermeture qui correspondent
+      const matchingClosurePeriods = closurePeriods.filter(period => {
+        if (schedule.start_date && schedule.end_date) {
+          return period.start_date <= schedule.end_date && period.end_date >= schedule.start_date;
+        }
+        return true;
+      });
+
+      return {
+        ...schedule,
+        holiday_periods: [],
+        closure_periods: matchingClosurePeriods,
+      };
+    });
+
+    // Si aucun horaire de fermeture n'est défini, retourner un horaire virtuel avec les périodes de fermeture
+    if (enrichedClosureSchedules.length === 0) {
+      const matchingClosurePeriods = closurePeriods.filter(period => {
+        if (query.date) {
+          return period.start_date <= query.date && period.end_date >= query.date;
+        }
+        return true;
+      });
+
+      return [{
+        id: 'closure',
+        day_of_week: null,
+        start_time: '00:00:00',
+        end_time: '00:00:00',
+        audience_type: 'public',
+        start_date: null,
+        end_date: null,
+        is_exception: true,
+        is_closed: true,
+        description: 'Fermeture exceptionnelle',
+        position: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        holiday_periods: [],
+        closure_periods: matchingClosurePeriods,
+      } as PublicSchedule];
+    }
+
+    return enrichedClosureSchedules;
+  }
+
+  // Toujours inclure les horaires 'public' ET 'holiday' pour que le frontend puisse les afficher
+  // Le frontend décidera quand afficher les horaires holiday selon les périodes de vacances
+  const audienceTypes = ['public', 'holiday'];
+
+  let sql = `SELECT * FROM schedules WHERE audience_type = ANY($1::audience_type[])`;
+  const params: any[] = [audienceTypes];
   let paramIndex = 2;
 
   if (query.day_of_week !== undefined) {
@@ -255,7 +388,39 @@ export async function getPublicSchedules(
   sql += ' ORDER BY position ASC, is_exception ASC, day_of_week ASC, start_time ASC';
 
   const result = await app.pg.query<Schedule>(sql, params);
-  return result.rows;
+  const schedules = result.rows;
+
+  // Enrichir les horaires avec les informations des périodes spéciales
+  const enrichedSchedules: PublicSchedule[] = schedules.map(schedule => {
+    // Trouver toutes les périodes de vacances qui correspondent à cet horaire
+    const matchingHolidayPeriods = holidayPeriods.filter(period => {
+      // Si l'horaire a des dates spécifiques, vérifier le chevauchement
+      if (schedule.start_date && schedule.end_date) {
+        return period.start_date <= schedule.end_date && period.end_date >= schedule.start_date;
+      }
+      // Si l'horaire est récurrent (pas de dates), on associe toutes les périodes actives
+      // Le frontend décidera quand afficher cet horaire
+      return true;
+    });
+
+    // Trouver toutes les périodes de fermeture qui correspondent à cet horaire
+    const matchingClosurePeriods = closurePeriods.filter(period => {
+      // Si l'horaire a des dates spécifiques, vérifier le chevauchement
+      if (schedule.start_date && schedule.end_date) {
+        return period.start_date <= schedule.end_date && period.end_date >= schedule.start_date;
+      }
+      // Si l'horaire est récurrent, on associe toutes les périodes de fermeture
+      return true;
+    });
+
+    return {
+      ...schedule,
+      holiday_periods: matchingHolidayPeriods,
+      closure_periods: matchingClosurePeriods,
+    };
+  });
+
+  return enrichedSchedules;
 }
 
 /**

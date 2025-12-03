@@ -5,5 +5,5 @@
 /**
  * Type d'audience pour les horaires et tarifs
  */
-export type AudienceType = 'public' | 'member';
+export type AudienceType = 'public' | 'member' | 'holiday';
 

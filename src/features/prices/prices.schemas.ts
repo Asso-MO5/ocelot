@@ -19,8 +19,8 @@ export const createPriceSchema = {
       },
       audience_type: {
         type: 'string',
-        enum: ['public', 'member'],
-        description: 'Type d\'audience (public ou member)',
+        enum: ['public', 'member', 'holiday'],
+        description: 'Type d\'audience (public, member ou holiday)',
       },
       start_date: {
         type: 'string',
@@ -166,8 +166,8 @@ export const updatePriceSchema = {
       },
       audience_type: {
         type: 'string',
-        enum: ['public', 'member'],
-        description: 'Type d\'audience (public ou member)',
+        enum: ['public', 'member', 'holiday'],
+        description: 'Type d\'audience (public, member ou holiday)',
       },
       start_date: {
         type: ['string', 'null'],

@@ -86,3 +86,22 @@ export interface GetPublicSchedulesQuery {
   include_exceptions?: boolean;
 }
 
+/**
+ * Informations d'une période spéciale (vacances ou fermeture)
+ */
+export interface SpecialPeriodInfo {
+  id: string;
+  name: string | null;
+  start_date: string;
+  end_date: string;
+  zone: string | null;
+}
+
+/**
+ * Horaire public enrichi avec les informations des périodes spéciales
+ */
+export interface PublicSchedule extends Schedule {
+  holiday_periods: SpecialPeriodInfo[]; // Périodes de vacances associées (peut être vide)
+  closure_periods: SpecialPeriodInfo[]; // Périodes de fermeture associées (peut être vide)
+}
+
