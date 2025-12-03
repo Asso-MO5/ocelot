@@ -247,6 +247,14 @@ async function generateOpenAPIDoc(): Promise<void> {
     generateDonationProofSchema
   } = await import('../features/donation-proof/donation-proof.schemas.ts');
 
+  const {
+    createGiftCodePackSchema,
+    distributeGiftCodesSchema,
+    getGiftCodesSchema,
+    getGiftCodePacksSchema,
+    validateGiftCodeSchema
+  } = await import('../features/gift-codes/gift-codes.schemas.ts');
+
   // Définir les routes avec leurs schémas
   const routes = [
     {
@@ -529,6 +537,41 @@ async function generateOpenAPIDoc(): Promise<void> {
       description: 'Génère et télécharge un certificat de don CERFA 11580 en PDF pour un ticket donné. Le ticket doit contenir un don (donation_amount > 0). Les paramètres address, postal_code et city sont optionnels et permettent de compléter les informations du donateur.',
       tag: 'Musée - Certificats de don',
     },
+    {
+      method: 'POST',
+      path: '/museum/gift-codes/packs',
+      schema: createGiftCodePackSchema,
+      description: 'Crée un pack de codes cadeaux. Chaque code offre une place gratuite. Les codes peuvent être créés en lot pour faciliter la distribution (ex: pour un influenceur).',
+      tag: 'Musée - Codes cadeaux',
+    },
+    {
+      method: 'POST',
+      path: '/museum/gift-codes/distribute',
+      schema: distributeGiftCodesSchema,
+      description: 'Distribue des codes cadeaux par email. Permet d\'envoyer un lot de codes à un destinataire (ex: influenceur). Les codes sont associés à l\'email du destinataire.',
+      tag: 'Musée - Codes cadeaux',
+    },
+    {
+      method: 'GET',
+      path: '/museum/gift-codes',
+      schema: getGiftCodesSchema,
+      description: 'Récupère la liste des codes cadeaux avec pagination et filtres optionnels (statut, pack, destinataire, ticket associé).',
+      tag: 'Musée - Codes cadeaux',
+    },
+    {
+      method: 'GET',
+      path: '/museum/gift-codes/packs',
+      schema: getGiftCodePacksSchema,
+      description: 'Récupère la liste paginée des packs de codes cadeaux avec leurs codes associés. Permet de rechercher un pack par code (paramètre `code`). Retourne les statistiques de chaque pack (nombre de codes, utilisés, non utilisés, expirés).',
+      tag: 'Musée - Codes cadeaux',
+    },
+    {
+      method: 'GET',
+      path: '/museum/gift-codes/validate/:code',
+      schema: validateGiftCodeSchema,
+      description: 'Valide un code cadeau (route publique). Vérifie que le code existe, n\'est pas utilisé et n\'est pas expiré. Permet au frontend de valider un code avant de l\'utiliser dans une commande.',
+      tag: 'Musée - Codes cadeaux',
+    },
   ];
 
   // Générer le document OpenAPI
@@ -717,6 +760,9 @@ async function generateOpenAPIDoc(): Promise<void> {
     '/museum/tickets/:id', // PUT, DELETE
     '/museum/tickets/validate', // POST (dev, bureau, museum)
     '/museum/donation-proof/generate', // GET (dev, bureau, museum)
+    '/museum/gift-codes/packs', // POST (dev, bureau), GET (dev, bureau, museum)
+    '/museum/gift-codes/distribute', // POST (dev, bureau)
+    '/museum/gift-codes', // GET (dev, bureau, museum)
   ];
 
   for (const path in openApiDoc.paths) {
@@ -742,7 +788,8 @@ async function generateOpenAPIDoc(): Promise<void> {
           path === '/museum/tickets/payment' ||
           path === '/museum/tickets/stats' ||
           path === '/pay/webhook' ||
-          path.startsWith('/museum/tickets/checkout/');
+          path.startsWith('/museum/tickets/checkout/') ||
+          path.startsWith('/museum/gift-codes/validate/');
 
         if ((isProtected || (isWriteMethod && !isPublicWrite)) && !isPublicRoute) {
           pathObj.security = [{ cookieAuth: [] }];

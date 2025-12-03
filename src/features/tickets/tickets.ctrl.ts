@@ -17,6 +17,7 @@ import type {
   UpdateTicketBody,
   GetTicketsQuery,
   ValidateTicketBody,
+  PaginatedTicketsResponse,
 } from './tickets.types.ts';
 import {
   createTicketSchema,

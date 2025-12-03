@@ -105,6 +105,19 @@ export interface GetTicketsQuery {
   status?: TicketStatus; // Filtrer par statut
   checkout_id?: string; // Filtrer par checkout ID
   qr_code?: string; // Filtrer par code QR
+  page?: number; // Numéro de page (commence à 1, optionnel, par défaut 1)
+  limit?: number; // Nombre d'éléments par page (optionnel, par défaut 500)
+}
+
+/**
+ * Réponse paginée pour la récupération des tickets
+ */
+export interface PaginatedTicketsResponse {
+  tickets: Ticket[];
+  total: number; // Nombre total de tickets correspondant aux filtres
+  page: number; // Page actuelle
+  limit: number; // Nombre d'éléments par page
+  totalPages: number; // Nombre total de pages
 }
 
 /**
@@ -131,6 +144,7 @@ export interface CreateTicketsWithPaymentBody {
     notes?: string; // Notes libres ou JSON stringifié contenant TicketPricingInfo
     pricing_info?: TicketPricingInfo; // Informations de tarif (sera stocké dans notes au format JSON)
   }>;
+  gift_codes?: string[]; // Tableau de codes cadeaux à utiliser (optionnel)
   currency?: string; // Devise pour le paiement (défaut: EUR)
   description?: string; // Description du paiement
 }

@@ -5,6 +5,7 @@ import type {
   CreateTicketsWithPaymentBody,
   UpdateTicketBody,
   GetTicketsQuery,
+  PaginatedTicketsResponse,
   TicketsStats,
   TicketsStatsByDay,
   TicketPricingInfo,
@@ -314,49 +315,73 @@ export async function createTicket(
 export async function getTickets(
   app: FastifyInstance,
   query: GetTicketsQuery = {}
-): Promise<Ticket[]> {
+): Promise<PaginatedTicketsResponse> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
 
-  let sql = 'SELECT * FROM tickets WHERE 1=1';
+  // Paramètres de pagination (par défaut : page 1, limit 500)
+  const page = query.page && query.page > 0 ? query.page : 1;
+  const limit = query.limit && query.limit > 0 ? query.limit : 500;
+  const offset = (page - 1) * limit;
+
+  // Construction de la clause WHERE
+  let whereClause = 'WHERE 1=1';
   const params: any[] = [];
   let paramIndex = 1;
 
   if (query.email) {
-    sql += ` AND email = $${paramIndex}`;
+    whereClause += ` AND email = $${paramIndex}`;
     params.push(query.email);
     paramIndex++;
   }
 
   if (query.reservation_date) {
-    sql += ` AND reservation_date = $${paramIndex}`;
+    whereClause += ` AND reservation_date = $${paramIndex}`;
     params.push(query.reservation_date);
     paramIndex++;
   }
 
   if (query.status) {
-    sql += ` AND status = $${paramIndex}`;
+    whereClause += ` AND status = $${paramIndex}`;
     params.push(query.status);
     paramIndex++;
   }
 
   if (query.checkout_id) {
-    sql += ` AND checkout_id = $${paramIndex}`;
+    whereClause += ` AND checkout_id = $${paramIndex}`;
     params.push(query.checkout_id);
     paramIndex++;
   }
 
   if (query.qr_code) {
-    sql += ` AND qr_code = $${paramIndex}`;
+    whereClause += ` AND qr_code = $${paramIndex}`;
     params.push(query.qr_code);
     paramIndex++;
   }
 
-  sql += ' ORDER BY created_at DESC';
+  // Requête pour compter le total
+  const countSql = `SELECT COUNT(*) as total FROM tickets ${whereClause}`;
+  const countResult = await app.pg.query<{ total: string }>(countSql, params);
+  const total = parseInt(countResult.rows[0].total, 10);
 
-  const result = await app.pg.query<Ticket>(sql, params);
-  return result.rows;
+  // Requête pour récupérer les tickets avec pagination
+  const limitParamIndex = paramIndex;
+  const offsetParamIndex = paramIndex + 1;
+  const dataSql = `SELECT * FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`;
+  const dataParams = [...params, limit, offset];
+  const result = await app.pg.query<Ticket>(dataSql, dataParams);
+
+  // Calculer le nombre total de pages
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    tickets: result.rows,
+    total,
+    page,
+    limit,
+    totalPages,
+  };
 }
 
 /**
@@ -858,6 +883,64 @@ export async function createTicketsWithPayment(
     }
   }
 
+  // Traitement des codes cadeaux si fournis
+  const giftCodesToUse: string[] = data.gift_codes || [];
+  const usedGiftCodes: Array<{ code: string; ticketIndex: number }> = [];
+
+  if (giftCodesToUse.length > 0) {
+    // Valider tous les codes avant de continuer
+    const { validateGiftCode } = await import('../gift-codes/gift-codes.service.ts');
+    for (const code of giftCodesToUse) {
+      try {
+        await validateGiftCode(app, code);
+      } catch (err: any) {
+        throw createStructuredError(
+          400,
+          `Code cadeau invalide: ${code}. ${err.message || ''}`,
+          `Invalid gift code: ${code}. ${err.message || ''}`
+        );
+      }
+    }
+
+    // Vérifier qu'on n'a pas plus de codes que de tickets
+    if (giftCodesToUse.length > data.tickets.length) {
+      throw createStructuredError(
+        400,
+        `Vous ne pouvez pas utiliser plus de codes cadeaux (${giftCodesToUse.length}) que de tickets (${data.tickets.length})`,
+        `You cannot use more gift codes (${giftCodesToUse.length}) than tickets (${data.tickets.length})`
+      );
+    }
+
+    // Créer une copie des tickets avec leur index pour pouvoir les trier
+    const ticketsWithIndex = data.tickets.map((ticket, index) => ({
+      ...ticket,
+      originalIndex: index,
+    }));
+
+    // Trier les tickets par prix décroissant (les plus chers en premier)
+    ticketsWithIndex.sort((a, b) => b.ticket_price - a.ticket_price);
+
+    // Appliquer les codes aux tickets les plus chers
+    for (let i = 0; i < Math.min(giftCodesToUse.length, ticketsWithIndex.length); i++) {
+      const ticketWithIndex = ticketsWithIndex[i];
+      const code = giftCodesToUse[i];
+
+      // Réduire le prix du ticket à 0 (le code offre une place gratuite)
+      ticketWithIndex.ticket_price = 0;
+
+      // Mettre à jour le ticket dans data.tickets
+      data.tickets[ticketWithIndex.originalIndex] = {
+        ...ticketWithIndex,
+        originalIndex: undefined, // Retirer l'index temporaire
+      } as any;
+
+      usedGiftCodes.push({
+        code,
+        ticketIndex: ticketWithIndex.originalIndex,
+      });
+    }
+  }
+
   // Calculer le montant total (somme de tous les ticket_price + donation_amount)
   let totalAmount = 0;
   for (const ticket of data.tickets) {
@@ -998,6 +1081,17 @@ export async function createTicketsWithPayment(
       );
 
       createdTickets.push(result.rows[0]);
+    }
+
+    // Utiliser les codes cadeaux après la création des tickets
+    if (usedGiftCodes.length > 0) {
+      const { useGiftCode } = await import('../gift-codes/gift-codes.service.ts');
+      for (const { code, ticketIndex } of usedGiftCodes) {
+        const ticket = createdTickets[ticketIndex];
+        if (ticket) {
+          await useGiftCode(app, code, ticket.id);
+        }
+      }
     }
 
     await app.pg.query('COMMIT');
