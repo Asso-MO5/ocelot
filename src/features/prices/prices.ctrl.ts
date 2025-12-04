@@ -200,7 +200,7 @@ export function registerPricesRoutes(app: FastifyInstance) {
       schema: createPriceSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => createPriceHandler(req, reply, app)
@@ -212,7 +212,7 @@ export function registerPricesRoutes(app: FastifyInstance) {
       schema: updatePriceSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => updatePriceHandler(req, reply, app)
@@ -224,7 +224,7 @@ export function registerPricesRoutes(app: FastifyInstance) {
       schema: deletePriceSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => deletePriceHandler(req, reply, app)
@@ -237,7 +237,7 @@ export function registerPricesRoutes(app: FastifyInstance) {
       schema: reorderPricesSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => reorderPricesHandler(req, reply, app)
