@@ -242,7 +242,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       schema: createScheduleSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => upsertScheduleHandler(req, reply, app)
@@ -254,7 +254,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       schema: updateScheduleSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => updateScheduleHandler(req, reply, app)
@@ -266,7 +266,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       schema: deleteScheduleSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => deleteScheduleHandler(req, reply, app)
@@ -279,7 +279,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       schema: reorderSchedulesSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => reorderSchedulesHandler(req, reply, app)

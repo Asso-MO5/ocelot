@@ -214,7 +214,7 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
       schema: distributeGiftCodesSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
       ],
     },
     async (req, reply) => distributeGiftCodesHandler(req, reply, app)
