@@ -261,6 +261,15 @@ async function generateOpenAPIDoc(): Promise<void> {
     getSpecialPeriodsSchema
   } = await import('../features/special-periods/special-periods.schemas.ts');
 
+  const {
+    createEventSchema,
+    updateEventSchema,
+    getEventsSchema,
+    getEventByIdSchema,
+    deleteEventSchema,
+    getCalendarSchema
+  } = await import('../features/events/events.schemas.ts');
+
   // Définir les routes avec leurs schémas
   const routes = [
     {
@@ -670,6 +679,48 @@ async function generateOpenAPIDoc(): Promise<void> {
       description: 'Supprime une période spéciale.',
       tag: 'Musée - Périodes spéciales',
     },
+    {
+      method: 'POST',
+      path: '/events',
+      schema: createEventSchema,
+      description: 'Crée un nouvel événement (musée, association ou externe)',
+      tag: 'Événements',
+    },
+    {
+      method: 'GET',
+      path: '/events',
+      schema: getEventsSchema,
+      description: 'Récupère les événements avec pagination et filtres (tous types)',
+      tag: 'Événements',
+    },
+    {
+      method: 'GET',
+      path: '/events/:id',
+      schema: getEventByIdSchema,
+      description: 'Récupère un événement par son ID',
+      tag: 'Événements',
+    },
+    {
+      method: 'PUT',
+      path: '/events/:id',
+      schema: updateEventSchema,
+      description: 'Met à jour un événement',
+      tag: 'Événements',
+    },
+    {
+      method: 'DELETE',
+      path: '/events/:id',
+      schema: deleteEventSchema,
+      description: 'Supprime un événement',
+      tag: 'Événements',
+    },
+    {
+      method: 'GET',
+      path: '/museum/calendar',
+      schema: getCalendarSchema,
+      description: 'Récupère le calendrier avec événements et horaires d\'ouverture du musée',
+      tag: 'Musée - Calendrier',
+    },
   ];
 
   // Générer le document OpenAPI
@@ -722,6 +773,18 @@ async function generateOpenAPIDoc(): Promise<void> {
       {
         name: 'Musée - Créneaux',
         description: 'Endpoints de gestion des créneaux horaires et disponibilités',
+      },
+      {
+        name: 'Musée - Périodes spéciales',
+        description: 'Endpoints de gestion des périodes spéciales (vacances, fermetures)',
+      },
+      {
+        name: 'Événements',
+        description: 'Endpoints de gestion des événements (musée, association, externes)',
+      },
+      {
+        name: 'Musée - Calendrier',
+        description: 'Endpoint de récupération du calendrier avec événements et horaires',
       },
     ],
     paths: {} as Record<string, any>,
@@ -863,6 +926,9 @@ async function generateOpenAPIDoc(): Promise<void> {
     '/museum/gift-codes', // GET (dev, bureau, museum)
     '/museum/special-periods', // POST, GET (dev, bureau, museum)
     '/museum/special-periods/:id', // GET, PUT, DELETE (dev, bureau, museum)
+    '/events', // POST, GET
+    '/events/:id', // GET, PUT, DELETE
+    '/museum/calendar', // GET (route publique)
   ];
 
   for (const path in openApiDoc.paths) {

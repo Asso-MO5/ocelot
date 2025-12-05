@@ -27,6 +27,12 @@ tags:
     description: "Endpoints de gestion des tickets et réservations"
   - name: "Musée - Créneaux"
     description: "Endpoints de gestion des créneaux horaires et disponibilités"
+  - name: "Musée - Périodes spéciales"
+    description: "Endpoints de gestion des périodes spéciales (vacances, fermetures)"
+  - name: "Événements"
+    description: "Endpoints de gestion des événements (musée, association, externes)"
+  - name: "Musée - Calendrier"
+    description: "Endpoint de récupération du calendrier avec événements et horaires"
 paths:
   /auth/signin:
     get:
@@ -1217,6 +1223,10 @@ paths:
                       type: "string"
                     audience_type:
                       type: "string"
+                      enum:
+                        - public
+                        - member
+                        - holiday
                     start_date:
                       type:
                         - string
@@ -1239,6 +1249,46 @@ paths:
                       type: "string"
                     updated_at:
                       type: "string"
+                    holiday_periods:
+                      type: "array"
+                      description: "Tableau des périodes de vacances associées à cet horaire. Peut contenir plusieurs périodes si elles se chevauchent ou sont consécutives."
+                      items:
+                        type: "object"
+                        properties:
+                          id:
+                            type: "string"
+                          name:
+                            type:
+                              - string
+                            nullable: true
+                          start_date:
+                            type: "string"
+                          end_date:
+                            type: "string"
+                          zone:
+                            type:
+                              - string
+                            nullable: true
+                    closure_periods:
+                      type: "array"
+                      description: "Tableau des périodes de fermeture associées à cet horaire. Peut contenir plusieurs périodes si elles se chevauchent ou sont consécutives."
+                      items:
+                        type: "object"
+                        properties:
+                          id:
+                            type: "string"
+                          name:
+                            type:
+                              - string
+                            nullable: true
+                          start_date:
+                            type: "string"
+                          end_date:
+                            type: "string"
+                          zone:
+                            type:
+                              - string
+                            nullable: true
               example: null
           headers: null
         500:
@@ -3549,7 +3599,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2025-12-03T22:45:11.151Z"
+                      default: "2025-12-05T22:20:37.458Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -5902,6 +5952,1109 @@ paths:
                 type: "object"
                 properties:
                   error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /events:
+    post:
+      tags:
+        - Événements
+      summary: "Crée un nouvel événement (musée, association ou externe)"
+      description: ""
+      operationId: "post_events"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  type:
+                    type: "string"
+                  category:
+                    type:
+                      - string
+                    nullable: true
+                  status:
+                    type: "string"
+                  start_date:
+                    type: "string"
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  start_time:
+                    type:
+                      - string
+                    nullable: true
+                  end_time:
+                    type:
+                      - string
+                    nullable: true
+                  location_type:
+                    type: "string"
+                  location_name:
+                    type:
+                      - string
+                    nullable: true
+                  location_address:
+                    type:
+                      - string
+                    nullable: true
+                  location_city:
+                    type:
+                      - string
+                    nullable: true
+                  location_postal_code:
+                    type:
+                      - string
+                    nullable: true
+                  public_title_fr:
+                    type:
+                      - string
+                    nullable: true
+                  public_title_en:
+                    type:
+                      - string
+                    nullable: true
+                  public_description_fr:
+                    type:
+                      - string
+                    nullable: true
+                  public_description_en:
+                    type:
+                      - string
+                    nullable: true
+                  public_image_url:
+                    type:
+                      - string
+                    nullable: true
+                  private_notes:
+                    type:
+                      - string
+                    nullable: true
+                  private_contact:
+                    type:
+                      - string
+                    nullable: true
+                  manager_dev:
+                    type: "boolean"
+                  manager_bureau:
+                    type: "boolean"
+                  manager_museum:
+                    type: "boolean"
+                  manager_com:
+                    type: "boolean"
+                  capacity:
+                    type:
+                      - integer
+                    nullable: true
+                  is_active:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - type
+                - start_date
+              properties:
+                type:
+                  type: "string"
+                  enum:
+                    - museum
+                    - association
+                    - external
+                  description: "Type d'événement"
+                category:
+                  type: "string"
+                  enum:
+                    - live
+                    - mediation
+                    - workshop
+                    - conference
+                    - exhibition
+                    - other
+                  description: "Catégorie pour les événements musée (requis si type=museum)"
+                status:
+                  type: "string"
+                  enum:
+                    - draft
+                    - private
+                    - member
+                    - public
+                  default: "draft"
+                  description: "Statut de visibilité"
+                start_date:
+                  type: "string"
+                  format: "date"
+                  description: "Date de début (format YYYY-MM-DD)"
+                end_date:
+                  type:
+                    - string
+                  format: "date"
+                  description: "Date de fin (optionnel, format YYYY-MM-DD)"
+                  nullable: true
+                start_time:
+                  type:
+                    - string
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de début (format HH:MM:SS)"
+                  nullable: true
+                end_time:
+                  type:
+                    - string
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  description: "Heure de fin (format HH:MM:SS)"
+                  nullable: true
+                location_type:
+                  type: "string"
+                  enum:
+                    - museum
+                    - external
+                  default: "museum"
+                  description: "Type de localisation"
+                location_name:
+                  type:
+                    - string
+                  maxLength: 255
+                  description: "Nom du lieu"
+                  nullable: true
+                location_address:
+                  type:
+                    - string
+                  description: "Adresse complète"
+                  nullable: true
+                location_city:
+                  type:
+                    - string
+                  maxLength: 100
+                  description: "Ville"
+                  nullable: true
+                location_postal_code:
+                  type:
+                    - string
+                  maxLength: 20
+                  description: "Code postal"
+                  nullable: true
+                public_title_fr:
+                  type:
+                    - string
+                  maxLength: 255
+                  description: "Titre public en français"
+                  nullable: true
+                public_title_en:
+                  type:
+                    - string
+                  maxLength: 255
+                  description: "Titre public en anglais"
+                  nullable: true
+                public_description_fr:
+                  type:
+                    - string
+                  description: "Description publique en français"
+                  nullable: true
+                public_description_en:
+                  type:
+                    - string
+                  description: "Description publique en anglais"
+                  nullable: true
+                public_image_url:
+                  type:
+                    - string
+                  maxLength: 500
+                  description: "URL de l'image publique"
+                  nullable: true
+                private_notes:
+                  type:
+                    - string
+                  description: "Notes privées pour les admins"
+                  nullable: true
+                private_contact:
+                  type:
+                    - string
+                  maxLength: 255
+                  description: "Contact privé"
+                  nullable: true
+                manager_dev:
+                  type: "boolean"
+                  default: false
+                  description: "Géré par dev"
+                manager_bureau:
+                  type: "boolean"
+                  default: false
+                  description: "Géré par bureau"
+                manager_museum:
+                  type: "boolean"
+                  default: false
+                  description: "Géré par musée"
+                manager_com:
+                  type: "boolean"
+                  default: false
+                  description: "Géré par com"
+                capacity:
+                  type:
+                    - integer
+                  minimum: 1
+                  description: "Capacité maximale"
+                  nullable: true
+                is_active:
+                  type: "boolean"
+                  default: true
+                  description: "Événement actif"
+                related_event_ids:
+                  type: "array"
+                  items:
+                    type: "string"
+                    format: "uuid"
+                  description: "IDs des événements à lier"
+      security:
+        - cookieAuth:
+    get:
+      tags:
+        - Événements
+      summary: "Récupère les événements avec pagination et filtres (tous types)"
+      description: ""
+      operationId: "get_events"
+      parameters:
+        - name: "type"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - museum
+              - association
+              - external
+        - name: "category"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - live
+              - mediation
+              - workshop
+              - conference
+              - exhibition
+              - other
+        - name: "status"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - draft
+              - private
+              - member
+              - public
+        - name: "start_date"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "end_date"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "date"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "location_type"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - museum
+              - external
+        - name: "is_active"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "boolean"
+        - name: "include_relations"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "boolean"
+        - name: "page"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "integer"
+            minimum: 1
+            default: 1
+        - name: "limit"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  events:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        id:
+                          type: "string"
+                        type:
+                          type: "string"
+                        category:
+                          type:
+                            - string
+                          nullable: true
+                        status:
+                          type: "string"
+                        start_date:
+                          type: "string"
+                        end_date:
+                          type:
+                            - string
+                          nullable: true
+                        start_time:
+                          type:
+                            - string
+                          nullable: true
+                        end_time:
+                          type:
+                            - string
+                          nullable: true
+                        location_type:
+                          type: "string"
+                        location_name:
+                          type:
+                            - string
+                          nullable: true
+                        location_address:
+                          type:
+                            - string
+                          nullable: true
+                        location_city:
+                          type:
+                            - string
+                          nullable: true
+                        location_postal_code:
+                          type:
+                            - string
+                          nullable: true
+                        public_title_fr:
+                          type:
+                            - string
+                          nullable: true
+                        public_title_en:
+                          type:
+                            - string
+                          nullable: true
+                        public_description_fr:
+                          type:
+                            - string
+                          nullable: true
+                        public_description_en:
+                          type:
+                            - string
+                          nullable: true
+                        public_image_url:
+                          type:
+                            - string
+                          nullable: true
+                        private_notes:
+                          type:
+                            - string
+                          nullable: true
+                        private_contact:
+                          type:
+                            - string
+                          nullable: true
+                        manager_dev:
+                          type: "boolean"
+                        manager_bureau:
+                          type: "boolean"
+                        manager_museum:
+                          type: "boolean"
+                        manager_com:
+                          type: "boolean"
+                        capacity:
+                          type:
+                            - integer
+                          nullable: true
+                        is_active:
+                          type: "boolean"
+                        created_at:
+                          type: "string"
+                        updated_at:
+                          type: "string"
+                  total:
+                    type: "integer"
+                  page:
+                    type: "integer"
+                  limit:
+                    type: "integer"
+                  totalPages:
+                    type: "integer"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /events/:id:
+    get:
+      tags:
+        - Événements
+      summary: "Récupère un événement par son ID"
+      description: ""
+      operationId: "get_events_:id"
+      parameters:
+        - name: "include_relations"
+          in: "query"
+          description: ""
+          required: false
+          schema:
+            type: "boolean"
+        - name: "id"
+          in: "path"
+          description: ""
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  type:
+                    type: "string"
+                  category:
+                    type:
+                      - string
+                    nullable: true
+                  status:
+                    type: "string"
+                  start_date:
+                    type: "string"
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  start_time:
+                    type:
+                      - string
+                    nullable: true
+                  end_time:
+                    type:
+                      - string
+                    nullable: true
+                  location_type:
+                    type: "string"
+                  location_name:
+                    type:
+                      - string
+                    nullable: true
+                  location_address:
+                    type:
+                      - string
+                    nullable: true
+                  location_city:
+                    type:
+                      - string
+                    nullable: true
+                  location_postal_code:
+                    type:
+                      - string
+                    nullable: true
+                  public_title_fr:
+                    type:
+                      - string
+                    nullable: true
+                  public_title_en:
+                    type:
+                      - string
+                    nullable: true
+                  public_description_fr:
+                    type:
+                      - string
+                    nullable: true
+                  public_description_en:
+                    type:
+                      - string
+                    nullable: true
+                  public_image_url:
+                    type:
+                      - string
+                    nullable: true
+                  private_notes:
+                    type:
+                      - string
+                    nullable: true
+                  private_contact:
+                    type:
+                      - string
+                    nullable: true
+                  manager_dev:
+                    type: "boolean"
+                  manager_bureau:
+                    type: "boolean"
+                  manager_museum:
+                    type: "boolean"
+                  manager_com:
+                    type: "boolean"
+                  capacity:
+                    type:
+                      - integer
+                    nullable: true
+                  is_active:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+    put:
+      tags:
+        - Événements
+      summary: "Met à jour un événement"
+      description: ""
+      operationId: "put_events_:id"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  type:
+                    type: "string"
+                  category:
+                    type:
+                      - string
+                    nullable: true
+                  status:
+                    type: "string"
+                  start_date:
+                    type: "string"
+                  end_date:
+                    type:
+                      - string
+                    nullable: true
+                  start_time:
+                    type:
+                      - string
+                    nullable: true
+                  end_time:
+                    type:
+                      - string
+                    nullable: true
+                  location_type:
+                    type: "string"
+                  location_name:
+                    type:
+                      - string
+                    nullable: true
+                  location_address:
+                    type:
+                      - string
+                    nullable: true
+                  location_city:
+                    type:
+                      - string
+                    nullable: true
+                  location_postal_code:
+                    type:
+                      - string
+                    nullable: true
+                  public_title_fr:
+                    type:
+                      - string
+                    nullable: true
+                  public_title_en:
+                    type:
+                      - string
+                    nullable: true
+                  public_description_fr:
+                    type:
+                      - string
+                    nullable: true
+                  public_description_en:
+                    type:
+                      - string
+                    nullable: true
+                  public_image_url:
+                    type:
+                      - string
+                    nullable: true
+                  private_notes:
+                    type:
+                      - string
+                    nullable: true
+                  private_contact:
+                    type:
+                      - string
+                    nullable: true
+                  manager_dev:
+                    type: "boolean"
+                  manager_bureau:
+                    type: "boolean"
+                  manager_museum:
+                    type: "boolean"
+                  manager_com:
+                    type: "boolean"
+                  capacity:
+                    type:
+                      - integer
+                    nullable: true
+                  is_active:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                  updated_at:
+                    type: "string"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                type:
+                  type: "string"
+                  enum:
+                    - museum
+                    - association
+                    - external
+                category:
+                  type:
+                    - string
+                  enum:
+                    - live
+                    - mediation
+                    - workshop
+                    - conference
+                    - exhibition
+                    - other
+                  nullable: true
+                status:
+                  type: "string"
+                  enum:
+                    - draft
+                    - private
+                    - member
+                    - public
+                start_date:
+                  type: "string"
+                  format: "date"
+                end_date:
+                  type:
+                    - string
+                  format: "date"
+                  nullable: true
+                start_time:
+                  type:
+                    - string
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  nullable: true
+                end_time:
+                  type:
+                    - string
+                  pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                  nullable: true
+                location_type:
+                  type: "string"
+                  enum:
+                    - museum
+                    - external
+                location_name:
+                  type:
+                    - string
+                  maxLength: 255
+                  nullable: true
+                location_address:
+                  type:
+                    - string
+                  nullable: true
+                location_city:
+                  type:
+                    - string
+                  maxLength: 100
+                  nullable: true
+                location_postal_code:
+                  type:
+                    - string
+                  maxLength: 20
+                  nullable: true
+                public_title_fr:
+                  type:
+                    - string
+                  maxLength: 255
+                  nullable: true
+                public_title_en:
+                  type:
+                    - string
+                  maxLength: 255
+                  nullable: true
+                public_description_fr:
+                  type:
+                    - string
+                  nullable: true
+                public_description_en:
+                  type:
+                    - string
+                  nullable: true
+                public_image_url:
+                  type:
+                    - string
+                  maxLength: 500
+                  nullable: true
+                private_notes:
+                  type:
+                    - string
+                  nullable: true
+                private_contact:
+                  type:
+                    - string
+                  maxLength: 255
+                  nullable: true
+                manager_dev:
+                  type: "boolean"
+                manager_bureau:
+                  type: "boolean"
+                manager_museum:
+                  type: "boolean"
+                manager_com:
+                  type: "boolean"
+                capacity:
+                  type:
+                    - integer
+                  minimum: 1
+                  nullable: true
+                is_active:
+                  type: "boolean"
+                related_event_ids:
+                  type: "array"
+                  items:
+                    type: "string"
+                    format: "uuid"
+      security:
+        - cookieAuth:
+    delete:
+      tags:
+        - Événements
+      summary: "Supprime un événement"
+      description: ""
+      operationId: "delete_events_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: ""
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  success:
+                    type: "boolean"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/calendar:
+    get:
+      tags:
+        - Musée - Calendrier
+      summary: "Récupère le calendrier avec événements et horaires d'ouverture du musée"
+      description: ""
+      operationId: "get_museum_calendar"
+      parameters:
+        - name: "start_date"
+          in: "query"
+          description: "Date de début (format YYYY-MM-DD)"
+          required: true
+          schema:
+            type: "string"
+            format: "date"
+            description: "Date de début (format YYYY-MM-DD)"
+        - name: "end_date"
+          in: "query"
+          description: "Date de fin (optionnel, par défaut = start_date)"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+            description: "Date de fin (optionnel, par défaut = start_date)"
+        - name: "view"
+          in: "query"
+          description: "Vue du calendrier"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - day
+              - week
+              - month
+            default: "month"
+            description: "Vue du calendrier"
+        - name: "status"
+          in: "query"
+          description: "Filtrer par statut (par défaut: public et member)"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - draft
+              - private
+              - member
+              - public
+            description: "Filtrer par statut (par défaut: public et member)"
+        - name: "include_private"
+          in: "query"
+          description: "Inclure les événements privés (admin uniquement)"
+          required: false
+          schema:
+            type: "boolean"
+            default: false
+            description: "Inclure les événements privés (admin uniquement)"
+        - name: "event_types"
+          in: "query"
+          description: "Filtrer par types d'événements (par défaut: tous les types)"
+          required: false
+          schema:
+            type: "array"
+            items:
+              type: "string"
+              enum:
+                - museum
+                - association
+                - external
+            description: "Filtrer par types d'événements (par défaut: tous les types)"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  days:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        date:
+                          type: "string"
+                        is_open:
+                          type: "boolean"
+                        opening_hours:
+                          type: "array"
+                          items:
+                            type: "object"
+                            properties:
+                              start_time:
+                                type: "string"
+                              end_time:
+                                type: "string"
+                              audience_type:
+                                type: "string"
+                              description:
+                                type:
+                                  - string
+                                nullable: true
+                        events:
+                          type: "array"
+                          items:
+                            type: "object"
+                            properties:
+                              id:
+                                type: "string"
+                              type:
+                                type: "string"
+                              category:
+                                type:
+                                  - string
+                                nullable: true
+                              status:
+                                type: "string"
+                              start_date:
+                                type: "string"
+                              end_date:
+                                type:
+                                  - string
+                                nullable: true
+                              start_time:
+                                type:
+                                  - string
+                                nullable: true
+                              end_time:
+                                type:
+                                  - string
+                                nullable: true
+                              location_type:
+                                type: "string"
+                              location_name:
+                                type:
+                                  - string
+                                nullable: true
+                              location_address:
+                                type:
+                                  - string
+                                nullable: true
+                              location_city:
+                                type:
+                                  - string
+                                nullable: true
+                              location_postal_code:
+                                type:
+                                  - string
+                                nullable: true
+                              public_title_fr:
+                                type:
+                                  - string
+                                nullable: true
+                              public_title_en:
+                                type:
+                                  - string
+                                nullable: true
+                              public_description_fr:
+                                type:
+                                  - string
+                                nullable: true
+                              public_description_en:
+                                type:
+                                  - string
+                                nullable: true
+                              public_image_url:
+                                type:
+                                  - string
+                                nullable: true
+                              private_notes:
+                                type:
+                                  - string
+                                nullable: true
+                              private_contact:
+                                type:
+                                  - string
+                                nullable: true
+                              manager_dev:
+                                type: "boolean"
+                              manager_bureau:
+                                type: "boolean"
+                              manager_museum:
+                                type: "boolean"
+                              manager_com:
+                                type: "boolean"
+                              capacity:
+                                type:
+                                  - integer
+                                nullable: true
+                              is_active:
+                                type: "boolean"
+                              created_at:
+                                type: "string"
+                              updated_at:
+                                type: "string"
+                        holiday_periods:
+                          type: "array"
+                          items:
+                            type: "object"
+                            properties:
+                              id:
+                                type: "string"
+                              name:
+                                type:
+                                  - string
+                                nullable: true
+                              start_date:
+                                type: "string"
+                              end_date:
+                                type: "string"
+                              zone:
+                                type:
+                                  - string
+                                nullable: true
+                        closure_periods:
+                          type: "array"
+                          items:
+                            type: "object"
+                            properties:
+                              id:
+                                type: "string"
+                              name:
+                                type:
+                                  - string
+                                nullable: true
+                              start_date:
+                                type: "string"
+                              end_date:
+                                type: "string"
+                              zone:
+                                type:
+                                  - string
+                                nullable: true
+                  start_date:
+                    type: "string"
+                  end_date:
+                    type: "string"
+                  view:
                     type: "string"
               example: null
           headers: null
