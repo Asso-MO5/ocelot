@@ -724,6 +724,14 @@ export async function createTicketsWithPayment(
     throw new Error('Au moins un ticket est requis');
   }
 
+  if (data.tickets.length > 10) {
+    throw createStructuredError(
+      400,
+      'Vous ne pouvez pas réserver plus de 10 tickets',
+      'You cannot reserve more than 10 tickets'
+    );
+  }
+
   // Séparer les tickets membres et non-membres
   const memberTickets = data.tickets.filter(ticket => ticket.pricing_info?.price_name?.match(/membre/i));
 
@@ -811,7 +819,7 @@ export async function createTicketsWithPayment(
       );
     }
 
-    // Vérifier le délai de 2 semaines pour les membres
+    // Vérifier le délai de 1 semaines pour les membres
     // On compte les dates différentes et les créneaux différents sur les 2 dernières semaines
     if (memberFreeTickets.length > 0) {
       // Utiliser la date la plus ancienne parmi les nouvelles réservations
@@ -820,8 +828,8 @@ export async function createTicketsWithPayment(
 
 
       // Trouver le lundi de la semaine de la date la plus ancienne
-      const earliestDay = earliestDate.getDay(); // 0 = dimanche, 1 = lundi, ..., 6 = samedi
-      const daysToMonday = earliestDay === 0 ? 6 : earliestDay - 1; // Nombre de jours à soustraire pour arriver au lundi
+      const earliestDay = earliestDate.getDay();
+      const daysToMonday = earliestDay === 0 ? 6 : earliestDay - 1;
 
       const weekMonday = new Date(earliestDate);
       weekMonday.setHours(0, 0, 0, 0);
