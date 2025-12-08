@@ -52,12 +52,14 @@ async function generateUniqueQRCode(app: FastifyInstance): Promise<string> {
 }
 
 /**
- * Construit le contenu du champ notes en combinant les notes libres et les informations de tarif
+ * Construit le contenu du champ notes en combinant les notes libres, les informations de tarif et la visite guidée
  * Si pricing_info est fourni, il sera stocké dans notes au format JSON
  */
 function buildNotesContent(
   notes: string | null | undefined,
-  pricingInfo: TicketPricingInfo | undefined
+  pricingInfo: TicketPricingInfo | undefined,
+  guidedTour?: boolean,
+  guidedTourPrice?: number
 ): string | null {
   const parts: any = {};
 
@@ -80,6 +82,14 @@ function buildNotesContent(
       pricingInfo.applied_at = new Date().toISOString();
     }
     parts.pricing_info = pricingInfo;
+  }
+
+  // Si une visite guidée est demandée, l'ajouter avec son prix
+  if (guidedTour === true) {
+    parts.guided_tour = true;
+    if (guidedTourPrice !== undefined && guidedTourPrice > 0) {
+      parts.guided_tour_price = guidedTourPrice;
+    }
   }
 
   // Si aucune information n'est présente, retourner null
@@ -253,8 +263,9 @@ export async function createTicket(
     throw new Error('Le montant du don doit être positif ou nul');
   }
 
-  // Calculer le montant total
-  const totalAmount = data.ticket_price + donationAmount;
+  // Calculer le montant total (pas de visite guidée dans createTicket)
+  const guidedTourPrice = 0;
+  const totalAmount = data.ticket_price + donationAmount + guidedTourPrice;
 
   // Validation : dates et heures
   if (!data.reservation_date) {
@@ -279,16 +290,16 @@ export async function createTicket(
   const qrCode = await generateUniqueQRCode(app);
 
   // Construire le contenu de notes avec les informations de tarif
-  const notesContent = buildNotesContent(data.notes, data.pricing_info);
+  const notesContent = buildNotesContent(data.notes, data.pricing_info, false, undefined);
 
   // Créer le ticket
   const result = await app.pg.query<Ticket>(
     `INSERT INTO tickets (
       qr_code, first_name, last_name, email, reservation_date,
       slot_start_time, slot_end_time, checkout_id, checkout_reference,
-      transaction_status, ticket_price, donation_amount, total_amount,
+      transaction_status, ticket_price, donation_amount, guided_tour_price, total_amount,
       status, notes, language
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
     RETURNING *`,
     [
       qrCode,
@@ -303,6 +314,7 @@ export async function createTicket(
       data.transaction_status ?? null,
       data.ticket_price,
       donationAmount,
+      guidedTourPrice,
       totalAmount,
       'pending', // Statut initial
       notesContent,
@@ -934,7 +946,38 @@ export async function createTicketsWithPayment(
   const slotCapacityHours = (await getSettingValue<number>(app, 'slot_capacity', 1)) || 1;
   const { isSlotComplete, calculateSlotPrice } = await import('../slots/slots.service.ts');
 
-  // Calculer le montant total (somme de tous les ticket_price + donation_amount)
+  // Gérer la visite guidée
+  const wantsGuidedTour = data.guided_tour === true;
+  let guidedTourPrice = 0;
+  if (wantsGuidedTour) {
+    // Récupérer le tarif de la visite guidée depuis les settings
+    const guidedTourPriceSetting = await getSettingValue<number>(app, 'guided_tour_price', 0);
+
+    if (guidedTourPriceSetting === null || guidedTourPriceSetting <= 0) {
+      throw createStructuredError(
+        400,
+        'Le tarif de la visite guidée n\'est pas configuré ou est invalide',
+        'The guided tour price is not configured or is invalid'
+      );
+    }
+
+    // Si un prix est fourni, le valider
+    if (data.guided_tour_price !== undefined) {
+      const tolerance = 0.01;
+      if (Math.abs(data.guided_tour_price - guidedTourPriceSetting) > tolerance) {
+        throw createStructuredError(
+          400,
+          `Le prix de la visite guidée ne correspond pas. Montant attendu: ${guidedTourPriceSetting}€, montant fourni: ${data.guided_tour_price}€`,
+          `The guided tour price does not match. Expected: ${guidedTourPriceSetting}€, provided: ${data.guided_tour_price}€`
+        );
+      }
+      guidedTourPrice = data.guided_tour_price;
+    } else {
+      guidedTourPrice = guidedTourPriceSetting;
+    }
+  }
+
+  // Calculer le montant total (somme de tous les ticket_price + donation_amount + visite guidée)
   // Ajuster automatiquement les prix pour les créneaux incomplets (demi-tarif)
   let totalAmount = 0;
   for (const ticket of data.tickets) {
@@ -982,6 +1025,12 @@ export async function createTicketsWithPayment(
       );
     }
     totalAmount += ticketPrice + donationAmount;
+  }
+
+  // Ajouter le prix de la visite guidée au total (une fois par ticket)
+  // Chaque ticket a le prix complet de la visite guidée
+  if (wantsGuidedTour) {
+    totalAmount += guidedTourPrice * data.tickets.length;
   }
 
   if (totalAmount < 0) {
@@ -1061,13 +1110,16 @@ export async function createTicketsWithPayment(
       // Utiliser le prix ajusté (déjà calculé plus haut pour les créneaux incomplets)
       const ticketPrice = ticketData.ticket_price;
       const donationAmount = ticketData.donation_amount ?? 0;
-      const ticketTotalAmount = ticketPrice + donationAmount;
+      // Le prix de la visite guidée est appliqué à chaque ticket (pas réparti)
+      // Chaque ticket contient le prix complet de la visite guidée
+      const ticketGuidedTourPrice = wantsGuidedTour ? guidedTourPrice : 0;
+      const ticketTotalAmount = ticketPrice + donationAmount + ticketGuidedTourPrice;
 
       // Générer un code QR unique pour chaque ticket
       const qrCode = await generateUniqueQRCode(app);
 
-      // Construire le contenu de notes avec les informations de tarif pour ce ticket
-      const notesContent = buildNotesContent(ticketData.notes, ticketData.pricing_info);
+      // Construire le contenu de notes avec les informations de tarif et la visite guidée pour ce ticket
+      const notesContent = buildNotesContent(ticketData.notes, ticketData.pricing_info, wantsGuidedTour, guidedTourPrice);
 
       // Si la commande est gratuite, les tickets sont directement payés
       // Sinon, ils sont en attente de paiement
@@ -1082,9 +1134,9 @@ export async function createTicketsWithPayment(
         `INSERT INTO tickets (
           qr_code, first_name, last_name, email, reservation_date,
           slot_start_time, slot_end_time, checkout_id, checkout_reference,
-          transaction_status, ticket_price, donation_amount, total_amount,
+          transaction_status, ticket_price, donation_amount, guided_tour_price, total_amount,
           status, notes, language
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING *`,
         [
           qrCode,
@@ -1099,6 +1151,7 @@ export async function createTicketsWithPayment(
           transactionStatus,
           ticketPrice,
           donationAmount,
+          ticketGuidedTourPrice,
           ticketTotalAmount,
           ticketStatus,
           notesContent,

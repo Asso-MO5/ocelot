@@ -89,7 +89,24 @@ export function normalizeLanguage(ticketLanguage: string | null | undefined): 'f
 }
 
 /**
- * Prépare les données du ticket (montants convertis, nom du visiteur)
+ * Extrait l'info visite guidée depuis les notes du ticket
+ */
+function extractGuidedTourInfo(notes: string | null): { hasGuidedTour: boolean; price: number | null } {
+  if (!notes) {
+    return { hasGuidedTour: false, price: null };
+  }
+  try {
+    const parsed = JSON.parse(notes);
+    const hasGuidedTour = parsed.guided_tour === true;
+    const price = parsed.guided_tour_price ?? null;
+    return { hasGuidedTour, price };
+  } catch {
+    return { hasGuidedTour: false, price: null };
+  }
+}
+
+/**
+ * Prépare les données du ticket (montants convertis, nom du visiteur, visite guidée)
  */
 export function prepareTicketData(ticket: Ticket) {
   const visitorName = ticket.first_name && ticket.last_name
@@ -103,15 +120,23 @@ export function prepareTicketData(ticket: Ticket) {
   const donationAmount = typeof ticket.donation_amount === 'string'
     ? parseFloat(ticket.donation_amount)
     : ticket.donation_amount;
+  const guidedTourPrice = typeof ticket.guided_tour_price === 'string'
+    ? parseFloat(ticket.guided_tour_price)
+    : (ticket.guided_tour_price ?? 0);
   const totalAmount = typeof ticket.total_amount === 'string'
     ? parseFloat(ticket.total_amount)
     : ticket.total_amount;
+
+  // Vérifier si le ticket a une visite guidée (prix > 0)
+  const hasGuidedTour = guidedTourPrice > 0;
 
   return {
     visitorName,
     ticketPrice,
     donationAmount,
+    guidedTourPrice,
     totalAmount,
+    hasGuidedTour,
   };
 }
 
@@ -165,7 +190,7 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
     containerPadding = '30px',
   } = options;
 
-  const { visitorName, ticketPrice, donationAmount, totalAmount } = prepareTicketData(ticket);
+  const { visitorName, ticketPrice, donationAmount, totalAmount, hasGuidedTour, guidedTourPrice } = prepareTicketData(ticket);
 
   const translations = {
     fr: {
@@ -174,6 +199,7 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       timeSlot: 'Créneau horaire',
       ticketPrice: 'Prix du billet',
       donation: 'Don',
+      guidedTour: 'Visite guidée',
       total: 'Total',
       qrCodeTitle: 'Votre code QR',
       qrCodeDescription: 'Présentez ce code QR à l\'entrée du musée',
@@ -185,6 +211,7 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       timeSlot: 'Time slot',
       ticketPrice: 'Ticket price',
       donation: 'Donation',
+      guidedTour: 'Guided tour',
       total: 'Total',
       qrCodeTitle: 'Your QR code',
       qrCodeDescription: 'Present this QR code at the museum entrance',
@@ -350,6 +377,12 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       <div class="detail-row">
         <span class="detail-label">${t.donation}:</span>
         <span class="detail-value">${donationAmount.toFixed(2)}€</span>
+      </div>
+      ` : ''}
+      ${hasGuidedTour && guidedTourPrice > 0 ? `
+      <div class="detail-row">
+        <span class="detail-label">${t.guidedTour}:</span>
+        <span class="detail-value">${guidedTourPrice.toFixed(2)}€</span>
       </div>
       ` : ''}
       <div class="detail-row">

@@ -65,7 +65,16 @@ export async function getPricesHandler(
 ) {
   try {
     const prices = await getPrices(app, req.query);
-    return reply.send(prices);
+
+    // Récupérer le tarif de la visite guidée depuis les settings
+    const { getSettingValue } = await import('../settings/settings.service.ts');
+    const guidedTourPrice = await getSettingValue<number>(app, 'guided_tour_price', 0);
+
+    // Retourner les prix avec le tarif de la visite guidée
+    return reply.send({
+      prices,
+      guided_tour_price: guidedTourPrice ?? null,
+    });
   } catch (err: any) {
     app.log.error({ err, query: req.query }, 'Erreur lors de la récupération des tarifs');
     return reply.code(500).send({ error: 'Erreur lors de la récupération des tarifs' });

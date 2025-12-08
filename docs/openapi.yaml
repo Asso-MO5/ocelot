@@ -2190,46 +2190,58 @@ paths:
           content:
             application/json:
               schema:
-                type: "array"
-                items:
-                  type: "object"
-                  properties:
-                    id:
-                      type: "string"
-                    amount:
-                      type: "number"
-                    audience_type:
-                      type: "string"
-                    start_date:
-                      type:
-                        - string
-                      nullable: true
-                    end_date:
-                      type:
-                        - string
-                      nullable: true
-                    is_active:
-                      type: "boolean"
-                    requires_proof:
-                      type: "boolean"
-                    created_at:
-                      type: "string"
-                    updated_at:
-                      type: "string"
-                    translations:
+                type: "object"
+                properties:
+                  prices:
+                    type: "array"
+                    items:
                       type: "object"
-                      description: "Traductions organisées par langue et champ"
-                      additionalProperties:
-                        type: "object"
-                        additionalProperties:
+                      properties:
+                        id:
                           type: "string"
-                    name:
-                      type: "string"
-                    description:
-                      type:
-                        - string
-                      nullable: true
-              example: null
+                        amount:
+                          type: "number"
+                        audience_type:
+                          type: "string"
+                        start_date:
+                          type:
+                            - string
+                          nullable: true
+                        end_date:
+                          type:
+                            - string
+                          nullable: true
+                        is_active:
+                          type: "boolean"
+                        requires_proof:
+                          type: "boolean"
+                        created_at:
+                          type: "string"
+                        updated_at:
+                          type: "string"
+                        translations:
+                          type: "object"
+                          description: "Traductions organisées par langue et champ"
+                          additionalProperties:
+                            type: "object"
+                            additionalProperties:
+                              type: "string"
+                        name:
+                          type: "string"
+                        description:
+                          type:
+                            - string
+                          nullable: true
+                    description: "Liste des tarifs du musée"
+                  guided_tour_price:
+                    type:
+                      - number
+                    description: "Prix de la visite guidée (en euros). null si non configuré."
+                    nullable: true
+                required:
+                  - prices
+                  - guided_tour_price
+              example:
           headers: null
         500:
           description: "Erreur serveur"
@@ -3599,7 +3611,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2025-12-05T22:20:37.458Z"
+                      default: "2025-12-08T21:10:07.280Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -4602,6 +4614,14 @@ paths:
                     pattern: "^[A-Z0-9]{12}$"
                     description: "Code cadeau (12 caractères alphanumériques majuscules)"
                   description: "Tableau de codes cadeaux à utiliser (optionnel). Chaque code offre une place gratuite, appliquée aux tickets les plus chers en premier."
+                guided_tour:
+                  type: "boolean"
+                  default: false
+                  description: "true si le visiteur souhaite une visite guidée (optionnel, false par défaut)"
+                guided_tour_price:
+                  type: "number"
+                  minimum: 0
+                  description: "Prix de la visite guidée (optionnel, sera récupéré depuis les settings si non fourni). Doit correspondre au tarif configuré dans les settings."
                 currency:
                   type: "string"
                   default: "EUR"
@@ -4832,6 +4852,9 @@ paths:
                         occupancy_percentage:
                           type: "number"
                           description: "Pourcentage d'occupation (0-100)"
+                        is_half_price:
+                          type: "boolean"
+                          description: "true si le créneau est incomplet (demi-tarif), false si complet (plein tarif)"
                       required:
                         - start_time
                         - end_time
@@ -4839,6 +4862,7 @@ paths:
                         - booked
                         - available
                         - occupancy_percentage
+                        - is_half_price
                   total_capacity:
                     type: "number"
                     description: "Capacité totale de la journée"

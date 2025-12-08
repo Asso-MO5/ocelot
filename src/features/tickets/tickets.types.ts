@@ -46,6 +46,7 @@ export interface Ticket {
   transaction_status: string | null;
   ticket_price: number;
   donation_amount: number;
+  guided_tour_price: number; // Prix de la visite guidée (0 si pas de visite guidée)
   total_amount: number;
   status: TicketStatus;
   used_at: string | null;
@@ -143,6 +144,8 @@ export interface CreateTicketsWithPaymentBody {
     pricing_info?: TicketPricingInfo; // Informations de tarif (sera stocké dans notes au format JSON)
   }>;
   gift_codes?: string[]; // Tableau de codes cadeaux à utiliser (optionnel)
+  guided_tour?: boolean; // true si le visiteur souhaite une visite guidée (optionnel, false par défaut)
+  guided_tour_price?: number; // Prix de la visite guidée (optionnel, sera récupéré depuis les settings si non fourni)
   currency?: string; // Devise pour le paiement (défaut: EUR)
   description?: string; // Description du paiement
 }

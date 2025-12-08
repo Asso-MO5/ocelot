@@ -295,31 +295,42 @@ export const getPricesSchema = {
   },
   response: {
     200: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          amount: { type: 'number' },
-          audience_type: { type: 'string' },
-          start_date: { type: ['string', 'null'] },
-          end_date: { type: ['string', 'null'] },
-          is_active: { type: 'boolean' },
-          requires_proof: { type: 'boolean' },
-          created_at: { type: 'string' },
-          updated_at: { type: 'string' },
-          translations: {
+      type: 'object',
+      properties: {
+        prices: {
+          type: 'array',
+          items: {
             type: 'object',
-            description: 'Traductions organisées par langue et champ',
-            additionalProperties: {
-              type: 'object',
-              additionalProperties: { type: 'string' },
+            properties: {
+              id: { type: 'string' },
+              amount: { type: 'number' },
+              audience_type: { type: 'string' },
+              start_date: { type: ['string', 'null'] },
+              end_date: { type: ['string', 'null'] },
+              is_active: { type: 'boolean' },
+              requires_proof: { type: 'boolean' },
+              created_at: { type: 'string' },
+              updated_at: { type: 'string' },
+              translations: {
+                type: 'object',
+                description: 'Traductions organisées par langue et champ',
+                additionalProperties: {
+                  type: 'object',
+                  additionalProperties: { type: 'string' },
+                },
+              },
+              name: { type: 'string' },
+              description: { type: ['string', 'null'] },
             },
           },
-          name: { type: 'string' },
-          description: { type: ['string', 'null'] },
+          description: 'Liste des tarifs du musée',
+        },
+        guided_tour_price: {
+          type: ['number', 'null'],
+          description: 'Prix de la visite guidée (en euros). null si non configuré.',
         },
       },
+      required: ['prices', 'guided_tour_price'],
     },
     500: {
       type: 'object',
