@@ -23,7 +23,62 @@ function minutesToTime(minutes: number): string {
 }
 
 /**
+ * Vérifie si un créneau correspond exactement à un créneau standard (complet)
+ * Un créneau est "complet" s'il commence à une heure pile (14:00, 15:00, etc.)
+ * et a une durée égale à slotCapacityHours
+ * 
+ * @param slotStart Heure de début du créneau (HH:MM:SS)
+ * @param slotEnd Heure de fin du créneau (HH:MM:SS)
+ * @param slotCapacityHours Durée standard d'un créneau en heures
+ * @returns true si le créneau est complet, false sinon
+ */
+export function isSlotComplete(
+  slotStart: string,
+  slotEnd: string,
+  slotCapacityHours: number
+): boolean {
+  const startMinutes = timeToMinutes(slotStart);
+  const endMinutes = timeToMinutes(slotEnd);
+  const slotCapacityMinutes = slotCapacityHours * 60;
+  const startMins = startMinutes % 60;
+  if (startMins !== 0) {
+    return false;
+  }
+
+  // Vérifier que la durée correspond exactement à slotCapacityHours
+  const actualDuration = endMinutes - startMinutes;
+  return actualDuration === slotCapacityMinutes;
+}
+
+/**
+ * Calcule le tarif ajusté pour un créneau (demi-tarif si incomplet, arrondi à l'inférieur)
+ * 
+ * @param basePrice Prix de base du tarif
+ * @param slotStart Heure de début du créneau (HH:MM:SS)
+ * @param slotEnd Heure de fin du créneau (HH:MM:SS)
+ * @param slotCapacityHours Durée standard d'un créneau en heures
+ * @returns Prix ajusté (demi-tarif si incomplet, arrondi à l'inférieur)
+ */
+export function calculateSlotPrice(
+  basePrice: number,
+  slotStart: string,
+  slotEnd: string,
+  slotCapacityHours: number
+): number {
+  if (isSlotComplete(slotStart, slotEnd, slotCapacityHours)) {
+    return basePrice;
+  }
+
+  // Créneau incomplet : demi-tarif, arrondi à l'inférieur
+  return Math.floor(basePrice / 2);
+}
+
+/**
  * Génère les slots pour une plage horaire donnée
+ * Les créneaux sont générés par tranche de 1h (14h, 15h, 16h...)
+ * Chaque créneau a une durée de slotCapacityHours à partir de l'heure de début
+ * Exemple : si slotCapacityHours = 2, on génère 14h-16h, 15h-17h, 16h-18h...
+ * Si il reste moins de slotCapacityHours avant la fermeture, on génère un créneau incomplet (1h minimum, demi-tarif)
  */
 function generateSlotsForSchedule(
   startTime: string,
@@ -35,22 +90,48 @@ function generateSlotsForSchedule(
   const endMinutes = timeToMinutes(endTime);
   const slotCapacityMinutes = slotCapacityHours * 60;
 
+  // Générer des créneaux toutes les heures (60 minutes)
+  // Chaque créneau commence à une heure pile (14:00, 15:00, 16:00...)
+  // et dure slotCapacityHours
   let currentStart = startMinutes;
 
+  // Arrondir à l'heure inférieure pour commencer à une heure pile
+  const hours = Math.floor(currentStart / 60);
+  currentStart = hours * 60;
 
+  // Générer les créneaux complets jusqu'à ce que le créneau suivant dépasse endTime
   while (currentStart + slotCapacityMinutes <= endMinutes) {
     const slotStart = minutesToTime(currentStart);
     const slotEnd = minutesToTime(currentStart + slotCapacityMinutes);
     slots.push({ start_time: slotStart, end_time: slotEnd });
-    currentStart += slotCapacityMinutes;
+
+    // Passer à l'heure suivante (60 minutes plus tard)
+    currentStart += 60;
+  }
+
+  // Si il reste du temps (au moins 1 heure) mais pas assez pour un créneau complet,
+  // générer un créneau incomplet (1h minimum, demi-tarif)
+  const remainingMinutes = endMinutes - currentStart;
+  if (remainingMinutes >= 60) {
+    const slotStart = minutesToTime(currentStart);
+    const slotEnd = minutesToTime(endMinutes);
+    slots.push({ start_time: slotStart, end_time: slotEnd });
   }
 
   return slots;
 }
 
 /**
- * Compte le nombre de tickets pour un créneau donné
- * Un ticket est compté dans un créneau si son heure de début est dans ce créneau
+ * Compte le nombre de tickets qui se chevauchent avec un créneau donné
+ * Un ticket se chevauche avec un créneau s'il commence avant la fin du créneau
+ * et se termine après le début du créneau
+ * 
+ * Exemple : créneau 14h-16h
+ * - Ticket 13h-15h : chevauche (se termine après 14h)
+ * - Ticket 14h-16h : chevauche (identique)
+ * - Ticket 15h-17h : chevauche (commence avant 16h)
+ * - Ticket 16h-18h : chevauche (commence à 16h, se termine après 16h)
+ * - Ticket 17h-19h : ne chevauche pas (commence après 16h)
  */
 async function countTicketsForSlot(
   app: FastifyInstance,
@@ -62,14 +143,15 @@ async function countTicketsForSlot(
     throw new Error('Base de données non disponible');
   }
 
-  // Récupérer tous les tickets pour cette date qui commencent dans ce créneau
+  // Récupérer tous les tickets pour cette date qui se chevauchent avec ce créneau
+  // Un ticket se chevauche s'il commence avant la fin du créneau ET se termine après le début du créneau
   const result = await app.pg.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM tickets 
      WHERE reservation_date = $1 
      AND status IN ('pending', 'paid')
-     AND slot_start_time >= $2
-     AND slot_start_time < $3`,
+     AND slot_start_time < $3
+     AND slot_end_time > $2`,
     [date, slotStart, slotEnd]
   );
 
@@ -162,7 +244,16 @@ export async function getSlotsForDate(
   // Pour chaque slot, compter les tickets et calculer la capacité
   const slots: Slot[] = [];
 
-  let totalBooked = 0;
+  // Récupérer le nombre total de tickets uniques pour cette date
+  // (pour éviter de compter plusieurs fois le même ticket dans totalBooked)
+  const uniqueTicketsResult = await app.pg.query<{ count: string }>(
+    `SELECT COUNT(DISTINCT id) as count
+     FROM tickets 
+     WHERE reservation_date = $1 
+     AND status IN ('pending', 'paid')`,
+    [date]
+  );
+  const totalUniqueBooked = parseInt(uniqueTicketsResult.rows[0].count, 10);
 
   for (const slotRange of slotRanges) {
     const booked = await countTicketsForSlot(
@@ -177,6 +268,10 @@ export async function getSlotsForDate(
       ? Math.round((booked / dailyCapacity) * 100)
       : 0;
 
+    // Vérifier si le créneau est complet ou incomplet (demi-tarif)
+    const isComplete = isSlotComplete(slotRange.start_time, slotRange.end_time, slotCapacityHours);
+    const isHalfPrice = !isComplete;
+
     slots.push({
       start_time: slotRange.start_time,
       end_time: slotRange.end_time,
@@ -184,19 +279,21 @@ export async function getSlotsForDate(
       booked,
       available,
       occupancy_percentage: occupancyPercentage,
+      is_half_price: isHalfPrice,
     });
-
-    totalBooked += booked;
   }
 
+  // Avec les créneaux qui se chevauchent, la capacité totale est plus complexe
+  // On utilise le nombre de créneaux multiplié par la capacité quotidienne
+  // mais on sait que les tickets peuvent se chevauchent
   const totalCapacity = slots.length * dailyCapacity;
-  const totalAvailable = totalCapacity - totalBooked;
+  const totalAvailable = Math.max(0, totalCapacity - totalUniqueBooked);
 
   return {
     date,
     slots,
     total_capacity: totalCapacity,
-    total_booked: totalBooked,
+    total_booked: totalUniqueBooked,
     total_available: totalAvailable,
   };
 }

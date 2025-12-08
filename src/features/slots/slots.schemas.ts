@@ -51,6 +51,10 @@ export const getSlotsSchema = {
                 type: 'number',
                 description: 'Pourcentage d\'occupation (0-100)',
               },
+              is_half_price: {
+                type: 'boolean',
+                description: 'true si le créneau est incomplet (demi-tarif), false si complet (plein tarif)',
+              },
             },
             required: [
               'start_time',
@@ -59,6 +63,7 @@ export const getSlotsSchema = {
               'booked',
               'available',
               'occupancy_percentage',
+              'is_half_price',
             ],
           },
         },

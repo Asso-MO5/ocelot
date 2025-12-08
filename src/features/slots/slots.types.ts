@@ -12,6 +12,7 @@ export interface Slot {
   booked: number; // Nombre de tickets réservés pour ce créneau
   available: number; // Nombre de places disponibles
   occupancy_percentage: number; // Pourcentage d'occupation (0-100)
+  is_half_price: boolean; // true si le créneau est incomplet (demi-tarif), false si complet (plein tarif)
 }
 
 /**

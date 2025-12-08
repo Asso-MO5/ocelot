@@ -186,12 +186,16 @@ async function validatePricingInfo(
     );
   }
 
-  // Vérifier que le montant du ticket correspond au montant du tarif
-  if (Math.abs(expectedAmount - ticketPrice) > tolerance) {
+  // Vérifier que le montant du ticket correspond au montant du tarif (prix de base) ou au demi-tarif (pour créneaux incomplets)
+  const halfPrice = Math.floor(expectedAmount / 2);
+  const isFullPrice = Math.abs(expectedAmount - ticketPrice) <= tolerance;
+  const isHalfPrice = Math.abs(halfPrice - ticketPrice) <= tolerance;
+
+  if (!isFullPrice && !isHalfPrice) {
     throw createStructuredError(
       400,
-      `Le montant du ticket (${ticketPrice}€) ne correspond pas au montant du tarif (${expectedAmount}€)`,
-      `The ticket amount (${ticketPrice}€) does not match the price amount (${expectedAmount}€)`
+      `Le montant du ticket ne correspond pas au montant du tarif. Montant attendu: ${expectedAmount}€ (plein tarif) ou ${halfPrice}€ (demi-tarif), montant du ticket: ${ticketPrice}€`,
+      `The ticket amount does not match the price amount. Expected: ${expectedAmount}€ (full price) or ${halfPrice}€ (half price), ticket amount: ${ticketPrice}€`
     );
   }
 
@@ -925,10 +929,44 @@ export async function createTicketsWithPayment(
     }
   }
 
+  // Récupérer slotCapacityHours pour calculer les tarifs ajustés
+  const { getSettingValue } = await import('../settings/settings.service.ts');
+  const slotCapacityHours = (await getSettingValue<number>(app, 'slot_capacity', 1)) || 1;
+  const { isSlotComplete, calculateSlotPrice } = await import('../slots/slots.service.ts');
+
   // Calculer le montant total (somme de tous les ticket_price + donation_amount)
+  // Ajuster automatiquement les prix pour les créneaux incomplets (demi-tarif)
   let totalAmount = 0;
   for (const ticket of data.tickets) {
-    if (ticket.ticket_price < 0) {
+    let ticketPrice = ticket.ticket_price;
+
+    // Si le créneau est incomplet, appliquer le demi-tarif (arrondi à l'inférieur)
+    if (ticket.slot_start_time && ticket.slot_end_time && ticket.pricing_info?.price_amount) {
+      const basePrice = ticket.pricing_info.price_amount;
+      const isComplete = isSlotComplete(ticket.slot_start_time, ticket.slot_end_time, slotCapacityHours);
+
+      if (!isComplete) {
+        // Créneau incomplet : recalculer le prix avec demi-tarif
+        const adjustedPrice = calculateSlotPrice(basePrice, ticket.slot_start_time, ticket.slot_end_time, slotCapacityHours);
+
+        // Si le prix envoyé ne correspond pas au prix ajusté, utiliser le prix ajusté
+        // (le frontend peut avoir fait une erreur de calcul)
+        if (ticketPrice !== adjustedPrice) {
+          app.log.info({
+            ticketPrice,
+            adjustedPrice,
+            slotStart: ticket.slot_start_time,
+            slotEnd: ticket.slot_end_time,
+            basePrice,
+          }, 'Ajustement automatique du prix pour créneau incomplet');
+          ticketPrice = adjustedPrice;
+          // Mettre à jour le prix dans le ticket pour qu'il soit cohérent
+          ticket.ticket_price = adjustedPrice;
+        }
+      }
+    }
+
+    if (ticketPrice < 0) {
       throw createStructuredError(
         400,
         'Le prix du ticket doit être positif ou nul',
@@ -943,7 +981,7 @@ export async function createTicketsWithPayment(
         'The donation amount must be positive or null'
       );
     }
-    totalAmount += ticket.ticket_price + donationAmount;
+    totalAmount += ticketPrice + donationAmount;
   }
 
   if (totalAmount < 0) {
@@ -989,7 +1027,9 @@ export async function createTicketsWithPayment(
       );
     }
     // Validation : vérifier que le tarif existe et est valide si pricing_info est fourni
-    await validatePricingInfo(app, ticket.pricing_info, ticket.ticket_price, ticket.reservation_date);
+    // On valide avec le prix de base (price_amount) avant ajustement
+    const basePriceForValidation = ticket.pricing_info?.price_amount ?? ticket.ticket_price;
+    await validatePricingInfo(app, ticket.pricing_info, basePriceForValidation, ticket.reservation_date);
   }
 
   // Si le montant total est 0, ne pas créer de checkout SumUp
@@ -1018,8 +1058,10 @@ export async function createTicketsWithPayment(
     await app.pg.query('BEGIN');
 
     for (const [index, ticketData] of data.tickets.entries()) {
+      // Utiliser le prix ajusté (déjà calculé plus haut pour les créneaux incomplets)
+      const ticketPrice = ticketData.ticket_price;
       const donationAmount = ticketData.donation_amount ?? 0;
-      const ticketTotalAmount = ticketData.ticket_price + donationAmount;
+      const ticketTotalAmount = ticketPrice + donationAmount;
 
       // Générer un code QR unique pour chaque ticket
       const qrCode = await generateUniqueQRCode(app);
@@ -1055,7 +1097,7 @@ export async function createTicketsWithPayment(
           checkoutId,
           checkoutReference,
           transactionStatus,
-          ticketData.ticket_price,
+          ticketPrice,
           donationAmount,
           ticketTotalAmount,
           ticketStatus,
@@ -1336,7 +1378,7 @@ export async function getValidatedTicketsBySlot(
     params.push(slot_start_time, slot_end_time);
     paramIndex += 2;
   } else {
-    // Filtrer exactement sur le créneau
+    // Filtrer exactement sur le créneau (début ET fin correspondent)
     sql += ` AND slot_start_time = $${paramIndex} AND slot_end_time = $${paramIndex + 1}`;
     params.push(slot_start_time, slot_end_time);
     paramIndex += 2;
