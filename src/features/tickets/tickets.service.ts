@@ -765,8 +765,8 @@ export async function createTicketsWithPayment(
     if (!res.ok) {
       throw createStructuredError(
         500,
-        'Erreur lors de la vérification du membre',
-        'Error checking member status'
+        'Erreur lors de la vérification de l\'adhésion',
+        'Error checking membership status'
       );
     }
 
