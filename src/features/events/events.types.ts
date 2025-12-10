@@ -173,6 +173,7 @@ export interface CalendarDay {
     audience_type: string;
     description: string | null;
   }>; // Horaires d'ouverture du musée
+  paid_tickets_count: number; // Nombre de tickets payés pour ce jour
   events: Event[]; // Événements de ce jour
   holiday_periods: Array<{
     id: string;

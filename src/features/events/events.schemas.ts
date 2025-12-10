@@ -559,6 +559,7 @@ export const getCalendarSchema = {
                   },
                 },
               },
+              paid_tickets_count: { type: 'integer' },
               events: {
                 type: 'array',
                 items: {

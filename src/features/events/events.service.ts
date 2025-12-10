@@ -627,11 +627,32 @@ export async function getCalendar(
       date: dateStr,
       is_open: false,
       opening_hours: [],
+      paid_tickets_count: 0,
       events: [],
       holiday_periods: [],
       closure_periods: [],
     });
     currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  // Récupérer le nombre de tickets payés par date de réservation
+  const ticketsCountResult = await app.pg.query<{
+    reservation_date: string;
+    count: string;
+  }>(
+    `SELECT reservation_date::text, COUNT(*)::int AS count
+     FROM tickets
+     WHERE status = 'paid'
+       AND reservation_date BETWEEN $1 AND $2
+     GROUP BY reservation_date`,
+    [
+      actualStartDate.toISOString().split('T')[0],
+      actualEndDate.toISOString().split('T')[0],
+    ]
+  );
+  const paidTicketsByDate = new Map<string, number>();
+  for (const row of ticketsCountResult.rows) {
+    paidTicketsByDate.set(row.reservation_date, parseInt(row.count, 10));
   }
 
   // Récupérer les horaires pour cette plage
@@ -722,6 +743,9 @@ export async function getCalendar(
         end_date: p.end_date,
         zone: p.zone,
       }));
+
+    // Nombre de tickets payés pour ce jour
+    day.paid_tickets_count = paidTicketsByDate.get(day.date) ?? 0;
 
     // Filtrer les événements pour ce jour
     day.events = events.filter(e => {
