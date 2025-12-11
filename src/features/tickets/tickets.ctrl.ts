@@ -11,13 +11,13 @@ import {
   validateTicket,
   deleteTicket,
 } from './tickets.service.ts';
+import { generateTicketPDF } from './tickets.pdf.ts';
 import type {
   CreateTicketBody,
   CreateTicketsWithPaymentBody,
   UpdateTicketBody,
   GetTicketsQuery,
   ValidateTicketBody,
-  PaginatedTicketsResponse,
 } from './tickets.types.ts';
 import {
   createTicketSchema,
@@ -129,6 +129,47 @@ export async function getTicketByIdHandler(
     if (handled.sent) return;
 
     return reply.code(500).send({ error: 'Erreur lors de la récupération du ticket' });
+  }
+}
+
+/**
+ * Handler admin pour régénérer le PDF d'un ticket et l'afficher
+ */
+export async function regenerateTicketPDFHandler(
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const ticket = await getTicketById(app, req.params.id);
+
+    if (!ticket) {
+      return reply.code(404).send({ error: 'Ticket non trouvé' });
+    }
+
+    if (ticket.status !== 'paid') {
+      return reply.code(400).send({ error: 'Le ticket n\'est pas payé, PDF non généré' });
+    }
+
+    const pdfBuffer = await generateTicketPDF(ticket, true);
+
+    if (!pdfBuffer) {
+      return reply.code(400).send({ error: 'Impossible de générer le PDF du ticket' });
+    }
+
+    const fileName = `billet-${ticket.qr_code}.pdf`;
+
+    reply
+      .type('application/pdf')
+      .header('Content-Disposition', `inline; filename="${fileName}"`)
+      .send(pdfBuffer);
+  } catch (err: any) {
+    app.log.error({ err, id: req.params.id }, 'Erreur lors de la régénération du PDF du ticket');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+
+    return reply.code(500).send({ error: 'Erreur lors de la régénération du PDF du ticket' });
   }
 }
 
@@ -441,6 +482,27 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       ],
     },
     async (req, reply) => validateTicketHandler(req, reply, app)
+  );
+
+  // Route admin : régénérer le PDF d'un ticket et l'afficher
+  app.get<{ Params: { id: string } }>(
+    '/admin/tickets/:id/pdf',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+      },
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+      ],
+    },
+    async (req, reply) => regenerateTicketPDFHandler(req, reply, app)
   );
 
   // Route publique : récupération des tickets par checkout_id

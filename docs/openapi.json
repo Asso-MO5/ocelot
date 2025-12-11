@@ -4746,6 +4746,90 @@
         ]
       }
     },
+    "/admin/tickets/:id/pdf": {
+      "get": {
+        "tags": ["Musée - Tickets"],
+        "summary": "Régénère le PDF d'un ticket (admin) et l'affiche",
+        "description": "",
+        "operationId": "get_admin_tickets_:id_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID du ticket",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID du ticket"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Succès",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Code 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Code 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
     "/museum/tickets/payment": {
       "post": {
         "tags": ["Musée - Tickets"],
