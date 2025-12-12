@@ -784,12 +784,6 @@ export async function createTicketsWithPayment(
     const numOfChildren = memberData.children?.length || 0;
     let memberFreeTickets = memberTickets.filter(ticket => ticket.ticket_price === 0);
 
-    app.log.info({
-      email: data.email,
-      memberTicketsCount: memberFreeTickets.length,
-      numOfChildren,
-      totalTicketsBefore: data.tickets.length,
-    }, 'Vérification des places membres');
 
     // Vérifier qu'il y a suffisamment d'enfants pour toutes les places membres
     // Note: 1 place pour le parent + N places pour les enfants (minimum 1 si pas d'enfants)
@@ -822,12 +816,6 @@ export async function createTicketsWithPayment(
           'No ticket can be created. Please check the number of children and available places.'
         );
       }
-
-      app.log.info({
-        email: data.email,
-        totalTicketsAfter: data.tickets.length,
-        removedCount: ticketsToRemove,
-      }, 'Places membres supprimées');
 
       // Recalculer les tickets membres après suppression
       memberFreeTickets = data.tickets.filter(
@@ -1084,8 +1072,12 @@ export async function createTicketsWithPayment(
   // Si le montant total est 0, ne pas créer de checkout SumUp
   // Les tickets seront créés directement avec le statut "paid"
   let checkout: { id: string; checkout_reference: string; status: string } | null = null;
-  const isFreeOrder = totalAmount === 0;
+  
+  // TODO REMOVE THIS
+  //const isFreeOrder = totalAmount === 0;
+  const isFreeOrder = true;
 
+  
   if (!isFreeOrder) {
     // Créer le checkout SumUp uniquement si le montant est supérieur à 0
     const currency = data.currency || 'EUR';
@@ -1128,7 +1120,11 @@ export async function createTicketsWithPayment(
       // Le premier ticket a checkout_id = '0' pour identifier le premier ticket de chaque commande
       const checkoutId = checkout?.id ?? String(index);
       const checkoutReference = checkout?.checkout_reference ?? null;
+
+      /**
       const transactionStatus = checkout?.status ?? null;
+      **/
+      const transactionStatus = 'NOT_PAID';
 
       const result = await app.pg.query<Ticket>(
         `INSERT INTO tickets (
@@ -1191,10 +1187,19 @@ export async function createTicketsWithPayment(
   }
 
   return {
+    checkout_id:  null,
+    checkout_reference: null,
+    tickets: createdTickets,
+  }
+
+  /**
+  return {
     checkout_id: checkout?.id ?? null,
     checkout_reference: checkout?.checkout_reference ?? null,
     tickets: createdTickets,
   };
+
+  **/
 }
 
 /**
