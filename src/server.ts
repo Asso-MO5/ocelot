@@ -84,6 +84,7 @@ const start = async () => {
         // Extraire le pathname sans les query parameters
         const pathname = currentRequestUrl ? currentRequestUrl.split('?')[0] : null;
         // Routes qui peuvent être appelées sans origin même en production
+        // Note: Les WebSockets utilisent un handshake HTTP spécial, donc on les autorise
         const isPublicRoute = pathname && (
           pathname === '/auth/signin' ||
           pathname === '/auth/callback' ||
@@ -91,7 +92,8 @@ const start = async () => {
           pathname === '/museum/schedules/public' ||
           pathname === '/pay/webhook' ||
           pathname === '/museum/slots' ||
-          pathname.startsWith('/tickets/')
+          pathname.startsWith('/tickets/') ||
+          pathname === '/' // Route WebSocket
         );
 
         if (!origin) {
@@ -112,7 +114,7 @@ const start = async () => {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Upgrade', 'Connection', 'Sec-WebSocket-Key', 'Sec-WebSocket-Version', 'Sec-WebSocket-Extensions', 'Sec-WebSocket-Protocol'],
       exposedHeaders: ['Set-Cookie'],
       maxAge: 86400
     });
