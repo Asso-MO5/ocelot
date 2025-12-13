@@ -241,7 +241,7 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       text-align: center;
       margin-bottom: 30px;
       padding: 30px;
-      background-color: #777;
+      background-color: black;
     }
     .logo img {
       max-width: 200px;
@@ -487,13 +487,8 @@ export async function sendTicketConfirmationEmail(
     const language = (ticket.language?.split('-')[0] ?? 'fr') as 'fr' | 'en';
     const ticketViewUrl = `${baseUrl}/tickets/${ticket.qr_code}`;
     let htmlContent = '';
-    
-
     try {
-      htmlContent = await generateTicketEmailHTML({
-        ...ticket,
-        status: 'pending',
-      }, ticketViewUrl);
+      htmlContent = await generateTicketEmailHTML(ticket, ticketViewUrl);
     } catch (error: any) {
       app.log.error({
         error: error?.message || error,
@@ -522,10 +517,7 @@ export async function sendTicketConfirmationEmail(
     let pdfAttachment = null;
     try {
       const { generateTicketPDF } = await import('./tickets.pdf.ts');
-      const pdfBuffer = await generateTicketPDF({
-        ...ticket,
-        status: 'pending',
-      }, ticket.status === 'paid');
+      const pdfBuffer = await generateTicketPDF(ticket, ticket.status === 'paid');
 
       // Si le PDF n'a pas été généré (ticket non valide), continuer sans PDF
       if (pdfBuffer) {
@@ -605,7 +597,7 @@ export async function generateTicketViewHTML(
       invalid: 'Billet invalide',
       invalidReason: 'Ce billet n\'est plus valide',
       status: 'Statut',
-      statusPaid: 'à payer sur place',
+      statusPaid: 'Payé',
       statusPending: 'En attente de paiement',
       statusCancelled: 'Annulé',
       statusUsed: 'Utilisé',
@@ -617,7 +609,7 @@ export async function generateTicketViewHTML(
       invalid: 'Invalid ticket',
       invalidReason: 'This ticket is no longer valid',
       status: 'Status',
-      statusPaid: 'to pay on site',
+      statusPaid: 'Paid',
       statusPending: 'Pending payment',
       statusCancelled: 'Cancelled',
       statusUsed: 'Used',
@@ -640,10 +632,7 @@ export async function generateTicketViewHTML(
   }
 
   return generateTicketHTMLBase({
-    ticket: {
-      ...ticket,
-      status: 'pending',
-    },
+    ticket,
     language,
     qrCodeBase64,
     logoBase64,
