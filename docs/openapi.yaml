@@ -14,7 +14,7 @@ tags:
   - name: "Authentification"
     description: "Endpoints d'authentification Discord OAuth2"
   - name: "Paiement"
-    description: "Endpoints de paiement SumUp"
+    description: "Endpoints de paiement"
   - name: "Musée - Horaires"
     description: "Endpoints de gestion des horaires d'ouverture"
   - name: "Musée - Tarifs"
@@ -355,224 +355,21 @@ paths:
           headers: null
       security:
         - cookieAuth:
-  /pay/checkout:
-    post:
-      tags:
-        - Paiement
-      summary: "Crée un nouveau checkout SumUp pour un paiement"
-      description: "**Créer un checkout SumUp avec succès** : que je fournis un montant valide dans le body je reçois une réponse 200 la réponse contient un \"checkout_id\" la réponse contient le \"checkout_reference\" la réponse contient le \"amount\" la réponse contient la \"currency\" la réponse contient le \"status\"
-
-**Créer un checkout avec un montant invalide** : que je fournis un montant négatif ou nul dans le body je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0
-
-**Créer un checkout avec une devise personnalisée** : que je fournis un montant valide que je spécifie une devise dans le body(par exemple \"USD\") je reçois une réponse 200 la réponse contient la devise spécifiée
-
-**Créer un checkout avec une description** : que je fournis un montant valide que je fournis une description dans le body je reçois une réponse 200 le checkout est créé avec la description fournie
-
-**Créer un checkout avec une référence personnalisée** : que je fournis un montant valide que je fournis une \"checkout_reference\" personnalisée dans le body je reçois une réponse 200 la réponse contient la référence personnalisée fournie
-
-**Créer un checkout sans montant** : que je ne fournis pas de montant dans le body je reçois une réponse 400 la réponse contient un message d'erreur de validation
-
-**Créer un checkout avec configuration SumUp manquante** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message indiquant que la configuration SumUp est manquante
-
-**Gérer les erreurs de l'API SumUp** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message d'erreur générique les détails de l'erreur sont loggés côté serveur
-
-### Scénarios de test
-
-**Créer un checkout SumUp avec succès**
-
-⚡ je fais une requête POST vers \"/pay/checkout\"
-
-✅ que je fournis un montant valide dans le body
-
-✅ je reçois une réponse 200
-
-✅ la réponse contient un \"checkout_id\"
-
-✅ la réponse contient le \"checkout_reference\"
-
-✅ la réponse contient le \"amount\"
-
-✅ la réponse contient la \"currency\"
-
-✅ la réponse contient le \"status\"
-
-**Créer un checkout avec un montant invalide**
-
-⚡ je fais une requête POST vers \"/pay/checkout\"
-
-✅ que je fournis un montant négatif ou nul dans le body
-
-✅ je reçois une réponse 400
-
-✅ la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0
-
-**Créer un checkout avec une devise personnalisée**
-
-⚡ je fais une requête POST vers \"/pay/checkout\"
-
-✅ que je fournis un montant valide
-
-✅ que je spécifie une devise dans le body(par exemple \"USD\")
-
-✅ je reçois une réponse 200
-
-✅ la réponse contient la devise spécifiée
-
-**Créer un checkout avec une description**
-
-⚡ je fais une requête POST vers \"/pay/checkout\"
-
-✅ que je fournis un montant valide
-
-✅ que je fournis une description dans le body
-
-✅ je reçois une réponse 200
-
-✅ le checkout est créé avec la description fournie
-
-**Créer un checkout avec une référence personnalisée**
-
-⚡ je fais une requête POST vers \"/pay/checkout\"
-
-✅ que je fournis un montant valide
-
-✅ que je fournis une \"checkout_reference\" personnalisée dans le body
-
-✅ je reçois une réponse 200
-
-✅ la réponse contient la référence personnalisée fournie
-
-**Créer un checkout sans montant**
-
-⚡ je fais une requête POST vers \"/pay/checkout\"
-
-✅ que je ne fournis pas de montant dans le body
-
-✅ je reçois une réponse 400
-
-✅ la réponse contient un message d'erreur de validation
-
-**Créer un checkout avec configuration SumUp manquante**
-
-📋 que SUMUP_API_KEY n'est pas configurée
-
-⚡ je fais une requête POST vers \"/pay/checkout\"
-
-✅ que je fournis un montant valide
-
-✅ je reçois une réponse 500
-
-✅ la réponse contient un message indiquant que la configuration SumUp est manquante
-
-**Gérer les erreurs de l'API SumUp**
-
-📋 que l'API SumUp retourne une erreur
-
-⚡ je fais une requête POST vers \"/pay/checkout\"
-
-✅ que je fournis un montant valide
-
-✅ je reçois une réponse 500
-
-✅ la réponse contient un message d'erreur générique
-
-✅ les détails de l'erreur sont loggés côté serveur
-
-"
-      operationId: "post_pay_checkout"
-      parameters:
-      responses:
-        200:
-          description: "Succès - que je fournis un montant valide dans le body, je reçois une réponse 200, la réponse contient un \"checkout_id\", la réponse contient le \"checkout_reference\", la réponse contient le \"amount\", la réponse contient la \"currency\", la réponse contient le \"status\""
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  checkout_id:
-                    type: "string"
-                    description: "ID du checkout SumUp"
-                  checkout_reference:
-                    type: "string"
-                    description: "Référence du checkout"
-                  amount:
-                    type: "number"
-                    description: "Montant du paiement"
-                  currency:
-                    type: "string"
-                    description: "Devise"
-                  status:
-                    type: "string"
-                    description: "Statut du checkout"
-              example:
-                checkout_id: "exemple_checkout_id"
-                checkout_reference: "exemple_checkout_reference"
-                amount: 123
-                currency: "exemple_currency"
-                status: "exemple_status"
-          headers: null
-        400:
-          description: "Code 400 - que je fournis un montant négatif ou nul dans le body, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  error:
-                    type: "string"
-              example:
-                error: "exemple_error"
-          headers: null
-        500:
-          description: "Erreur serveur - que je fournis un montant valide, je reçois une réponse 500, la réponse contient un message indiquant que la configuration SumUp est manquante"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  error:
-                    type: "string"
-              example:
-                error: "exemple_error"
-          headers: null
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: "object"
-              required:
-                - amount
-              properties:
-                amount:
-                  type: "number"
-                  minimum: 5
-                  maximum: 12
-                  description: "Montant du paiement"
-                currency:
-                  type: "string"
-                  default: "EUR"
-                  description: "Devise du paiement (défaut: EUR)"
-                description:
-                  type: "string"
-                  description: "Description du paiement"
-      security:
-        - cookieAuth:
-  /pay/checkout/:checkoutId:
+  /pay/checkout/:sessionId:
     get:
       tags:
         - Paiement
-      summary: "Vérifie le statut d'un checkout SumUp"
+      summary: "Vérifie le statut d'une session de checkout. Retourne le statut de paiement et les informations de la session (route publique)"
       description: ""
-      operationId: "get_pay_checkout_:checkoutId"
+      operationId: "get_pay_checkout_:sessionId"
       parameters:
-        - name: "checkoutId"
+        - name: "sessionId"
           in: "path"
-          description: "ID du checkout SumUp"
+          description: "ID de la session de checkout"
           required: true
           schema:
             type: "string"
-            description: "ID du checkout SumUp"
+            description: "ID de la session de checkout"
       responses:
         200:
           description: "Succès"
@@ -583,24 +380,23 @@ paths:
                 properties:
                   id:
                     type: "string"
-                  checkout_reference:
-                    type: "string"
-                  amount:
+                  amount_total:
                     type: "number"
                   currency:
                     type: "string"
                   status:
                     type: "string"
                     enum:
-                      - PENDING
-                      - PAID
-                      - FAILED
-                      - CANCELLED
-                      - SENT
-                      - SUCCESS
-                  payment_type:
+                      - open
+                      - complete
+                      - expired
+                  payment_status:
                     type: "string"
-                  transaction_code:
+                    enum:
+                      - paid
+                      - unpaid
+                      - no_payment_required
+                  payment_intent:
                     type: "string"
               example: null
           headers: null
@@ -630,7 +426,7 @@ paths:
     post:
       tags:
         - Paiement
-      summary: "Endpoint webhook pour recevoir les notifications de paiement SumUp. Met à jour automatiquement les tickets associés au checkout_id selon le statut du paiement (route publique)"
+      summary: "Endpoint webhook pour recevoir les notifications de paiement. Met à jour automatiquement les tickets associés au session_id selon le statut du paiement (route publique)"
       description: ""
       operationId: "post_pay_webhook"
       parameters:
@@ -687,71 +483,45 @@ paths:
           application/json:
             schema:
               type: "object"
+              required:
+                - id
+                - type
+                - data
               properties:
                 id:
                   type: "string"
                   description: "ID de l'événement webhook"
                 type:
                   type: "string"
-                  description: "Type d'événement (checkout.payment.succeeded, checkout.payment.failed, etc.)"
-                timestamp:
-                  type: "string"
-                  description: "Timestamp de l'événement"
-                checkout_id:
-                  type: "string"
-                  description: "ID du checkout SumUp"
-                checkout_reference:
-                  type: "string"
-                  description: "Référence du checkout"
-                amount:
+                  description: "Type d'événement (checkout.session.completed, payment_intent.succeeded, etc.)"
+                created:
                   type: "number"
-                  description: "Montant du paiement"
-                currency:
-                  type: "string"
-                  description: "Devise"
-                status:
-                  type: "string"
-                  enum:
-                    - PENDING
-                    - PAID
-                    - FAILED
-                    - CANCELLED
-                    - SENT
-                    - SUCCESS
-                  description: "Statut du checkout"
-                payment_type:
-                  type: "string"
-                  description: "Type de paiement"
-                transaction_code:
-                  type: "string"
-                  description: "Code de transaction"
-                merchant_code:
-                  type: "string"
-                  description: "Code marchand"
-                event:
+                  description: "Timestamp Unix de l'événement"
+                data:
                   type: "object"
-                  description: "Détails de l'événement"
+                  required:
+                    - object
                   properties:
-                    id:
-                      type: "string"
-                    type:
-                      type: "string"
-                    timestamp:
-                      type: "string"
-                    checkout_id:
-                      type: "string"
-                    checkout_reference:
-                      type: "string"
-                    amount:
-                      type: "number"
-                    currency:
-                      type: "string"
-                    status:
-                      type: "string"
-                    payment_type:
-                      type: "string"
-                    transaction_code:
-                      type: "string"
+                    object:
+                      type: "object"
+                      description: "Objet de l'événement (checkout.session ou payment_intent)"
+                      properties:
+                        id:
+                          type: "string"
+                        object:
+                          type: "string"
+                        amount_total:
+                          type: "number"
+                        currency:
+                          type: "string"
+                        status:
+                          type: "string"
+                        payment_status:
+                          type: "string"
+                        payment_intent:
+                          type: "string"
+                        metadata:
+                          type: "object"
   /museum/schedules:
     post:
       tags:
@@ -3435,6 +3205,8 @@ paths:
                     type: "number"
                   donation_amount:
                     type: "number"
+                  guided_tour_price:
+                    type: "number"
                   total_amount:
                     type: "number"
                   status:
@@ -3528,13 +3300,13 @@ paths:
                   description: "Montant du don optionnel en euros (0 par défaut)"
                 checkout_id:
                   type: "string"
-                  description: "ID du checkout SumUp (optionnel au moment de la création)"
+                  description: "ID du checkout (optionnel au moment de la création)"
                 checkout_reference:
                   type: "string"
-                  description: "Référence du checkout SumUp (optionnel)"
+                  description: "Référence du checkout (optionnel)"
                 transaction_status:
                   type: "string"
-                  description: "Statut de la transaction SumUp (optionnel)"
+                  description: "Statut de la transaction (optionnel)"
                 notes:
                   type: "string"
                   description: "Notes libres optionnelles. Si pricing_info est fourni, il sera automatiquement stocké dans notes au format JSON avec les notes libres."
@@ -3611,7 +3383,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2025-12-08T21:10:07.280Z"
+                      default: "2025-12-13T13:02:49.039Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -3830,6 +3602,8 @@ paths:
                     type: "number"
                   donation_amount:
                     type: "number"
+                  guided_tour_price:
+                    type: "number"
                   total_amount:
                     type: "number"
                   status:
@@ -3935,6 +3709,8 @@ paths:
                     type: "number"
                   donation_amount:
                     type: "number"
+                  guided_tour_price:
+                    type: "number"
                   total_amount:
                     type: "number"
                   status:
@@ -4037,17 +3813,17 @@ paths:
                 checkout_id:
                   type:
                     - string
-                  description: "ID du checkout SumUp"
+                  description: "ID du checkout"
                   nullable: true
                 checkout_reference:
                   type:
                     - string
-                  description: "Référence du checkout SumUp"
+                  description: "Référence du checkout"
                   nullable: true
                 transaction_status:
                   type:
                     - string
-                  description: "Statut de la transaction SumUp"
+                  description: "Statut de la transaction"
                   nullable: true
                 status:
                   type: "string"
@@ -4185,6 +3961,8 @@ paths:
                     type: "number"
                   donation_amount:
                     type: "number"
+                  guided_tour_price:
+                    type: "number"
                   total_amount:
                     type: "number"
                   status:
@@ -4281,6 +4059,8 @@ paths:
                     type: "number"
                   donation_amount:
                     type: "number"
+                  guided_tour_price:
+                    type: "number"
                   total_amount:
                     type: "number"
                   status:
@@ -4353,70 +4133,11 @@ paths:
                   description: "Code QR du ticket à valider (8 caractères alphanumériques majuscules)"
       security:
         - cookieAuth:
-  /admin/tickets/:id/pdf:
-    get:
-      tags:
-        - Musée - Tickets
-      summary: "Régénère le PDF d'un ticket (admin) et l'affiche"
-      description: ""
-      operationId: "get_admin_tickets_:id_pdf"
-      parameters:
-        - name: "id"
-          in: "path"
-          description: "ID du ticket"
-          required: true
-          schema:
-            type: "string"
-            format: "uuid"
-            description: "ID du ticket"
-      responses:
-        200:
-          description: "Succès"
-          content:
-            application/pdf:
-              schema:
-                type: "string"
-                format: "binary"
-        400:
-          description: "Code 400"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  error:
-                    type: "string"
-              example: null
-          headers: null
-        404:
-          description: "Code 404"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  error:
-                    type: "string"
-              example: null
-          headers: null
-        500:
-          description: "Erreur serveur"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  error:
-                    type: "string"
-              example: null
-          headers: null
-      security:
-        - cookieAuth:
   /museum/tickets/payment:
     post:
       tags:
         - Musée - Tickets
-      summary: "Crée plusieurs tickets avec paiement SumUp. Crée d'abord un checkout SumUp avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)"
+      summary: "Crée plusieurs tickets avec paiement. Crée d'abord un checkout avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)"
       description: ""
       operationId: "post_museum_tickets_payment"
       parameters:
@@ -4431,12 +4152,18 @@ paths:
                   checkout_id:
                     type:
                       - string
-                    description: "ID du checkout SumUp (null si la commande est gratuite)"
+                    description: "ID du checkout (null si la commande est gratuite)"
                     nullable: true
                   checkout_reference:
                     type:
                       - string
-                    description: "Référence du checkout SumUp (null si la commande est gratuite)"
+                    description: "Référence du checkout (null si la commande est gratuite)"
+                    nullable: true
+                  checkout_url:
+                    type:
+                      - string
+                    format: "uri"
+                    description: "URL de redirection vers la page de paiement (null si la commande est gratuite)"
                     nullable: true
                   tickets:
                     type: "array"
@@ -4535,6 +4262,8 @@ paths:
               required:
                 - email
                 - tickets
+                - success_url
+                - cancel_url
               properties:
                 email:
                   type: "string"
@@ -4688,6 +4417,14 @@ paths:
                 description:
                   type: "string"
                   description: "Description du paiement (optionnel)"
+                success_url:
+                  type: "string"
+                  format: "uri"
+                  description: "URL de redirection après paiement réussi (obligatoire). Doit contenir {CHECKOUT_SESSION_ID} qui sera remplacé par Stripe."
+                cancel_url:
+                  type: "string"
+                  format: "uri"
+                  description: "URL de redirection en cas d'annulation (obligatoire)"
   /museum/tickets/checkout/:checkoutId:
     get:
       tags:
@@ -4698,11 +4435,11 @@ paths:
       parameters:
         - name: "checkoutId"
           in: "path"
-          description: "ID du checkout SumUp"
+          description: "ID du checkout"
           required: true
           schema:
             type: "string"
-            description: "ID du checkout SumUp"
+            description: "ID du checkout"
       responses:
         200:
           description: "Succès"

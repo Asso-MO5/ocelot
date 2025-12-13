@@ -68,8 +68,8 @@ export interface CreateTicketBody {
   slot_end_time: string; // Format HH:MM:SS
   ticket_price: number;
   donation_amount?: number; // Optionnel, 0 par défaut
-  checkout_id?: string; // ID du checkout SumUp (optionnel au moment de la création)
-  checkout_reference?: string; // Référence du checkout SumUp (optionnel)
+  checkout_id?: string; // ID du checkout (optionnel au moment de la création)
+  checkout_reference?: string; // Référence du checkout (optionnel)
   transaction_status?: string; // Statut de la transaction (optionnel)
   notes?: string; // Notes libres ou JSON stringifié contenant TicketPricingInfo
   pricing_info?: TicketPricingInfo; // Informations de tarif (sera stocké dans notes au format JSON)
@@ -148,6 +148,8 @@ export interface CreateTicketsWithPaymentBody {
   guided_tour_price?: number; // Prix de la visite guidée (optionnel, sera récupéré depuis les settings si non fourni)
   currency?: string; // Devise pour le paiement (défaut: EUR)
   description?: string; // Description du paiement
+  success_url?: string; // URL de redirection après paiement réussi (optionnel)
+  cancel_url?: string; // URL de redirection en cas d'annulation (optionnel)
 }
 
 /**

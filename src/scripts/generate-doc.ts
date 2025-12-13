@@ -193,9 +193,8 @@ async function generateOpenAPIDoc(): Promise<void> {
   } = await import('../features/auth/auth.schemas.ts');
 
   const {
-    createCheckoutSchema,
-    getCheckoutStatusSchema,
-    sumUpWebhookSchema
+    webhookSchema,
+    getCheckoutStatusSchema
   } = await import('../features/pay/pay.schemas.ts');
 
   const {
@@ -301,24 +300,17 @@ async function generateOpenAPIDoc(): Promise<void> {
       tag: 'Authentification',
     },
     {
-      method: 'POST',
-      path: '/pay/checkout',
-      schema: createCheckoutSchema,
-      description: 'Crée un nouveau checkout SumUp pour un paiement',
-      tag: 'Paiement',
-    },
-    {
       method: 'GET',
-      path: '/pay/checkout/:checkoutId',
+      path: '/pay/checkout/:sessionId',
       schema: getCheckoutStatusSchema,
-      description: 'Vérifie le statut d\'un checkout SumUp',
+      description: 'Vérifie le statut d\'une session de checkout. Retourne le statut de paiement et les informations de la session (route publique)',
       tag: 'Paiement',
     },
     {
       method: 'POST',
       path: '/pay/webhook',
-      schema: sumUpWebhookSchema,
-      description: 'Endpoint webhook pour recevoir les notifications de paiement SumUp. Met à jour automatiquement les tickets associés au checkout_id selon le statut du paiement (route publique)',
+      schema: webhookSchema,
+      description: 'Endpoint webhook pour recevoir les notifications de paiement. Met à jour automatiquement les tickets associés au session_id selon le statut du paiement (route publique)',
       tag: 'Paiement',
     },
     {
@@ -507,7 +499,7 @@ async function generateOpenAPIDoc(): Promise<void> {
       method: 'POST',
       path: '/museum/tickets/payment',
       schema: createTicketsWithPaymentSchema,
-      description: 'Crée plusieurs tickets avec paiement SumUp. Crée d\'abord un checkout SumUp avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)',
+      description: 'Crée plusieurs tickets avec paiement. Crée d\'abord un checkout avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)',
       tag: 'Musée - Tickets',
     },
     {
@@ -748,7 +740,7 @@ async function generateOpenAPIDoc(): Promise<void> {
       },
       {
         name: 'Paiement',
-        description: 'Endpoints de paiement SumUp',
+        description: 'Endpoints de paiement',
       },
       {
         name: 'Musée - Horaires',
@@ -954,6 +946,7 @@ async function generateOpenAPIDoc(): Promise<void> {
           path === '/museum/tickets/payment' ||
           path === '/museum/tickets/stats' ||
           path === '/pay/webhook' ||
+          path.startsWith('/pay/checkout/') ||
           path.startsWith('/museum/tickets/checkout/') ||
           path.startsWith('/museum/gift-codes/validate/');
 

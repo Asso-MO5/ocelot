@@ -43,7 +43,10 @@ app.addHook('onRequest', async (_req, reply) => {
 });
 
 // Hook pour parser le JSON même si le Content-Type n'est pas correct
+// Stocke aussi le raw body pour la vérification de signature Stripe
 app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+  // Stocker le raw body pour la vérification de signature Stripe (webhook)
+  (req as any).rawBody = body as string;
   try {
     const json = JSON.parse(body as string);
     done(null, json);

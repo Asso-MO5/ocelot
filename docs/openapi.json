@@ -21,7 +21,7 @@
     },
     {
       "name": "Paiement",
-      "description": "Endpoints de paiement SumUp"
+      "description": "Endpoints de paiement"
     },
     {
       "name": "Musée - Horaires",
@@ -63,7 +63,9 @@
   "paths": {
     "/auth/signin": {
       "get": {
-        "tags": ["Authentification"],
+        "tags": [
+          "Authentification"
+        ],
         "summary": "Redirige vers Discord OAuth2 pour l'authentification",
         "description": "**Redirection vers Discord pour l'authentification** : je devrais être redirigé vers Discord OAuth2 l'URL de redirection devrait contenir le client_id l'URL de redirection devrait contenir le redirect_uri l'URL de redirection devrait contenir les scopes demandés\n\n**Erreur si DISCORD_CLIENT_ID n'est pas configuré** : je devrais recevoir une erreur 500 le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"\n\n**Utilisation de scopes personnalisés** : l'URL de redirection Discord devrait contenir les scopes personnalisés\n\n**Configuration de l'URI de redirection personnalisée** : l'URL de redirection Discord devrait utiliser l'URI personnalisée\n\n### Scénarios de test\n\n**Redirection vers Discord pour l'authentification**\n\n📋 que je suis un utilisateur non authentifié\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ je devrais être redirigé vers Discord OAuth2\n\n✅ l'URL de redirection devrait contenir le client_id\n\n✅ l'URL de redirection devrait contenir le redirect_uri\n\n✅ l'URL de redirection devrait contenir les scopes demandés\n\n**Erreur si DISCORD_CLIENT_ID n'est pas configuré**\n\n📋 que DISCORD_CLIENT_ID n'est pas défini\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ je devrais recevoir une erreur 500\n\n✅ le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"\n\n**Utilisation de scopes personnalisés**\n\n📋 que DISCORD_SCOPES est configuré avec \"identify email guilds\"\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ l'URL de redirection Discord devrait contenir les scopes personnalisés\n\n**Configuration de l'URI de redirection personnalisée**\n\n📋 que DISCORD_REDIRECT_URI est configuré\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ l'URL de redirection Discord devrait utiliser l'URI personnalisée\n\n",
         "operationId": "get_auth_signin",
@@ -92,7 +94,9 @@
                       "description": "Message d'erreur"
                     }
                   },
-                  "required": ["error"]
+                  "required": [
+                    "error"
+                  ]
                 },
                 "example": {
                   "error": "exemple_error"
@@ -105,7 +109,9 @@
     },
     "/auth/login": {
       "get": {
-        "tags": ["Authentification"],
+        "tags": [
+          "Authentification"
+        ],
         "summary": "Alias de /auth/signin - Redirige vers Discord OAuth2",
         "description": "**Redirection vers Discord via /auth/login** : je devrais être redirigé vers Discord OAuth2 le comportement devrait être identique à \"/auth/signin\"\n\n### Scénarios de test\n\n**Redirection vers Discord via /auth/login**\n\n📋 que je suis un utilisateur non authentifié\n\n⚡ je fais une requête GET vers \"/auth/login\"\n\n✅ je devrais être redirigé vers Discord OAuth2\n\n✅ le comportement devrait être identique à \"/auth/signin\"\n\n",
         "operationId": "get_auth_login",
@@ -134,7 +140,9 @@
                       "description": "Message d'erreur"
                     }
                   },
-                  "required": ["error"]
+                  "required": [
+                    "error"
+                  ]
                 }
               }
             }
@@ -144,7 +152,9 @@
     },
     "/auth/callback": {
       "get": {
-        "tags": ["Authentification"],
+        "tags": [
+          "Authentification"
+        ],
         "summary": "Callback OAuth2 de Discord - Échange le code d'autorisation contre des tokens",
         "description": "**Callback OAuth2 sans code** : je devrais être redirigé vers le frontend avec error=missing_code\n\n### Scénarios de test\n\n**Callback OAuth2 sans code**\n\n📋 que Discord n'a pas retourné de code\n\n⚡ je fais une requête GET vers \"/auth/callback\"\n\n✅ je devrais être redirigé vers le frontend avec error=missing_code\n\n",
         "operationId": "get_auth_callback",
@@ -185,7 +195,9 @@
     },
     "/auth/me": {
       "get": {
-        "tags": ["Authentification"],
+        "tags": [
+          "Authentification"
+        ],
         "summary": "Récupère les informations de l'utilisateur authentifié (gère automatiquement le refresh du token)",
         "description": "**Récupération des données utilisateur - token valide** : je devrais recevoir mes informations utilisateur la réponse devrait contenir id, username, discriminator, avatar la réponse devrait contenir email si le scope email est accordé\n\n**Récupération des données utilisateur - token expiré avec refresh automatique** : que j'ai un refresh_token valide le refresh_token devrait être utilisé pour obtenir un nouveau access_token les nouveaux tokens devraient être stockés dans les cookies je devrais recevoir mes informations utilisateur\n\n**Récupération des données utilisateur - token expiré sans refresh token** : que je n'ai pas de refresh_token je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Token expiré et aucun refresh token disponible\"\n\n**Récupération des données utilisateur - refresh token invalide** : que mon refresh_token est invalide je devrais recevoir une erreur 401 les cookies devraient être supprimés le message d'erreur devrait indiquer \"Session expirée, veuillez vous reconnecter\"\n\n**Récupération des données utilisateur - non authentifié** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"\n\n### Scénarios de test\n\n**Récupération des données utilisateur - token valide**\n\n📋 que j'ai un access_token valide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir mes informations utilisateur\n\n✅ la réponse devrait contenir id, username, discriminator, avatar\n\n✅ la réponse devrait contenir email si le scope email est accordé\n\n**Récupération des données utilisateur - token expiré avec refresh automatique**\n\n📋 que mon access_token est expiré\n\n✅ que j'ai un refresh_token valide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ le refresh_token devrait être utilisé pour obtenir un nouveau access_token\n\n✅ les nouveaux tokens devraient être stockés dans les cookies\n\n✅ je devrais recevoir mes informations utilisateur\n\n**Récupération des données utilisateur - token expiré sans refresh token**\n\n📋 que mon access_token est expiré\n\n✅ que je n'ai pas de refresh_token\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ le message d'erreur devrait indiquer \"Token expiré et aucun refresh token disponible\"\n\n**Récupération des données utilisateur - refresh token invalide**\n\n📋 que mon access_token est expiré\n\n✅ que mon refresh_token est invalide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ les cookies devraient être supprimés\n\n✅ le message d'erreur devrait indiquer \"Session expirée, veuillez vous reconnecter\"\n\n**Récupération des données utilisateur - non authentifié**\n\n📋 que je n'ai pas de token d'accès\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ le message d'erreur devrait indiquer \"Non authentifié\"\n\n",
         "operationId": "get_auth_me",
@@ -211,7 +223,9 @@
                       "description": "Discriminator (4 chiffres)"
                     },
                     "avatar": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "description": "Hash de l'avatar ou null",
                       "nullable": true
                     },
@@ -251,7 +265,9 @@
                       "description": "Message d'erreur"
                     }
                   },
-                  "required": ["error"]
+                  "required": [
+                    "error"
+                  ]
                 },
                 "example": {
                   "error": "exemple_error"
@@ -271,7 +287,9 @@
                       "description": "Message d'erreur"
                     }
                   },
-                  "required": ["error"]
+                  "required": [
+                    "error"
+                  ]
                 }
               }
             }
@@ -284,140 +302,23 @@
         ]
       }
     },
-    "/pay/checkout": {
-      "post": {
-        "tags": ["Paiement"],
-        "summary": "Crée un nouveau checkout SumUp pour un paiement",
-        "description": "**Créer un checkout SumUp avec succès** : que je fournis un montant valide dans le body je reçois une réponse 200 la réponse contient un \"checkout_id\" la réponse contient le \"checkout_reference\" la réponse contient le \"amount\" la réponse contient la \"currency\" la réponse contient le \"status\"\n\n**Créer un checkout avec un montant invalide** : que je fournis un montant négatif ou nul dans le body je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0\n\n**Créer un checkout avec une devise personnalisée** : que je fournis un montant valide que je spécifie une devise dans le body(par exemple \"USD\") je reçois une réponse 200 la réponse contient la devise spécifiée\n\n**Créer un checkout avec une description** : que je fournis un montant valide que je fournis une description dans le body je reçois une réponse 200 le checkout est créé avec la description fournie\n\n**Créer un checkout avec une référence personnalisée** : que je fournis un montant valide que je fournis une \"checkout_reference\" personnalisée dans le body je reçois une réponse 200 la réponse contient la référence personnalisée fournie\n\n**Créer un checkout sans montant** : que je ne fournis pas de montant dans le body je reçois une réponse 400 la réponse contient un message d'erreur de validation\n\n**Créer un checkout avec configuration SumUp manquante** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message indiquant que la configuration SumUp est manquante\n\n**Gérer les erreurs de l'API SumUp** : que je fournis un montant valide je reçois une réponse 500 la réponse contient un message d'erreur générique les détails de l'erreur sont loggés côté serveur\n\n### Scénarios de test\n\n**Créer un checkout SumUp avec succès**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide dans le body\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient un \"checkout_id\"\n\n✅ la réponse contient le \"checkout_reference\"\n\n✅ la réponse contient le \"amount\"\n\n✅ la réponse contient la \"currency\"\n\n✅ la réponse contient le \"status\"\n\n**Créer un checkout avec un montant invalide**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant négatif ou nul dans le body\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0\n\n**Créer un checkout avec une devise personnalisée**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ que je spécifie une devise dans le body(par exemple \"USD\")\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient la devise spécifiée\n\n**Créer un checkout avec une description**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ que je fournis une description dans le body\n\n✅ je reçois une réponse 200\n\n✅ le checkout est créé avec la description fournie\n\n**Créer un checkout avec une référence personnalisée**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ que je fournis une \"checkout_reference\" personnalisée dans le body\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient la référence personnalisée fournie\n\n**Créer un checkout sans montant**\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je ne fournis pas de montant dans le body\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur de validation\n\n**Créer un checkout avec configuration SumUp manquante**\n\n📋 que SUMUP_API_KEY n'est pas configurée\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ je reçois une réponse 500\n\n✅ la réponse contient un message indiquant que la configuration SumUp est manquante\n\n**Gérer les erreurs de l'API SumUp**\n\n📋 que l'API SumUp retourne une erreur\n\n⚡ je fais une requête POST vers \"/pay/checkout\"\n\n✅ que je fournis un montant valide\n\n✅ je reçois une réponse 500\n\n✅ la réponse contient un message d'erreur générique\n\n✅ les détails de l'erreur sont loggés côté serveur\n\n",
-        "operationId": "post_pay_checkout",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Succès - que je fournis un montant valide dans le body, je reçois une réponse 200, la réponse contient un \"checkout_id\", la réponse contient le \"checkout_reference\", la réponse contient le \"amount\", la réponse contient la \"currency\", la réponse contient le \"status\"",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "checkout_id": {
-                      "type": "string",
-                      "description": "ID du checkout SumUp"
-                    },
-                    "checkout_reference": {
-                      "type": "string",
-                      "description": "Référence du checkout"
-                    },
-                    "amount": {
-                      "type": "number",
-                      "description": "Montant du paiement"
-                    },
-                    "currency": {
-                      "type": "string",
-                      "description": "Devise"
-                    },
-                    "status": {
-                      "type": "string",
-                      "description": "Statut du checkout"
-                    }
-                  }
-                },
-                "example": {
-                  "checkout_id": "exemple_checkout_id",
-                  "checkout_reference": "exemple_checkout_reference",
-                  "amount": 123,
-                  "currency": "exemple_currency",
-                  "status": "exemple_status"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Code 400 - que je fournis un montant négatif ou nul dans le body, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que le montant doit être supérieur à 0",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "example": {
-                  "error": "exemple_error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur serveur - que je fournis un montant valide, je reçois une réponse 500, la réponse contient un message indiquant que la configuration SumUp est manquante",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "example": {
-                  "error": "exemple_error"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["amount"],
-                "properties": {
-                  "amount": {
-                    "type": "number",
-                    "minimum": 5,
-                    "maximum": 12,
-                    "description": "Montant du paiement"
-                  },
-                  "currency": {
-                    "type": "string",
-                    "default": "EUR",
-                    "description": "Devise du paiement (défaut: EUR)"
-                  },
-                  "description": {
-                    "type": "string",
-                    "description": "Description du paiement"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "cookieAuth": []
-          }
-        ]
-      }
-    },
-    "/pay/checkout/:checkoutId": {
+    "/pay/checkout/:sessionId": {
       "get": {
-        "tags": ["Paiement"],
-        "summary": "Vérifie le statut d'un checkout SumUp",
+        "tags": [
+          "Paiement"
+        ],
+        "summary": "Vérifie le statut d'une session de checkout. Retourne le statut de paiement et les informations de la session (route publique)",
         "description": "",
-        "operationId": "get_pay_checkout_:checkoutId",
+        "operationId": "get_pay_checkout_:sessionId",
         "parameters": [
           {
-            "name": "checkoutId",
+            "name": "sessionId",
             "in": "path",
-            "description": "ID du checkout SumUp",
+            "description": "ID de la session de checkout",
             "required": true,
             "schema": {
               "type": "string",
-              "description": "ID du checkout SumUp"
+              "description": "ID de la session de checkout"
             }
           }
         ],
@@ -432,10 +333,7 @@
                     "id": {
                       "type": "string"
                     },
-                    "checkout_reference": {
-                      "type": "string"
-                    },
-                    "amount": {
+                    "amount_total": {
                       "type": "number"
                     },
                     "currency": {
@@ -444,18 +342,20 @@
                     "status": {
                       "type": "string",
                       "enum": [
-                        "PENDING",
-                        "PAID",
-                        "FAILED",
-                        "CANCELLED",
-                        "SENT",
-                        "SUCCESS"
+                        "open",
+                        "complete",
+                        "expired"
                       ]
                     },
-                    "payment_type": {
-                      "type": "string"
+                    "payment_status": {
+                      "type": "string",
+                      "enum": [
+                        "paid",
+                        "unpaid",
+                        "no_payment_required"
+                      ]
                     },
-                    "transaction_code": {
+                    "payment_intent": {
                       "type": "string"
                     }
                   }
@@ -498,8 +398,10 @@
     },
     "/pay/webhook": {
       "post": {
-        "tags": ["Paiement"],
-        "summary": "Endpoint webhook pour recevoir les notifications de paiement SumUp. Met à jour automatiquement les tickets associés au checkout_id selon le statut du paiement (route publique)",
+        "tags": [
+          "Paiement"
+        ],
+        "summary": "Endpoint webhook pour recevoir les notifications de paiement. Met à jour automatiquement les tickets associés au session_id selon le statut du paiement (route publique)",
         "description": "",
         "operationId": "post_pay_webhook",
         "parameters": [],
@@ -527,7 +429,11 @@
                       "description": "Liste des QR codes des tickets associés au checkout"
                     }
                   },
-                  "required": ["success", "tickets_updated", "qr_codes"]
+                  "required": [
+                    "success",
+                    "tickets_updated",
+                    "qr_codes"
+                  ]
                 }
               }
             }
@@ -569,6 +475,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -576,85 +487,47 @@
                   },
                   "type": {
                     "type": "string",
-                    "description": "Type d'événement (checkout.payment.succeeded, checkout.payment.failed, etc.)"
+                    "description": "Type d'événement (checkout.session.completed, payment_intent.succeeded, etc.)"
                   },
-                  "timestamp": {
-                    "type": "string",
-                    "description": "Timestamp de l'événement"
-                  },
-                  "checkout_id": {
-                    "type": "string",
-                    "description": "ID du checkout SumUp"
-                  },
-                  "checkout_reference": {
-                    "type": "string",
-                    "description": "Référence du checkout"
-                  },
-                  "amount": {
+                  "created": {
                     "type": "number",
-                    "description": "Montant du paiement"
+                    "description": "Timestamp Unix de l'événement"
                   },
-                  "currency": {
-                    "type": "string",
-                    "description": "Devise"
-                  },
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "PENDING",
-                      "PAID",
-                      "FAILED",
-                      "CANCELLED",
-                      "SENT",
-                      "SUCCESS"
-                    ],
-                    "description": "Statut du checkout"
-                  },
-                  "payment_type": {
-                    "type": "string",
-                    "description": "Type de paiement"
-                  },
-                  "transaction_code": {
-                    "type": "string",
-                    "description": "Code de transaction"
-                  },
-                  "merchant_code": {
-                    "type": "string",
-                    "description": "Code marchand"
-                  },
-                  "event": {
+                  "data": {
                     "type": "object",
-                    "description": "Détails de l'événement",
+                    "required": [
+                      "object"
+                    ],
                     "properties": {
-                      "id": {
-                        "type": "string"
-                      },
-                      "type": {
-                        "type": "string"
-                      },
-                      "timestamp": {
-                        "type": "string"
-                      },
-                      "checkout_id": {
-                        "type": "string"
-                      },
-                      "checkout_reference": {
-                        "type": "string"
-                      },
-                      "amount": {
-                        "type": "number"
-                      },
-                      "currency": {
-                        "type": "string"
-                      },
-                      "status": {
-                        "type": "string"
-                      },
-                      "payment_type": {
-                        "type": "string"
-                      },
-                      "transaction_code": {
-                        "type": "string"
+                      "object": {
+                        "type": "object",
+                        "description": "Objet de l'événement (checkout.session ou payment_intent)",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "object": {
+                            "type": "string"
+                          },
+                          "amount_total": {
+                            "type": "number"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "payment_status": {
+                            "type": "string"
+                          },
+                          "payment_intent": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "type": "object"
+                          }
+                        }
                       }
                     }
                   }
@@ -667,7 +540,9 @@
     },
     "/museum/schedules": {
       "post": {
-        "tags": ["Musée - Horaires"],
+        "tags": [
+          "Musée - Horaires"
+        ],
         "summary": "Crée ou met à jour un horaire d'ouverture (UPSERT). Pour les exceptions : cherche par start_date, end_date et audience_type. Pour les horaires récurrents : cherche par day_of_week et audience_type. Retourne 201 si créé, 200 si mis à jour.",
         "description": "**Créer un horaire récurrent pour le public** : que je fournis un day_of_week (0-6) que je fournis start_time et end_time que je fournis audience_type = \"public\" je reçois une réponse 201 la réponse contient l'horaire créé avec un id la réponse contient day_of_week, start_time, end_time, audience_type\n\n**Créer un horaire récurrent pour les membres** : que je fournis un day_of_week (0-6) que je fournis start_time et end_time que je fournis audience_type = \"member\" je reçois une réponse 201 la réponse contient l'horaire créé avec audience_type = \"member\"\n\n**Créer une exception (horaires spécifiques pour une période)** : que je fournis is_exception = true que je fournis start_date et end_date que je fournis start_time et end_time que je fournis audience_type je reçois une réponse 201 la réponse contient is_exception = true la réponse contient start_date et end_date\n\n**Créer une fermeture exceptionnelle** : que je fournis is_exception = true que je fournis is_closed = true que je fournis start_date et end_date que je fournis une description je reçois une réponse 201 la réponse contient is_closed = true la réponse contient la description\n\n**Erreur lors de la création d'un horaire récurrent sans day_of_week** : que je ne fournis pas day_of_week que is_exception = false je reçois une réponse 400 la réponse contient un message d'erreur indiquant que day_of_week est requis\n\n**Erreur lors de la création d'une exception sans dates** : que je fournis is_exception = true que je ne fournis pas start_date ou end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date et end_date sont requis\n\n### Scénarios de test\n\n**Créer un horaire récurrent pour le public**\n\n📋 que je veux créer un horaire récurrent\n\n⚡ je fais une requête POST vers \"/museum/schedules\"\n\n✅ que je fournis un day_of_week (0-6)\n\n✅ que je fournis start_time et end_time\n\n✅ que je fournis audience_type = \"public\"\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient l'horaire créé avec un id\n\n✅ la réponse contient day_of_week, start_time, end_time, audience_type\n\n**Créer un horaire récurrent pour les membres**\n\n📋 que je veux créer un horaire récurrent pour les membres\n\n⚡ je fais une requête POST vers \"/museum/schedules\"\n\n✅ que je fournis un day_of_week (0-6)\n\n✅ que je fournis start_time et end_time\n\n✅ que je fournis audience_type = \"member\"\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient l'horaire créé avec audience_type = \"member\"\n\n**Créer une exception (horaires spécifiques pour une période)**\n\n📋 que je veux créer une exception pour les vacances\n\n⚡ je fais une requête POST vers \"/museum/schedules\"\n\n✅ que je fournis is_exception = true\n\n✅ que je fournis start_date et end_date\n\n✅ que je fournis start_time et end_time\n\n✅ que je fournis audience_type\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient is_exception = true\n\n✅ la réponse contient start_date et end_date\n\n**Créer une fermeture exceptionnelle**\n\n📋 que je veux créer une fermeture exceptionnelle\n\n⚡ je fais une requête POST vers \"/museum/schedules\"\n\n✅ que je fournis is_exception = true\n\n✅ que je fournis is_closed = true\n\n✅ que je fournis start_date et end_date\n\n✅ que je fournis une description\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient is_closed = true\n\n✅ la réponse contient la description\n\n**Erreur lors de la création d'un horaire récurrent sans day_of_week**\n\n📋 que je veux créer un horaire récurrent\n\n⚡ je fais une requête POST vers \"/museum/schedules\"\n\n✅ que je ne fournis pas day_of_week\n\n✅ que is_exception = false\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur indiquant que day_of_week est requis\n\n**Erreur lors de la création d'une exception sans dates**\n\n📋 que je veux créer une exception\n\n⚡ je fais une requête POST vers \"/museum/schedules\"\n\n✅ que je fournis is_exception = true\n\n✅ que je ne fournis pas start_date ou end_date\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur indiquant que start_date et end_date sont requis\n\n",
         "operationId": "post_museum_schedules",
@@ -684,7 +559,9 @@
                       "type": "string"
                     },
                     "day_of_week": {
-                      "type": ["integer"],
+                      "type": [
+                        "integer"
+                      ],
                       "nullable": true
                     },
                     "start_time": {
@@ -697,11 +574,15 @@
                       "type": "string"
                     },
                     "start_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_exception": {
@@ -711,7 +592,9 @@
                       "type": "boolean"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "position": {
@@ -740,7 +623,9 @@
                       "type": "string"
                     },
                     "day_of_week": {
-                      "type": ["integer"],
+                      "type": [
+                        "integer"
+                      ],
                       "nullable": true
                     },
                     "start_time": {
@@ -753,11 +638,15 @@
                       "type": "string"
                     },
                     "start_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_exception": {
@@ -767,7 +656,9 @@
                       "type": "boolean"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "position": {
@@ -835,7 +726,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["start_time", "end_time", "audience_type"],
+                "required": [
+                  "start_time",
+                  "end_time",
+                  "audience_type"
+                ],
                 "properties": {
                   "day_of_week": {
                     "type": "integer",
@@ -855,7 +750,11 @@
                   },
                   "audience_type": {
                     "type": "string",
-                    "enum": ["public", "member", "holiday"],
+                    "enum": [
+                      "public",
+                      "member",
+                      "holiday"
+                    ],
                     "description": "Type d'audience (public, member ou holiday)"
                   },
                   "start_date": {
@@ -899,7 +798,9 @@
         ]
       },
       "get": {
-        "tags": ["Musée - Horaires"],
+        "tags": [
+          "Musée - Horaires"
+        ],
         "summary": "Récupère tous les horaires avec filtres optionnels (authentification requise)",
         "description": "**Récupérer tous les horaires** : je reçois une réponse 200 la réponse contient un tableau d'horaires\n\n### Scénarios de test\n\n**Récupérer tous les horaires**\n\n📋 que des horaires existent en base de données\n\n⚡ je fais une requête GET vers \"/museum/schedules\"\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient un tableau d'horaires\n\n",
         "operationId": "get_museum_schedules",
@@ -923,7 +824,11 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["public", "member", "holiday"],
+              "enum": [
+                "public",
+                "member",
+                "holiday"
+              ],
               "description": "Filtrer par type d'audience"
             }
           },
@@ -964,7 +869,9 @@
                         "type": "string"
                       },
                       "day_of_week": {
-                        "type": ["integer"],
+                        "type": [
+                          "integer"
+                        ],
                         "nullable": true
                       },
                       "start_time": {
@@ -977,11 +884,15 @@
                         "type": "string"
                       },
                       "start_date": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "end_date": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "is_exception": {
@@ -991,7 +902,9 @@
                         "type": "boolean"
                       },
                       "description": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "position": {
@@ -1034,7 +947,9 @@
     },
     "/museum/schedules/public": {
       "get": {
-        "tags": ["Musée - Horaires"],
+        "tags": [
+          "Musée - Horaires"
+        ],
         "summary": "Récupère uniquement les horaires publics (route publique, accessible sans authentification)",
         "description": "",
         "operationId": "get_museum_schedules_public",
@@ -1088,7 +1003,9 @@
                         "type": "string"
                       },
                       "day_of_week": {
-                        "type": ["integer"],
+                        "type": [
+                          "integer"
+                        ],
                         "nullable": true
                       },
                       "start_time": {
@@ -1099,14 +1016,22 @@
                       },
                       "audience_type": {
                         "type": "string",
-                        "enum": ["public", "member", "holiday"]
+                        "enum": [
+                          "public",
+                          "member",
+                          "holiday"
+                        ]
                       },
                       "start_date": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "end_date": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "is_exception": {
@@ -1116,7 +1041,9 @@
                         "type": "boolean"
                       },
                       "description": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "position": {
@@ -1138,7 +1065,9 @@
                               "type": "string"
                             },
                             "name": {
-                              "type": ["string"],
+                              "type": [
+                                "string"
+                              ],
                               "nullable": true
                             },
                             "start_date": {
@@ -1148,7 +1077,9 @@
                               "type": "string"
                             },
                             "zone": {
-                              "type": ["string"],
+                              "type": [
+                                "string"
+                              ],
                               "nullable": true
                             }
                           }
@@ -1164,7 +1095,9 @@
                               "type": "string"
                             },
                             "name": {
-                              "type": ["string"],
+                              "type": [
+                                "string"
+                              ],
                               "nullable": true
                             },
                             "start_date": {
@@ -1174,7 +1107,9 @@
                               "type": "string"
                             },
                             "zone": {
-                              "type": ["string"],
+                              "type": [
+                                "string"
+                              ],
                               "nullable": true
                             }
                           }
@@ -1206,7 +1141,9 @@
     },
     "/museum/schedules/:id": {
       "get": {
-        "tags": ["Musée - Horaires"],
+        "tags": [
+          "Musée - Horaires"
+        ],
         "summary": "Récupère un horaire par son ID",
         "description": "**Récupérer un horaire par son ID** : je reçois une réponse 200 la réponse contient l'horaire avec l'id demandé\n\n**Erreur lors de la récupération d'un horaire inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Horaire non trouvé\"\n\n### Scénarios de test\n\n**Récupérer un horaire par son ID**\n\n📋 qu'un horaire existe avec un id spécifique\n\n⚡ je fais une requête GET vers \"/museum/schedules/:id\"\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient l'horaire avec l'id demandé\n\n**Erreur lors de la récupération d'un horaire inexistant**\n\n📋 qu'aucun horaire n'existe avec cet id\n\n⚡ je fais une requête GET vers \"/museum/schedules/:id\"\n\n✅ je reçois une réponse 404\n\n✅ la réponse contient un message d'erreur \"Horaire non trouvé\"\n\n",
         "operationId": "get_museum_schedules_:id",
@@ -1235,7 +1172,9 @@
                       "type": "string"
                     },
                     "day_of_week": {
-                      "type": ["integer"],
+                      "type": [
+                        "integer"
+                      ],
                       "nullable": true
                     },
                     "start_time": {
@@ -1248,11 +1187,15 @@
                       "type": "string"
                     },
                     "start_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_exception": {
@@ -1262,7 +1205,9 @@
                       "type": "boolean"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "position": {
@@ -1330,7 +1275,9 @@
         ]
       },
       "put": {
-        "tags": ["Musée - Horaires"],
+        "tags": [
+          "Musée - Horaires"
+        ],
         "summary": "Met à jour un horaire",
         "description": "**Mettre à jour un horaire** : que je fournis les champs à mettre à jour je reçois une réponse 200 la réponse contient l'horaire mis à jour\n\n### Scénarios de test\n\n**Mettre à jour un horaire**\n\n📋 qu'un horaire existe\n\n⚡ je fais une requête PUT vers \"/museum/schedules/:id\"\n\n✅ que je fournis les champs à mettre à jour\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient l'horaire mis à jour\n\n",
         "operationId": "put_museum_schedules_:id",
@@ -1359,7 +1306,9 @@
                       "type": "string"
                     },
                     "day_of_week": {
-                      "type": ["integer"],
+                      "type": [
+                        "integer"
+                      ],
                       "nullable": true
                     },
                     "start_time": {
@@ -1372,11 +1321,15 @@
                       "type": "string"
                     },
                     "start_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_exception": {
@@ -1386,7 +1339,9 @@
                       "type": "boolean"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "position": {
@@ -1467,7 +1422,9 @@
                 "type": "object",
                 "properties": {
                   "day_of_week": {
-                    "type": ["integer"],
+                    "type": [
+                      "integer"
+                    ],
                     "minimum": 0,
                     "maximum": 6,
                     "description": "Jour de la semaine (0=dimanche, 1=lundi, ..., 6=samedi)",
@@ -1485,17 +1442,25 @@
                   },
                   "audience_type": {
                     "type": "string",
-                    "enum": ["public", "member", "holiday"],
+                    "enum": [
+                      "public",
+                      "member",
+                      "holiday"
+                    ],
                     "description": "Type d'audience (public, member ou holiday)"
                   },
                   "start_date": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "format": "date",
                     "description": "Date de début pour les horaires spécifiques (format YYYY-MM-DD)",
                     "nullable": true
                   },
                   "end_date": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "format": "date",
                     "description": "Date de fin pour les horaires spécifiques (format YYYY-MM-DD)",
                     "nullable": true
@@ -1509,7 +1474,9 @@
                     "description": "Indique si le musée est fermé"
                   },
                   "description": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "description": "Description de l'exception ou du changement d'horaire",
                     "nullable": true
                   },
@@ -1530,7 +1497,9 @@
         ]
       },
       "delete": {
-        "tags": ["Musée - Horaires"],
+        "tags": [
+          "Musée - Horaires"
+        ],
         "summary": "Supprime un horaire",
         "description": "**Supprimer un horaire** : je reçois une réponse 204 l'horaire est supprimé de la base de données\n\n**Erreur lors de la suppression d'un horaire inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Horaire non trouvé\"\n\n### Scénarios de test\n\n**Supprimer un horaire**\n\n📋 qu'un horaire existe\n\n⚡ je fais une requête DELETE vers \"/museum/schedules/:id\"\n\n✅ je reçois une réponse 204\n\n✅ l'horaire est supprimé de la base de données\n\n**Erreur lors de la suppression d'un horaire inexistant**\n\n📋 qu'aucun horaire n'existe avec cet id\n\n⚡ je fais une requête DELETE vers \"/museum/schedules/:id\"\n\n✅ je reçois une réponse 404\n\n✅ la réponse contient un message d'erreur \"Horaire non trouvé\"\n\n",
         "operationId": "delete_museum_schedules_:id",
@@ -1601,7 +1570,9 @@
     },
     "/museum/schedules/reorder": {
       "post": {
-        "tags": ["Musée - Horaires"],
+        "tags": [
+          "Musée - Horaires"
+        ],
         "summary": "Réordonne les horaires selon l'ordre fourni. Met à jour les positions de tous les horaires selon l'ordre des IDs fournis (premier ID = position 1, deuxième ID = position 2, etc.)",
         "description": "",
         "operationId": "post_museum_schedules_reorder",
@@ -1620,7 +1591,9 @@
                         "type": "string"
                       },
                       "day_of_week": {
-                        "type": ["integer"],
+                        "type": [
+                          "integer"
+                        ],
                         "nullable": true
                       },
                       "start_time": {
@@ -1633,11 +1606,15 @@
                         "type": "string"
                       },
                       "start_date": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "end_date": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "is_exception": {
@@ -1647,7 +1624,9 @@
                         "type": "boolean"
                       },
                       "description": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "position": {
@@ -1703,7 +1682,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["schedule_ids"],
+                "required": [
+                  "schedule_ids"
+                ],
                 "properties": {
                   "schedule_ids": {
                     "type": "array",
@@ -1728,7 +1709,9 @@
     },
     "/museum/prices": {
       "post": {
-        "tags": ["Musée - Tarifs"],
+        "tags": [
+          "Musée - Tarifs"
+        ],
         "summary": "Crée ou met à jour un tarif (upsert). Si un id est fourni et existe, met à jour le tarif (retourne 200). Sinon, crée un nouveau tarif (retourne 201).",
         "description": "**Créer un tarif pour le public** : que je fournis un name que je fournis un amount en euros que je fournis audience_type = \"public\" je reçois une réponse 201 la réponse contient le tarif créé avec un id la réponse contient name, amount, audience_type\n\n**Créer un tarif pour les membres** : que je fournis un name que je fournis un amount en euros que je fournis audience_type = \"member\" je reçois une réponse 201 la réponse contient le tarif créé avec audience_type = \"member\"\n\n**Créer un tarif avec dates de validité** : que je fournis start_date et end_date que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient start_date et end_date\n\n**Créer un tarif inactif** : que je fournis is_active = false que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient is_active = false\n\n**Créer un tarif nécessitant un justificatif** : que je fournis requires_proof = true que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient requires_proof = true\n\n**Erreur lors de la création d'un tarif avec montant négatif** : que je fournis un amount négatif je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le montant doit être positif\n\n**Erreur lors de la création d'un tarif avec dates invalides** : que je fournis start_date sans end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date et end_date doivent être définis ensemble\n\n**Erreur lors de la création d'un tarif avec start_date après end_date** : que je fournis start_date après end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date doit être antérieure à end_date\n\n**Accès non autorisé pour créer un tarif sans authentification** : je reçois une réponse 401 la réponse contient un message d'erreur \"Non authentifié\"\n\n**Accès non autorisé pour créer un tarif sans les rôles requis** : je reçois une réponse 403 la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"\n\n### Scénarios de test\n\n**Créer un tarif pour le public**\n\n📋 que je veux créer un tarif pour le public\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ que je fournis un name\n\n✅ que je fournis un amount en euros\n\n✅ que je fournis audience_type = \"public\"\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient le tarif créé avec un id\n\n✅ la réponse contient name, amount, audience_type\n\n**Créer un tarif pour les membres**\n\n📋 que je veux créer un tarif pour les membres\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ que je fournis un name\n\n✅ que je fournis un amount en euros\n\n✅ que je fournis audience_type = \"member\"\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient le tarif créé avec audience_type = \"member\"\n\n**Créer un tarif avec dates de validité**\n\n📋 que je veux créer un tarif valide pour une période spécifique\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ que je fournis start_date et end_date\n\n✅ que je fournis name, amount, audience_type\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient start_date et end_date\n\n**Créer un tarif inactif**\n\n📋 que je veux créer un tarif inactif\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ que je fournis is_active = false\n\n✅ que je fournis name, amount, audience_type\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient is_active = false\n\n**Créer un tarif nécessitant un justificatif**\n\n📋 que je veux créer un tarif réduit nécessitant un justificatif\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ que je fournis requires_proof = true\n\n✅ que je fournis name, amount, audience_type\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient requires_proof = true\n\n**Erreur lors de la création d'un tarif avec montant négatif**\n\n📋 que je veux créer un tarif\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ que je fournis un amount négatif\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur indiquant que le montant doit être positif\n\n**Erreur lors de la création d'un tarif avec dates invalides**\n\n📋 que je veux créer un tarif avec dates\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ que je fournis start_date sans end_date\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur indiquant que start_date et end_date doivent être définis ensemble\n\n**Erreur lors de la création d'un tarif avec start_date après end_date**\n\n📋 que je veux créer un tarif avec dates\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ que je fournis start_date après end_date\n\n✅ je reçois une réponse 400\n\n✅ la réponse contient un message d'erreur indiquant que start_date doit être antérieure à end_date\n\n**Accès non autorisé pour créer un tarif sans authentification**\n\n📋 que je ne suis pas authentifié\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ je reçois une réponse 401\n\n✅ la réponse contient un message d'erreur \"Non authentifié\"\n\n**Accès non autorisé pour créer un tarif sans les rôles requis**\n\n📋 que je suis authentifié mais sans les rôles bureau ou dev\n\n⚡ je fais une requête POST vers \"/museum/prices\"\n\n✅ je reçois une réponse 403\n\n✅ la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"\n\n",
         "operationId": "post_museum_prices",
@@ -1752,11 +1735,15 @@
                       "type": "string"
                     },
                     "start_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -1788,7 +1775,9 @@
                       "type": "string"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     }
                   }
@@ -1814,11 +1803,15 @@
                       "type": "string"
                     },
                     "start_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -1850,7 +1843,9 @@
                       "type": "string"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     }
                   }
@@ -1908,7 +1903,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["amount", "audience_type", "translations"],
+                "required": [
+                  "amount",
+                  "audience_type",
+                  "translations"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -1922,7 +1921,11 @@
                   },
                   "audience_type": {
                     "type": "string",
-                    "enum": ["public", "member", "holiday"],
+                    "enum": [
+                      "public",
+                      "member",
+                      "holiday"
+                    ],
                     "description": "Type d'audience (public, member ou holiday)"
                   },
                   "start_date": {
@@ -1956,7 +1959,11 @@
                     "description": "Traductions du tarif (au moins une traduction pour \"name\" est requise)",
                     "items": {
                       "type": "object",
-                      "required": ["lang", "field_name", "translation"],
+                      "required": [
+                        "lang",
+                        "field_name",
+                        "translation"
+                      ],
                       "properties": {
                         "lang": {
                           "type": "string",
@@ -1966,7 +1973,10 @@
                         },
                         "field_name": {
                           "type": "string",
-                          "enum": ["name", "description"],
+                          "enum": [
+                            "name",
+                            "description"
+                          ],
                           "description": "Nom du champ à traduire (name ou description)"
                         },
                         "translation": {
@@ -1989,7 +1999,9 @@
         ]
       },
       "get": {
-        "tags": ["Musée - Tarifs"],
+        "tags": [
+          "Musée - Tarifs"
+        ],
         "summary": "Récupère tous les tarifs avec filtres optionnels",
         "description": "**Récupérer tous les tarifs actifs** : je reçois une réponse 200 la réponse contient un tableau de tarifs tous les tarifs retournés ont is_active = true\n\n### Scénarios de test\n\n**Récupérer tous les tarifs actifs**\n\n📋 que des tarifs existent en base de données\n\n⚡ je fais une requête GET vers \"/museum/prices\"\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient un tableau de tarifs\n\n✅ tous les tarifs retournés ont is_active = true\n\n",
         "operationId": "get_museum_prices",
@@ -2001,7 +2013,10 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["public", "member"],
+              "enum": [
+                "public",
+                "member"
+              ],
               "description": "Filtrer par type d'audience"
             }
           },
@@ -2062,11 +2077,15 @@
                             "type": "string"
                           },
                           "start_date": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "end_date": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "is_active": {
@@ -2095,7 +2114,9 @@
                             "type": "string"
                           },
                           "description": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           }
                         }
@@ -2103,12 +2124,17 @@
                       "description": "Liste des tarifs du musée"
                     },
                     "guided_tour_price": {
-                      "type": ["number"],
+                      "type": [
+                        "number"
+                      ],
                       "description": "Prix de la visite guidée (en euros). null si non configuré.",
                       "nullable": true
                     }
                   },
-                  "required": ["prices", "guided_tour_price"]
+                  "required": [
+                    "prices",
+                    "guided_tour_price"
+                  ]
                 },
                 "example": {}
               }
@@ -2139,7 +2165,9 @@
     },
     "/museum/prices/:id": {
       "get": {
-        "tags": ["Musée - Tarifs"],
+        "tags": [
+          "Musée - Tarifs"
+        ],
         "summary": "Récupère un tarif par son ID",
         "description": "**Récupérer un tarif par son ID** : je reçois une réponse 200 la réponse contient le tarif avec l'id demandé\n\n**Erreur lors de la récupération d'un tarif inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Tarif non trouvé\"\n\n### Scénarios de test\n\n**Récupérer un tarif par son ID**\n\n📋 qu'un tarif existe avec un id spécifique\n\n⚡ je fais une requête GET vers \"/museum/prices/:id\"\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient le tarif avec l'id demandé\n\n**Erreur lors de la récupération d'un tarif inexistant**\n\n📋 qu'aucun tarif n'existe avec cet id\n\n⚡ je fais une requête GET vers \"/museum/prices/:id\"\n\n✅ je reçois une réponse 404\n\n✅ la réponse contient un message d'erreur \"Tarif non trouvé\"\n\n",
         "operationId": "get_museum_prices_:id",
@@ -2186,11 +2214,15 @@
                       "type": "string"
                     },
                     "start_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -2222,7 +2254,9 @@
                       "type": "string"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     }
                   }
@@ -2281,7 +2315,9 @@
         ]
       },
       "put": {
-        "tags": ["Musée - Tarifs"],
+        "tags": [
+          "Musée - Tarifs"
+        ],
         "summary": "Met à jour un tarif",
         "description": "**Mettre à jour un tarif** : que je fournis les champs à mettre à jour je reçois une réponse 200 la réponse contient le tarif mis à jour\n\n**Désactiver un tarif** : que je fournis is_active = false je reçois une réponse 200 la réponse contient is_active = false\n\n### Scénarios de test\n\n**Mettre à jour un tarif**\n\n📋 qu'un tarif existe\n\n⚡ je fais une requête PUT vers \"/museum/prices/:id\"\n\n✅ que je fournis les champs à mettre à jour\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient le tarif mis à jour\n\n**Désactiver un tarif**\n\n📋 qu'un tarif existe\n\n⚡ je fais une requête PUT vers \"/museum/prices/:id\"\n\n✅ que je fournis is_active = false\n\n✅ je reçois une réponse 200\n\n✅ la réponse contient is_active = false\n\n",
         "operationId": "put_museum_prices_:id",
@@ -2316,11 +2352,15 @@
                       "type": "string"
                     },
                     "start_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -2352,7 +2392,9 @@
                       "type": "string"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     }
                   }
@@ -2430,17 +2472,25 @@
                   },
                   "audience_type": {
                     "type": "string",
-                    "enum": ["public", "member", "holiday"],
+                    "enum": [
+                      "public",
+                      "member",
+                      "holiday"
+                    ],
                     "description": "Type d'audience (public, member ou holiday)"
                   },
                   "start_date": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "format": "date",
                     "description": "Date de début de validité (format YYYY-MM-DD)",
                     "nullable": true
                   },
                   "end_date": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "format": "date",
                     "description": "Date de fin de validité (format YYYY-MM-DD)",
                     "nullable": true
@@ -2463,7 +2513,11 @@
                     "description": "Traductions du tarif",
                     "items": {
                       "type": "object",
-                      "required": ["lang", "field_name", "translation"],
+                      "required": [
+                        "lang",
+                        "field_name",
+                        "translation"
+                      ],
                       "properties": {
                         "lang": {
                           "type": "string",
@@ -2473,7 +2527,10 @@
                         },
                         "field_name": {
                           "type": "string",
-                          "enum": ["name", "description"],
+                          "enum": [
+                            "name",
+                            "description"
+                          ],
                           "description": "Nom du champ à traduire (name ou description)"
                         },
                         "translation": {
@@ -2496,7 +2553,9 @@
         ]
       },
       "delete": {
-        "tags": ["Musée - Tarifs"],
+        "tags": [
+          "Musée - Tarifs"
+        ],
         "summary": "Supprime un tarif",
         "description": "**Supprimer un tarif** : je reçois une réponse 204 le tarif est supprimé de la base de données\n\n**Erreur lors de la suppression d'un tarif inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Tarif non trouvé\"\n\n### Scénarios de test\n\n**Supprimer un tarif**\n\n📋 qu'un tarif existe\n\n⚡ je fais une requête DELETE vers \"/museum/prices/:id\"\n\n✅ je reçois une réponse 204\n\n✅ le tarif est supprimé de la base de données\n\n**Erreur lors de la suppression d'un tarif inexistant**\n\n📋 qu'aucun tarif n'existe avec cet id\n\n⚡ je fais une requête DELETE vers \"/museum/prices/:id\"\n\n✅ je reçois une réponse 404\n\n✅ la réponse contient un message d'erreur \"Tarif non trouvé\"\n\n",
         "operationId": "delete_museum_prices_:id",
@@ -2567,7 +2626,9 @@
     },
     "/museum/prices/reorder": {
       "post": {
-        "tags": ["Musée - Tarifs"],
+        "tags": [
+          "Musée - Tarifs"
+        ],
         "summary": "Réordonne les tarifs selon l'ordre fourni. Met à jour les positions de tous les tarifs selon l'ordre des IDs fournis (premier ID = position 1, deuxième ID = position 2, etc.)",
         "description": "",
         "operationId": "post_museum_prices_reorder",
@@ -2592,11 +2653,15 @@
                         "type": "string"
                       },
                       "start_date": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "end_date": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "is_active": {
@@ -2628,7 +2693,9 @@
                         "type": "string"
                       },
                       "description": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       }
                     }
@@ -2675,7 +2742,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["price_ids"],
+                "required": [
+                  "price_ids"
+                ],
                 "properties": {
                   "price_ids": {
                     "type": "array",
@@ -2700,7 +2769,9 @@
     },
     "/museum/settings": {
       "get": {
-        "tags": ["Musée - Paramètres"],
+        "tags": [
+          "Musée - Paramètres"
+        ],
         "summary": "Récupère tous les paramètres avec filtres optionnels",
         "description": "",
         "operationId": "get_museum_settings",
@@ -2739,7 +2810,9 @@
                         "type": "string"
                       },
                       "description": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "created_at": {
@@ -2777,7 +2850,9 @@
         ]
       },
       "post": {
-        "tags": ["Musée - Paramètres"],
+        "tags": [
+          "Musée - Paramètres"
+        ],
         "summary": "Crée ou met à jour un paramètre (upsert) - Retourne 201 si créé, 200 si mis à jour",
         "description": "",
         "operationId": "post_museum_settings",
@@ -2797,10 +2872,17 @@
                       "type": "string"
                     },
                     "value": {
-                      "type": ["string", "number", "boolean", "object"]
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "object"
+                      ]
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -2828,10 +2910,17 @@
                       "type": "string"
                     },
                     "value": {
-                      "type": ["string", "number", "boolean", "object"]
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "object"
+                      ]
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -2882,7 +2971,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["key", "value"],
+                "required": [
+                  "key",
+                  "value"
+                ],
                 "properties": {
                   "key": {
                     "type": "string",
@@ -2909,7 +3001,9 @@
         ]
       },
       "put": {
-        "tags": ["Musée - Paramètres"],
+        "tags": [
+          "Musée - Paramètres"
+        ],
         "summary": "Crée ou met à jour un paramètre (upsert) - Retourne 201 si créé, 200 si mis à jour",
         "description": "",
         "operationId": "put_museum_settings",
@@ -2929,10 +3023,17 @@
                       "type": "string"
                     },
                     "value": {
-                      "type": ["string", "number", "boolean", "object"]
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "object"
+                      ]
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -2960,10 +3061,17 @@
                       "type": "string"
                     },
                     "value": {
-                      "type": ["string", "number", "boolean", "object"]
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "object"
+                      ]
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -3014,7 +3122,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["key", "value"],
+                "required": [
+                  "key",
+                  "value"
+                ],
                 "properties": {
                   "key": {
                     "type": "string",
@@ -3043,7 +3154,9 @@
     },
     "/museum/settings/:key": {
       "get": {
-        "tags": ["Musée - Paramètres"],
+        "tags": [
+          "Musée - Paramètres"
+        ],
         "summary": "Récupère un paramètre par sa clé",
         "description": "",
         "operationId": "get_museum_settings_:key",
@@ -3080,7 +3193,9 @@
                       "type": "string"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -3132,7 +3247,9 @@
         ]
       },
       "delete": {
-        "tags": ["Musée - Paramètres"],
+        "tags": [
+          "Musée - Paramètres"
+        ],
         "summary": "Supprime un paramètre par sa clé",
         "description": "",
         "operationId": "delete_museum_settings_:key",
@@ -3199,7 +3316,9 @@
     },
     "/museum/capacity/max": {
       "get": {
-        "tags": ["Musée - Capacité"],
+        "tags": [
+          "Musée - Capacité"
+        ],
         "summary": "Récupère la capacité maximale du musée",
         "description": "",
         "operationId": "get_museum_capacity_max",
@@ -3244,7 +3363,9 @@
         ]
       },
       "post": {
-        "tags": ["Musée - Capacité"],
+        "tags": [
+          "Musée - Capacité"
+        ],
         "summary": "Définit la capacité maximale du musée",
         "description": "",
         "operationId": "post_museum_capacity_max",
@@ -3270,7 +3391,9 @@
                       "type": "string"
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -3321,7 +3444,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["max_capacity"],
+                "required": [
+                  "max_capacity"
+                ],
                 "properties": {
                   "max_capacity": {
                     "type": "number",
@@ -3342,7 +3467,9 @@
     },
     "/museum/capacity/validated-tickets": {
       "get": {
-        "tags": ["Musée - Capacité"],
+        "tags": [
+          "Musée - Capacité"
+        ],
         "summary": "Récupère les tickets validés pour un créneau donné. Retourne le nombre de tickets validés (count) et la liste complète des tickets (tickets) pour le créneau spécifié. Peut inclure les créneaux adjacents si include_adjacent_slots est true.",
         "description": "",
         "operationId": "get_museum_capacity_validated-tickets",
@@ -3416,11 +3543,15 @@
                             "type": "string"
                           },
                           "first_name": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "last_name": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "email": {
@@ -3436,15 +3567,21 @@
                             "type": "string"
                           },
                           "checkout_id": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "checkout_reference": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "transaction_status": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "ticket_price": {
@@ -3460,15 +3597,21 @@
                             "type": "string"
                           },
                           "used_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "notes": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "language": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "created_at": {
@@ -3526,7 +3669,9 @@
     },
     "/museum/tickets": {
       "post": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Crée un nouveau ticket avec génération automatique d'un code QR unique",
         "description": "",
         "operationId": "post_museum_tickets",
@@ -3546,11 +3691,15 @@
                       "type": "string"
                     },
                     "first_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "last_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "email": {
@@ -3566,21 +3715,30 @@
                       "type": "string"
                     },
                     "checkout_id": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "checkout_reference": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "transaction_status": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "ticket_price": {
                       "type": "number"
                     },
                     "donation_amount": {
+                      "type": "number"
+                    },
+                    "guided_tour_price": {
                       "type": "number"
                     },
                     "total_amount": {
@@ -3590,15 +3748,21 @@
                       "type": "string"
                     },
                     "used_at": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "language": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -3701,15 +3865,15 @@
                   },
                   "checkout_id": {
                     "type": "string",
-                    "description": "ID du checkout SumUp (optionnel au moment de la création)"
+                    "description": "ID du checkout (optionnel au moment de la création)"
                   },
                   "checkout_reference": {
                     "type": "string",
-                    "description": "Référence du checkout SumUp (optionnel)"
+                    "description": "Référence du checkout (optionnel)"
                   },
                   "transaction_status": {
                     "type": "string",
-                    "description": "Statut de la transaction SumUp (optionnel)"
+                    "description": "Statut de la transaction (optionnel)"
                   },
                   "notes": {
                     "type": "string",
@@ -3720,13 +3884,17 @@
                     "description": "Informations de tarif au moment de la création (sera stocké dans notes au format JSON). Permet de conserver les informations de tarif pour vérification ultérieure, notamment pour les membres avec places gratuites.",
                     "properties": {
                       "price_id": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "format": "uuid",
                         "description": "ID du tarif utilisé (optionnel, peut être null pour les tarifs personnalisés)",
                         "nullable": true
                       },
                       "price_name": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "description": "Nom du tarif au moment de la création (pour référence)",
                         "nullable": true
                       },
@@ -3736,48 +3904,69 @@
                         "description": "Montant du tarif au moment de la création"
                       },
                       "audience_type": {
-                        "type": ["string"],
-                        "enum": ["public", "member"],
+                        "type": [
+                          "string"
+                        ],
+                        "enum": [
+                          "public",
+                          "member"
+                        ],
                         "description": "Type d'audience",
                         "nullable": true
                       },
                       "requires_proof": {
-                        "type": ["boolean"],
+                        "type": [
+                          "boolean"
+                        ],
                         "description": "Si un justificatif était requis",
                         "nullable": true
                       },
                       "proof_info": {
-                        "type": ["object"],
+                        "type": [
+                          "object"
+                        ],
                         "description": "Informations sur le justificatif fourni",
                         "properties": {
                           "type": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "description": "Type de justificatif (ex: \"student_card\", \"senior_card\", \"member_card\")",
                             "nullable": true
                           },
                           "reference": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "description": "Référence du justificatif (numéro de carte, etc.)",
                             "nullable": true
                           },
                           "uploaded_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "format": "date-time",
                             "description": "Date d'upload du justificatif (format ISO)",
                             "nullable": true
                           },
                           "verified": {
-                            "type": ["boolean"],
+                            "type": [
+                              "boolean"
+                            ],
                             "description": "Si le justificatif a été vérifié",
                             "nullable": true
                           },
                           "verified_by": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "description": "ID ou nom de la personne qui a vérifié",
                             "nullable": true
                           },
                           "verified_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "format": "date-time",
                             "description": "Date de vérification (format ISO)",
                             "nullable": true
@@ -3788,11 +3977,13 @@
                       "applied_at": {
                         "type": "string",
                         "format": "date-time",
-                        "default": "2025-12-08T21:10:07.280Z",
+                        "default": "2025-12-13T13:02:49.039Z",
                         "description": "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                       }
                     },
-                    "required": ["price_amount"]
+                    "required": [
+                      "price_amount"
+                    ]
                   },
                   "language": {
                     "type": "string",
@@ -3811,7 +4002,9 @@
         ]
       },
       "get": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Récupère tous les tickets avec filtres optionnels (email, date, statut, etc.)",
         "description": "",
         "operationId": "get_museum_tickets",
@@ -3844,7 +4037,13 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["pending", "paid", "cancelled", "used", "expired"],
+              "enum": [
+                "pending",
+                "paid",
+                "cancelled",
+                "used",
+                "expired"
+              ],
               "description": "Filtrer par statut"
             }
           },
@@ -3893,11 +4092,15 @@
                             "type": "string"
                           },
                           "first_name": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "last_name": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "email": {
@@ -3913,15 +4116,21 @@
                             "type": "string"
                           },
                           "checkout_id": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "checkout_reference": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "transaction_status": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "ticket_price": {
@@ -3937,15 +4146,21 @@
                             "type": "string"
                           },
                           "used_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "notes": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "language": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "created_at": {
@@ -4003,7 +4218,9 @@
     },
     "/museum/tickets/:id": {
       "get": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Récupère un ticket par son ID (authentification requise)",
         "description": "",
         "operationId": "get_museum_tickets_:id",
@@ -4035,11 +4252,15 @@
                       "type": "string"
                     },
                     "first_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "last_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "email": {
@@ -4055,21 +4276,30 @@
                       "type": "string"
                     },
                     "checkout_id": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "checkout_reference": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "transaction_status": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "ticket_price": {
                       "type": "number"
                     },
                     "donation_amount": {
+                      "type": "number"
+                    },
+                    "guided_tour_price": {
                       "type": "number"
                     },
                     "total_amount": {
@@ -4079,19 +4309,21 @@
                       "type": "string"
                     },
                     "used_at": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
-                    "guided_tour_price": {
-                      "type": "number"
-                    },
-
                     "language": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -4143,7 +4375,9 @@
         ]
       },
       "put": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Met à jour un ticket",
         "description": "",
         "operationId": "put_museum_tickets_:id",
@@ -4175,11 +4409,15 @@
                       "type": "string"
                     },
                     "first_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "last_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "email": {
@@ -4195,21 +4433,30 @@
                       "type": "string"
                     },
                     "checkout_id": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "checkout_reference": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "transaction_status": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "ticket_price": {
                       "type": "number"
                     },
                     "donation_amount": {
+                      "type": "number"
+                    },
+                    "guided_tour_price": {
                       "type": "number"
                     },
                     "total_amount": {
@@ -4219,15 +4466,21 @@
                       "type": "string"
                     },
                     "used_at": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "language": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -4295,13 +4548,17 @@
                 "type": "object",
                 "properties": {
                   "first_name": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "description": "Prénom du visiteur",
                     "nullable": true
                   },
                   "last_name": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "description": "Nom du visiteur",
                     "nullable": true
@@ -4338,38 +4595,56 @@
                     "description": "Montant du don optionnel en euros"
                   },
                   "checkout_id": {
-                    "type": ["string"],
-                    "description": "ID du checkout SumUp",
+                    "type": [
+                      "string"
+                    ],
+                    "description": "ID du checkout",
                     "nullable": true
                   },
                   "checkout_reference": {
-                    "type": ["string"],
-                    "description": "Référence du checkout SumUp",
+                    "type": [
+                      "string"
+                    ],
+                    "description": "Référence du checkout",
                     "nullable": true
                   },
                   "transaction_status": {
-                    "type": ["string"],
-                    "description": "Statut de la transaction SumUp",
+                    "type": [
+                      "string"
+                    ],
+                    "description": "Statut de la transaction",
                     "nullable": true
                   },
                   "status": {
                     "type": "string",
-                    "enum": ["pending", "paid", "cancelled", "used", "expired"],
+                    "enum": [
+                      "pending",
+                      "paid",
+                      "cancelled",
+                      "used",
+                      "expired"
+                    ],
                     "description": "Statut du ticket"
                   },
                   "used_at": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "format": "date-time",
                     "description": "Date/heure d'utilisation du ticket",
                     "nullable": true
                   },
                   "notes": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "description": "Notes optionnelles",
                     "nullable": true
                   },
                   "language": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 10,
                     "description": "Code de langue (ex: \"fr\", \"en\", \"es\")",
                     "nullable": true
@@ -4386,7 +4661,9 @@
         ]
       },
       "delete": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Supprime un ticket",
         "description": "",
         "operationId": "delete_museum_tickets_:id",
@@ -4454,7 +4731,9 @@
     },
     "/museum/tickets/qr/:qrCode": {
       "get": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Récupère un ticket par son code QR (route publique)",
         "description": "",
         "operationId": "get_museum_tickets_qr_:qrCode",
@@ -4486,11 +4765,15 @@
                       "type": "string"
                     },
                     "first_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "last_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "email": {
@@ -4506,21 +4789,30 @@
                       "type": "string"
                     },
                     "checkout_id": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "checkout_reference": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "transaction_status": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "ticket_price": {
                       "type": "number"
                     },
                     "donation_amount": {
+                      "type": "number"
+                    },
+                    "guided_tour_price": {
                       "type": "number"
                     },
                     "total_amount": {
@@ -4530,15 +4822,21 @@
                       "type": "string"
                     },
                     "used_at": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "language": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -4587,7 +4885,9 @@
     },
     "/museum/tickets/validate": {
       "post": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Valide/utilise un ticket en scannant son code QR (route publique)",
         "description": "",
         "operationId": "post_museum_tickets_validate",
@@ -4607,11 +4907,15 @@
                       "type": "string"
                     },
                     "first_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "last_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "email": {
@@ -4627,21 +4931,30 @@
                       "type": "string"
                     },
                     "checkout_id": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "checkout_reference": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "transaction_status": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "ticket_price": {
                       "type": "number"
                     },
                     "donation_amount": {
+                      "type": "number"
+                    },
+                    "guided_tour_price": {
                       "type": "number"
                     },
                     "total_amount": {
@@ -4651,15 +4964,21 @@
                       "type": "string"
                     },
                     "used_at": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "language": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -4725,7 +5044,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["qr_code"],
+                "required": [
+                  "qr_code"
+                ],
                 "properties": {
                   "qr_code": {
                     "type": "string",
@@ -4746,94 +5067,12 @@
         ]
       }
     },
-    "/admin/tickets/:id/pdf": {
-      "get": {
-        "tags": ["Musée - Tickets"],
-        "summary": "Régénère le PDF d'un ticket (admin) et l'affiche",
-        "description": "",
-        "operationId": "get_admin_tickets_:id_pdf",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID du ticket",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "description": "ID du ticket"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Succès",
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Code 400",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Code 404",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur serveur",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "cookieAuth": []
-          }
-        ]
-      }
-    },
     "/museum/tickets/payment": {
       "post": {
-        "tags": ["Musée - Tickets"],
-        "summary": "Crée plusieurs tickets avec paiement SumUp. Crée d'abord un checkout SumUp avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)",
+        "tags": [
+          "Musée - Tickets"
+        ],
+        "summary": "Crée plusieurs tickets avec paiement. Crée d'abord un checkout avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)",
         "description": "",
         "operationId": "post_museum_tickets_payment",
         "parameters": [],
@@ -4846,13 +5085,25 @@
                   "type": "object",
                   "properties": {
                     "checkout_id": {
-                      "type": ["string"],
-                      "description": "ID du checkout SumUp (null si la commande est gratuite)",
+                      "type": [
+                        "string"
+                      ],
+                      "description": "ID du checkout (null si la commande est gratuite)",
                       "nullable": true
                     },
                     "checkout_reference": {
-                      "type": ["string"],
-                      "description": "Référence du checkout SumUp (null si la commande est gratuite)",
+                      "type": [
+                        "string"
+                      ],
+                      "description": "Référence du checkout (null si la commande est gratuite)",
+                      "nullable": true
+                    },
+                    "checkout_url": {
+                      "type": [
+                        "string"
+                      ],
+                      "format": "uri",
+                      "description": "URL de redirection vers la page de paiement (null si la commande est gratuite)",
                       "nullable": true
                     },
                     "tickets": {
@@ -4867,11 +5118,15 @@
                             "type": "string"
                           },
                           "first_name": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "last_name": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "email": {
@@ -4887,15 +5142,21 @@
                             "type": "string"
                           },
                           "checkout_id": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "checkout_reference": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "transaction_status": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "ticket_price": {
@@ -4911,15 +5172,21 @@
                             "type": "string"
                           },
                           "used_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "notes": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "language": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "created_at": {
@@ -4933,7 +5200,9 @@
                       "description": "Liste des tickets créés"
                     }
                   },
-                  "required": ["tickets"]
+                  "required": [
+                    "tickets"
+                  ]
                 }
               }
             }
@@ -4975,7 +5244,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["email", "tickets"],
+                "required": [
+                  "email",
+                  "tickets",
+                  "success_url",
+                  "cancel_url"
+                ],
                 "properties": {
                   "email": {
                     "type": "string",
@@ -5045,13 +5319,17 @@
                           "description": "Informations de tarif au moment de la création pour ce ticket (sera stocké dans notes au format JSON). Permet de conserver les informations de tarif pour vérification ultérieure, notamment pour les membres avec places gratuites.",
                           "properties": {
                             "price_id": {
-                              "type": ["string"],
+                              "type": [
+                                "string"
+                              ],
                               "format": "uuid",
                               "description": "ID du tarif utilisé (optionnel, peut être null pour les tarifs personnalisés)",
                               "nullable": true
                             },
                             "price_name": {
-                              "type": ["string"],
+                              "type": [
+                                "string"
+                              ],
                               "description": "Nom du tarif au moment de la création (pour référence)",
                               "nullable": true
                             },
@@ -5061,48 +5339,69 @@
                               "description": "Montant du tarif au moment de la création"
                             },
                             "audience_type": {
-                              "type": ["string"],
-                              "enum": ["public", "member"],
+                              "type": [
+                                "string"
+                              ],
+                              "enum": [
+                                "public",
+                                "member"
+                              ],
                               "description": "Type d'audience",
                               "nullable": true
                             },
                             "requires_proof": {
-                              "type": ["boolean"],
+                              "type": [
+                                "boolean"
+                              ],
                               "description": "Si un justificatif était requis",
                               "nullable": true
                             },
                             "proof_info": {
-                              "type": ["object"],
+                              "type": [
+                                "object"
+                              ],
                               "description": "Informations sur le justificatif fourni",
                               "properties": {
                                 "type": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "description": "Type de justificatif (ex: \"student_card\", \"senior_card\", \"member_card\")",
                                   "nullable": true
                                 },
                                 "reference": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "description": "Référence du justificatif (numéro de carte, etc.)",
                                   "nullable": true
                                 },
                                 "uploaded_at": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "format": "date-time",
                                   "description": "Date d'upload du justificatif (format ISO)",
                                   "nullable": true
                                 },
                                 "verified": {
-                                  "type": ["boolean"],
+                                  "type": [
+                                    "boolean"
+                                  ],
                                   "description": "Si le justificatif a été vérifié",
                                   "nullable": true
                                 },
                                 "verified_by": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "description": "ID ou nom de la personne qui a vérifié",
                                   "nullable": true
                                 },
                                 "verified_at": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "format": "date-time",
                                   "description": "Date de vérification (format ISO)",
                                   "nullable": true
@@ -5116,7 +5415,10 @@
                               "description": "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                             }
                           },
-                          "required": ["price_amount", "applied_at"]
+                          "required": [
+                            "price_amount",
+                            "applied_at"
+                          ]
                         }
                       }
                     },
@@ -5149,6 +5451,16 @@
                   "description": {
                     "type": "string",
                     "description": "Description du paiement (optionnel)"
+                  },
+                  "success_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL de redirection après paiement réussi (obligatoire). Doit contenir {CHECKOUT_SESSION_ID} qui sera remplacé par Stripe."
+                  },
+                  "cancel_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL de redirection en cas d'annulation (obligatoire)"
                   }
                 }
               }
@@ -5159,7 +5471,9 @@
     },
     "/museum/tickets/checkout/:checkoutId": {
       "get": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Récupère tous les tickets associés à un checkout_id donné (route publique)",
         "description": "",
         "operationId": "get_museum_tickets_checkout_:checkoutId",
@@ -5167,11 +5481,11 @@
           {
             "name": "checkoutId",
             "in": "path",
-            "description": "ID du checkout SumUp",
+            "description": "ID du checkout",
             "required": true,
             "schema": {
               "type": "string",
-              "description": "ID du checkout SumUp"
+              "description": "ID du checkout"
             }
           }
         ],
@@ -5192,11 +5506,15 @@
                         "type": "string"
                       },
                       "first_name": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "last_name": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "email": {
@@ -5212,15 +5530,21 @@
                         "type": "string"
                       },
                       "checkout_id": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "checkout_reference": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "transaction_status": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "ticket_price": {
@@ -5236,15 +5560,21 @@
                         "type": "string"
                       },
                       "used_at": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "notes": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "language": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "created_at": {
@@ -5279,7 +5609,9 @@
     },
     "/museum/tickets/stats": {
       "get": {
-        "tags": ["Musée - Tickets"],
+        "tags": [
+          "Musée - Tickets"
+        ],
         "summary": "Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, montants total, semaine et mois (route publique)",
         "description": "",
         "operationId": "get_museum_tickets_stats",
@@ -5357,7 +5689,9 @@
                       ]
                     }
                   },
-                  "required": ["tickets_stats"]
+                  "required": [
+                    "tickets_stats"
+                  ]
                 }
               }
             }
@@ -5382,7 +5716,9 @@
     },
     "/museum/slots": {
       "get": {
-        "tags": ["Musée - Créneaux"],
+        "tags": [
+          "Musée - Créneaux"
+        ],
         "summary": "Récupère les créneaux horaires disponibles pour une date donnée avec leurs capacités et taux d'occupation (route publique)",
         "description": "",
         "operationId": "get_museum_slots",
@@ -5515,7 +5851,9 @@
     },
     "/museum/donation-proof/generate": {
       "get": {
-        "tags": ["Musée - Certificats de don"],
+        "tags": [
+          "Musée - Certificats de don"
+        ],
         "summary": "Génère et télécharge un certificat de don CERFA 11580 en PDF pour un ticket donné. Le ticket doit contenir un don (donation_amount > 0). Les paramètres address, postal_code et city sont optionnels et permettent de compléter les informations du donateur.",
         "description": "",
         "operationId": "get_museum_donation-proof_generate",
@@ -5636,7 +5974,9 @@
     },
     "/museum/gift-codes/packs": {
       "post": {
-        "tags": ["Musée - Codes cadeaux"],
+        "tags": [
+          "Musée - Codes cadeaux"
+        ],
         "summary": "Crée un pack de codes cadeaux. Chaque code offre une place gratuite. Les codes peuvent être créés en lot pour faciliter la distribution (ex: pour un influenceur).",
         "description": "",
         "operationId": "post_museum_gift-codes_packs",
@@ -5665,30 +6005,46 @@
                           },
                           "status": {
                             "type": "string",
-                            "enum": ["unused", "used", "expired"]
+                            "enum": [
+                              "unused",
+                              "used",
+                              "expired"
+                            ]
                           },
                           "ticket_id": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "pack_id": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "recipient_email": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "expires_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "used_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "notes": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "created_at": {
@@ -5745,7 +6101,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["quantity"],
+                "required": [
+                  "quantity"
+                ],
                 "properties": {
                   "quantity": {
                     "type": "integer",
@@ -5779,7 +6137,9 @@
         ]
       },
       "get": {
-        "tags": ["Musée - Codes cadeaux"],
+        "tags": [
+          "Musée - Codes cadeaux"
+        ],
         "summary": "Récupère la liste paginée des packs de codes cadeaux avec leurs codes associés. Permet de rechercher un pack par code (paramètre `code`). Retourne les statistiques de chaque pack (nombre de codes, utilisés, non utilisés, expirés).",
         "description": "",
         "operationId": "get_museum_gift-codes_packs",
@@ -5849,30 +6209,46 @@
                                 },
                                 "status": {
                                   "type": "string",
-                                  "enum": ["unused", "used", "expired"]
+                                  "enum": [
+                                    "unused",
+                                    "used",
+                                    "expired"
+                                  ]
                                 },
                                 "ticket_id": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "pack_id": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "recipient_email": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "expires_at": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "used_at": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "notes": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "created_at": {
@@ -5944,7 +6320,9 @@
     },
     "/museum/gift-codes/distribute": {
       "post": {
-        "tags": ["Musée - Codes cadeaux"],
+        "tags": [
+          "Musée - Codes cadeaux"
+        ],
         "summary": "Distribue des codes cadeaux par email. Permet d'envoyer un lot de codes à un destinataire (ex: influenceur). Les codes sont associés à l'email du destinataire.",
         "description": "",
         "operationId": "post_museum_gift-codes_distribute",
@@ -6005,7 +6383,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["code_ids", "recipient_email"],
+                "required": [
+                  "code_ids",
+                  "recipient_email"
+                ],
                 "properties": {
                   "code_ids": {
                     "type": "array",
@@ -6031,7 +6412,10 @@
                   },
                   "language": {
                     "type": "string",
-                    "enum": ["fr", "en"],
+                    "enum": [
+                      "fr",
+                      "en"
+                    ],
                     "default": "fr",
                     "description": "Langue de l'email"
                   }
@@ -6049,7 +6433,9 @@
     },
     "/museum/gift-codes": {
       "get": {
-        "tags": ["Musée - Codes cadeaux"],
+        "tags": [
+          "Musée - Codes cadeaux"
+        ],
         "summary": "Récupère la liste des codes cadeaux avec pagination et filtres optionnels (statut, pack, destinataire, ticket associé).",
         "description": "",
         "operationId": "get_museum_gift-codes",
@@ -6061,7 +6447,11 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["unused", "used", "expired"],
+              "enum": [
+                "unused",
+                "used",
+                "expired"
+              ],
               "description": "Filtrer par statut"
             }
           },
@@ -6144,30 +6534,46 @@
                           },
                           "status": {
                             "type": "string",
-                            "enum": ["unused", "used", "expired"]
+                            "enum": [
+                              "unused",
+                              "used",
+                              "expired"
+                            ]
                           },
                           "ticket_id": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "pack_id": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "recipient_email": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "expires_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "used_at": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "notes": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "created_at": {
@@ -6221,7 +6627,9 @@
     },
     "/museum/gift-codes/validate/:code": {
       "get": {
-        "tags": ["Musée - Codes cadeaux"],
+        "tags": [
+          "Musée - Codes cadeaux"
+        ],
         "summary": "Valide un code cadeau (route publique). Vérifie que le code existe, n'est pas utilisé et n'est pas expiré. Permet au frontend de valider un code avant de l'utiliser dans une commande.",
         "description": "",
         "operationId": "get_museum_gift-codes_validate_:code",
@@ -6254,30 +6662,46 @@
                     },
                     "status": {
                       "type": "string",
-                      "enum": ["unused", "used", "expired"]
+                      "enum": [
+                        "unused",
+                        "used",
+                        "expired"
+                      ]
                     },
                     "ticket_id": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "pack_id": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "recipient_email": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "expires_at": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "used_at": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "created_at": {
@@ -6341,7 +6765,9 @@
     },
     "/museum/special-periods": {
       "post": {
-        "tags": ["Musée - Périodes spéciales"],
+        "tags": [
+          "Musée - Périodes spéciales"
+        ],
         "summary": "Crée une période spéciale (vacances scolaires ou fermeture). Les périodes de vacances permettent d'afficher automatiquement les horaires avec audience_type=\"holiday\" en plus des horaires publics. Les périodes de fermeture masquent les horaires normaux.",
         "description": "",
         "operationId": "post_museum_special-periods",
@@ -6359,7 +6785,10 @@
                     },
                     "type": {
                       "type": "string",
-                      "enum": ["holiday", "closure"]
+                      "enum": [
+                        "holiday",
+                        "closure"
+                      ]
                     },
                     "start_date": {
                       "type": "string"
@@ -6368,15 +6797,21 @@
                       "type": "string"
                     },
                     "name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "zone": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -6430,11 +6865,18 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["type", "start_date", "end_date"],
+                "required": [
+                  "type",
+                  "start_date",
+                  "end_date"
+                ],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": ["holiday", "closure"],
+                    "enum": [
+                      "holiday",
+                      "closure"
+                    ],
                     "description": "Type de période : holiday (vacances) ou closure (fermeture)"
                   },
                   "start_date": {
@@ -6478,7 +6920,9 @@
         ]
       },
       "get": {
-        "tags": ["Musée - Périodes spéciales"],
+        "tags": [
+          "Musée - Périodes spéciales"
+        ],
         "summary": "Récupère la liste des périodes spéciales (vacances et fermetures) avec filtres optionnels (type, date, zone). Permet de vérifier si une date est dans une période spéciale.",
         "description": "",
         "operationId": "get_museum_special-periods",
@@ -6490,7 +6934,10 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["holiday", "closure"],
+              "enum": [
+                "holiday",
+                "closure"
+              ],
               "description": "Filtrer par type"
             }
           },
@@ -6541,7 +6988,10 @@
                       },
                       "type": {
                         "type": "string",
-                        "enum": ["holiday", "closure"]
+                        "enum": [
+                          "holiday",
+                          "closure"
+                        ]
                       },
                       "start_date": {
                         "type": "string"
@@ -6550,15 +7000,21 @@
                         "type": "string"
                       },
                       "name": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "description": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "zone": {
-                        "type": ["string"],
+                        "type": [
+                          "string"
+                        ],
                         "nullable": true
                       },
                       "is_active": {
@@ -6601,7 +7057,9 @@
     },
     "/museum/special-periods/:id": {
       "get": {
-        "tags": ["Musée - Périodes spéciales"],
+        "tags": [
+          "Musée - Périodes spéciales"
+        ],
         "summary": "Récupère une période spéciale par son ID.",
         "description": "",
         "operationId": "get_museum_special-periods_:id",
@@ -6631,7 +7089,10 @@
                     },
                     "type": {
                       "type": "string",
-                      "enum": ["holiday", "closure"]
+                      "enum": [
+                        "holiday",
+                        "closure"
+                      ]
                     },
                     "start_date": {
                       "type": "string"
@@ -6640,15 +7101,21 @@
                       "type": "string"
                     },
                     "name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "zone": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -6703,7 +7170,9 @@
         ]
       },
       "put": {
-        "tags": ["Musée - Périodes spéciales"],
+        "tags": [
+          "Musée - Périodes spéciales"
+        ],
         "summary": "Met à jour une période spéciale (vacances ou fermeture).",
         "description": "",
         "operationId": "put_museum_special-periods_:id",
@@ -6721,7 +7190,10 @@
                     },
                     "type": {
                       "type": "string",
-                      "enum": ["holiday", "closure"]
+                      "enum": [
+                        "holiday",
+                        "closure"
+                      ]
                     },
                     "start_date": {
                       "type": "string"
@@ -6730,15 +7202,21 @@
                       "type": "string"
                     },
                     "name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "description": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "zone": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -6795,7 +7273,10 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": ["holiday", "closure"],
+                    "enum": [
+                      "holiday",
+                      "closure"
+                    ],
                     "description": "Type de période : holiday (vacances) ou closure (fermeture)"
                   },
                   "start_date": {
@@ -6809,18 +7290,24 @@
                     "description": "Date de fin (format YYYY-MM-DD)"
                   },
                   "name": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "description": "Nom de la période",
                     "nullable": true
                   },
                   "description": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "description": "Description optionnelle",
                     "nullable": true
                   },
                   "zone": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 50,
                     "description": "Zone pour les vacances scolaires",
                     "nullable": true
@@ -6841,7 +7328,9 @@
         ]
       },
       "delete": {
-        "tags": ["Musée - Périodes spéciales"],
+        "tags": [
+          "Musée - Périodes spéciales"
+        ],
         "summary": "Supprime une période spéciale.",
         "description": "",
         "operationId": "delete_museum_special-periods_:id",
@@ -6910,7 +7399,9 @@
     },
     "/events": {
       "post": {
-        "tags": ["Événements"],
+        "tags": [
+          "Événements"
+        ],
         "summary": "Crée un nouvel événement (musée, association ou externe)",
         "description": "",
         "operationId": "post_events",
@@ -6930,7 +7421,9 @@
                       "type": "string"
                     },
                     "category": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "status": {
@@ -6940,62 +7433,90 @@
                       "type": "string"
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "start_time": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_time": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_type": {
                       "type": "string"
                     },
                     "location_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_address": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_city": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_postal_code": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_title_fr": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_title_en": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_description_fr": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_description_en": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_image_url": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "private_notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "private_contact": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "manager_dev": {
@@ -7011,7 +7532,9 @@
                       "type": "boolean"
                     },
                     "capacity": {
-                      "type": ["integer"],
+                      "type": [
+                        "integer"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -7035,11 +7558,18 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["type", "start_date"],
+                "required": [
+                  "type",
+                  "start_date"
+                ],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": ["museum", "association", "external"],
+                    "enum": [
+                      "museum",
+                      "association",
+                      "external"
+                    ],
                     "description": "Type d'événement"
                   },
                   "category": {
@@ -7056,7 +7586,12 @@
                   },
                   "status": {
                     "type": "string",
-                    "enum": ["draft", "private", "member", "public"],
+                    "enum": [
+                      "draft",
+                      "private",
+                      "member",
+                      "public"
+                    ],
                     "default": "draft",
                     "description": "Statut de visibilité"
                   },
@@ -7066,87 +7601,118 @@
                     "description": "Date de début (format YYYY-MM-DD)"
                   },
                   "end_date": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "format": "date",
                     "description": "Date de fin (optionnel, format YYYY-MM-DD)",
                     "nullable": true
                   },
                   "start_time": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
                     "description": "Heure de début (format HH:MM:SS)",
                     "nullable": true
                   },
                   "end_time": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
                     "description": "Heure de fin (format HH:MM:SS)",
                     "nullable": true
                   },
                   "location_type": {
                     "type": "string",
-                    "enum": ["museum", "external"],
+                    "enum": [
+                      "museum",
+                      "external"
+                    ],
                     "default": "museum",
                     "description": "Type de localisation"
                   },
                   "location_name": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "description": "Nom du lieu",
                     "nullable": true
                   },
                   "location_address": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "description": "Adresse complète",
                     "nullable": true
                   },
                   "location_city": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 100,
                     "description": "Ville",
                     "nullable": true
                   },
                   "location_postal_code": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 20,
                     "description": "Code postal",
                     "nullable": true
                   },
                   "public_title_fr": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "description": "Titre public en français",
                     "nullable": true
                   },
                   "public_title_en": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "description": "Titre public en anglais",
                     "nullable": true
                   },
                   "public_description_fr": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "description": "Description publique en français",
                     "nullable": true
                   },
                   "public_description_en": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "description": "Description publique en anglais",
                     "nullable": true
                   },
                   "public_image_url": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 500,
                     "description": "URL de l'image publique",
                     "nullable": true
                   },
                   "private_notes": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "description": "Notes privées pour les admins",
                     "nullable": true
                   },
                   "private_contact": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "description": "Contact privé",
                     "nullable": true
@@ -7172,7 +7738,9 @@
                     "description": "Géré par com"
                   },
                   "capacity": {
-                    "type": ["integer"],
+                    "type": [
+                      "integer"
+                    ],
                     "minimum": 1,
                     "description": "Capacité maximale",
                     "nullable": true
@@ -7202,7 +7770,9 @@
         ]
       },
       "get": {
-        "tags": ["Événements"],
+        "tags": [
+          "Événements"
+        ],
         "summary": "Récupère les événements avec pagination et filtres (tous types)",
         "description": "",
         "operationId": "get_events",
@@ -7214,7 +7784,11 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["museum", "association", "external"]
+              "enum": [
+                "museum",
+                "association",
+                "external"
+              ]
             }
           },
           {
@@ -7241,7 +7815,12 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["draft", "private", "member", "public"]
+              "enum": [
+                "draft",
+                "private",
+                "member",
+                "public"
+              ]
             }
           },
           {
@@ -7281,7 +7860,10 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["museum", "external"]
+              "enum": [
+                "museum",
+                "external"
+              ]
             }
           },
           {
@@ -7346,7 +7928,9 @@
                             "type": "string"
                           },
                           "category": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "status": {
@@ -7356,62 +7940,90 @@
                             "type": "string"
                           },
                           "end_date": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "start_time": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "end_time": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "location_type": {
                             "type": "string"
                           },
                           "location_name": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "location_address": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "location_city": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "location_postal_code": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "public_title_fr": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "public_title_en": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "public_description_fr": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "public_description_en": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "public_image_url": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "private_notes": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "private_contact": {
-                            "type": ["string"],
+                            "type": [
+                              "string"
+                            ],
                             "nullable": true
                           },
                           "manager_dev": {
@@ -7427,7 +8039,9 @@
                             "type": "boolean"
                           },
                           "capacity": {
-                            "type": ["integer"],
+                            "type": [
+                              "integer"
+                            ],
                             "nullable": true
                           },
                           "is_active": {
@@ -7469,7 +8083,9 @@
     },
     "/events/:id": {
       "get": {
-        "tags": ["Événements"],
+        "tags": [
+          "Événements"
+        ],
         "summary": "Récupère un événement par son ID",
         "description": "",
         "operationId": "get_events_:id",
@@ -7509,7 +8125,9 @@
                       "type": "string"
                     },
                     "category": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "status": {
@@ -7519,62 +8137,90 @@
                       "type": "string"
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "start_time": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_time": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_type": {
                       "type": "string"
                     },
                     "location_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_address": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_city": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_postal_code": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_title_fr": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_title_en": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_description_fr": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_description_en": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_image_url": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "private_notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "private_contact": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "manager_dev": {
@@ -7590,7 +8236,9 @@
                       "type": "boolean"
                     },
                     "capacity": {
-                      "type": ["integer"],
+                      "type": [
+                        "integer"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -7615,7 +8263,9 @@
         ]
       },
       "put": {
-        "tags": ["Événements"],
+        "tags": [
+          "Événements"
+        ],
         "summary": "Met à jour un événement",
         "description": "",
         "operationId": "put_events_:id",
@@ -7635,7 +8285,9 @@
                       "type": "string"
                     },
                     "category": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "status": {
@@ -7645,62 +8297,90 @@
                       "type": "string"
                     },
                     "end_date": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "start_time": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "end_time": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_type": {
                       "type": "string"
                     },
                     "location_name": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_address": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_city": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "location_postal_code": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_title_fr": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_title_en": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_description_fr": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_description_en": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "public_image_url": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "private_notes": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "private_contact": {
-                      "type": ["string"],
+                      "type": [
+                        "string"
+                      ],
                       "nullable": true
                     },
                     "manager_dev": {
@@ -7716,7 +8396,9 @@
                       "type": "boolean"
                     },
                     "capacity": {
-                      "type": ["integer"],
+                      "type": [
+                        "integer"
+                      ],
                       "nullable": true
                     },
                     "is_active": {
@@ -7743,10 +8425,16 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": ["museum", "association", "external"]
+                    "enum": [
+                      "museum",
+                      "association",
+                      "external"
+                    ]
                   },
                   "category": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "enum": [
                       "live",
                       "mediation",
@@ -7759,79 +8447,115 @@
                   },
                   "status": {
                     "type": "string",
-                    "enum": ["draft", "private", "member", "public"]
+                    "enum": [
+                      "draft",
+                      "private",
+                      "member",
+                      "public"
+                    ]
                   },
                   "start_date": {
                     "type": "string",
                     "format": "date"
                   },
                   "end_date": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "format": "date",
                     "nullable": true
                   },
                   "start_time": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
                     "nullable": true
                   },
                   "end_time": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
                     "nullable": true
                   },
                   "location_type": {
                     "type": "string",
-                    "enum": ["museum", "external"]
+                    "enum": [
+                      "museum",
+                      "external"
+                    ]
                   },
                   "location_name": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "nullable": true
                   },
                   "location_address": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "nullable": true
                   },
                   "location_city": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 100,
                     "nullable": true
                   },
                   "location_postal_code": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 20,
                     "nullable": true
                   },
                   "public_title_fr": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "nullable": true
                   },
                   "public_title_en": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "nullable": true
                   },
                   "public_description_fr": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "nullable": true
                   },
                   "public_description_en": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "nullable": true
                   },
                   "public_image_url": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 500,
                     "nullable": true
                   },
                   "private_notes": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "nullable": true
                   },
                   "private_contact": {
-                    "type": ["string"],
+                    "type": [
+                      "string"
+                    ],
                     "maxLength": 255,
                     "nullable": true
                   },
@@ -7848,7 +8572,9 @@
                     "type": "boolean"
                   },
                   "capacity": {
-                    "type": ["integer"],
+                    "type": [
+                      "integer"
+                    ],
                     "minimum": 1,
                     "nullable": true
                   },
@@ -7874,7 +8600,9 @@
         ]
       },
       "delete": {
-        "tags": ["Événements"],
+        "tags": [
+          "Événements"
+        ],
         "summary": "Supprime un événement",
         "description": "",
         "operationId": "delete_events_:id",
@@ -7916,7 +8644,9 @@
     },
     "/museum/calendar": {
       "get": {
-        "tags": ["Musée - Calendrier"],
+        "tags": [
+          "Musée - Calendrier"
+        ],
         "summary": "Récupère le calendrier avec événements et horaires d'ouverture du musée",
         "description": "",
         "operationId": "get_museum_calendar",
@@ -7950,7 +8680,11 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["day", "week", "month"],
+              "enum": [
+                "day",
+                "week",
+                "month"
+              ],
               "default": "month",
               "description": "Vue du calendrier"
             }
@@ -7962,7 +8696,12 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["draft", "private", "member", "public"],
+              "enum": [
+                "draft",
+                "private",
+                "member",
+                "public"
+              ],
               "description": "Filtrer par statut (par défaut: public et member)"
             }
           },
@@ -7986,7 +8725,11 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": ["museum", "association", "external"]
+                "enum": [
+                  "museum",
+                  "association",
+                  "external"
+                ]
               },
               "description": "Filtrer par types d'événements (par défaut: tous les types)"
             }
@@ -8026,7 +8769,9 @@
                                   "type": "string"
                                 },
                                 "description": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 }
                               }
@@ -8047,7 +8792,9 @@
                                   "type": "string"
                                 },
                                 "category": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "status": {
@@ -8057,62 +8804,90 @@
                                   "type": "string"
                                 },
                                 "end_date": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "start_time": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "end_time": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "location_type": {
                                   "type": "string"
                                 },
                                 "location_name": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "location_address": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "location_city": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "location_postal_code": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "public_title_fr": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "public_title_en": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "public_description_fr": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "public_description_en": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "public_image_url": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "private_notes": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "private_contact": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "manager_dev": {
@@ -8128,7 +8903,9 @@
                                   "type": "boolean"
                                 },
                                 "capacity": {
-                                  "type": ["integer"],
+                                  "type": [
+                                    "integer"
+                                  ],
                                   "nullable": true
                                 },
                                 "is_active": {
@@ -8152,7 +8929,9 @@
                                   "type": "string"
                                 },
                                 "name": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "start_date": {
@@ -8162,7 +8941,9 @@
                                   "type": "string"
                                 },
                                 "zone": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 }
                               }
@@ -8177,7 +8958,9 @@
                                   "type": "string"
                                 },
                                 "name": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 },
                                 "start_date": {
@@ -8187,7 +8970,9 @@
                                   "type": "string"
                                 },
                                 "zone": {
-                                  "type": ["string"],
+                                  "type": [
+                                    "string"
+                                  ],
                                   "nullable": true
                                 }
                               }

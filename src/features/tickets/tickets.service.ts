@@ -10,7 +10,7 @@ import type {
   TicketsStatsByDay,
   TicketPricingInfo,
 } from './tickets.types.ts';
-import { createSumUpCheckout } from '../pay/pay.utils.ts';
+import { createCheckout } from '../pay/pay.utils.ts';
 import { getPriceById } from '../prices/prices.service.ts';
 import { createStructuredError } from './tickets.errors.ts';
 
@@ -763,13 +763,13 @@ export async function deleteTicket(
 }
 
 /**
- * Crée plusieurs tickets avec paiement SumUp
- * Crée d'abord le checkout SumUp, puis enregistre tous les tickets avec le checkout_id
+ * Crée plusieurs tickets avec paiement
+ * Crée d'abord le checkout, puis enregistre tous les tickets avec le checkout_id
  */
 export async function createTicketsWithPayment(
   app: FastifyInstance,
   data: CreateTicketsWithPaymentBody
-): Promise<{ checkout_id: string | null; checkout_reference: string | null; tickets: Ticket[] }> {
+): Promise<{ checkout_id: string | null; checkout_reference: string | null; checkout_url: string | null; tickets: Ticket[] }> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
@@ -1113,7 +1113,7 @@ export async function createTicketsWithPayment(
     await validatePricingInfo(app, ticket.pricing_info, basePriceForValidation, ticket.reservation_date);
   }
 
-  // Si le montant total est 0, ne pas créer de checkout SumUp
+  // Si le montant total est 0, ne pas créer de checkout
   // Les tickets seront créés directement avec le statut "paid"
   let checkout: { id: string; checkout_reference: string; status: string } | null = null;
 
@@ -1123,16 +1123,26 @@ export async function createTicketsWithPayment(
 
 
   if (!isFreeOrder) {
-    // Créer le checkout SumUp uniquement si le montant est supérieur à 0
     const currency = data.currency || 'EUR';
     const description = data.description || `Réservation de ${data.tickets.length} ticket(s)`;
 
-    checkout = await createSumUpCheckout(
+    // Créer une session de checkout
+    const session = await createCheckout(
       app,
       totalAmount,
       description,
-      currency
+      currency,
+      data.success_url,
+      data.cancel_url,
+      { checkout_type: 'tickets' }
     );
+
+    checkout = {
+      id: session.id,
+      checkout_reference: session.id,
+      status: session.status || 'open',
+      url: session.url, // URL de redirection
+    };
   }
 
   // Créer tous les tickets dans une transaction
@@ -1240,6 +1250,7 @@ export async function createTicketsWithPayment(
   return {
     checkout_id: checkout?.id ?? null,
     checkout_reference: checkout?.checkout_reference ?? null,
+    checkout_url: checkout?.url ?? null, // URL de redirection
     tickets: createdTickets,
   };
 
@@ -1278,7 +1289,7 @@ export async function updateTicketsByCheckoutStatus(
     throw new Error('Base de données non disponible');
   }
 
-  // Convertir le statut SumUp en statut de ticket
+  // Convertir le statut de paiement en statut de ticket
   let ticketStatus: 'pending' | 'paid' | 'cancelled' = 'pending';
   if (checkoutStatus === 'PAID' || checkoutStatus === 'SUCCESS') {
     ticketStatus = 'paid';
