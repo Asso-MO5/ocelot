@@ -10,7 +10,7 @@ import type {
   TicketsStatsByDay,
   TicketPricingInfo,
 } from './tickets.types.ts';
-import { createSumUpCheckout } from '../pay/pay.utils.ts';
+import { createCheckout } from '../pay/pay.utils.ts';
 import { getPriceById } from '../prices/prices.service.ts';
 import { createStructuredError } from './tickets.errors.ts';
 
@@ -763,25 +763,27 @@ export async function deleteTicket(
 }
 
 /**
- * Crée plusieurs tickets avec paiement SumUp
- * Crée d'abord le checkout SumUp, puis enregistre tous les tickets avec le checkout_id
+ * Crée plusieurs tickets avec paiement
+ * Crée d'abord le checkout, puis enregistre tous les tickets avec le checkout_id
  */
 export async function createTicketsWithPayment(
   app: FastifyInstance,
   data: CreateTicketsWithPaymentBody
-): Promise<{ checkout_id: string | null; checkout_reference: string | null; tickets: Ticket[] }> {
+): Promise<{ checkout_id: string | null; checkout_reference: string | null; checkout_url: string | null; tickets: Ticket[] }> {
   if (!app.pg) {
-    throw new Error('Base de données non disponible');
+    throw createStructuredError(
+      500,
+      'Base de données non disponible',
+      'Database not available'
+    );
   }
 
-  // Validation : email obligatoire
-  if (!data.email || !data.email.trim()) {
-    throw new Error('L\'email est obligatoire');
-  }
-
-  // Validation : au moins un ticket
   if (!data.tickets || data.tickets.length === 0) {
-    throw new Error('Au moins un ticket est requis');
+    throw createStructuredError(
+      400,
+      'Au moins un ticket est requis',
+      'At least one ticket is required'
+    );
   }
 
   if (data.tickets.length > 10) {
@@ -792,11 +794,87 @@ export async function createTicketsWithPayment(
     );
   }
 
-  // Séparer les tickets membres et non-membres
+  // Calculer le montant total AVANT de vérifier l'email
+  // (pour savoir si email est requis ou non)
+  const { getSettingValue } = await import('../settings/settings.service.ts');
+  const slotCapacityHours = (await getSettingValue<number>(app, 'slot_capacity', 1)) || 1;
+  const { isSlotComplete, calculateSlotPrice } = await import('../slots/slots.service.ts');
+
+  // Gérer la visite guidée
+  const wantsGuidedTour = data.guided_tour === true;
+  let guidedTourPrice = 0;
+  if (wantsGuidedTour) {
+    const guidedTourPriceSetting = await getSettingValue<number>(app, 'guided_tour_price', 0);
+    if (guidedTourPriceSetting === null || guidedTourPriceSetting <= 0) {
+      throw createStructuredError(
+        400,
+        'Le tarif de la visite guidée n\'est pas configuré ou est invalide',
+        'The guided tour price is not configured or is invalid'
+      );
+    }
+    if (data.guided_tour_price !== undefined) {
+      const tolerance = 0.01;
+      if (Math.abs(data.guided_tour_price - guidedTourPriceSetting) > tolerance) {
+        throw createStructuredError(
+          400,
+          `Le prix de la visite guidée ne correspond pas. Montant attendu: ${guidedTourPriceSetting}€, montant fourni: ${data.guided_tour_price}€`,
+          `The guided tour price does not match. Expected: ${guidedTourPriceSetting}€, provided: ${data.guided_tour_price}€`
+        );
+      }
+      guidedTourPrice = data.guided_tour_price;
+    } else {
+      guidedTourPrice = guidedTourPriceSetting;
+    }
+  }
+
+  // Calculer le totalAmount (avant application des codes cadeaux)
+  let totalAmount = 0;
+  for (const ticket of data.tickets) {
+    let ticketPrice = ticket.ticket_price;
+
+    // Si le créneau est incomplet, appliquer le demi-tarif
+    if (ticket.slot_start_time && ticket.slot_end_time && ticket.pricing_info?.price_amount) {
+      const basePrice = ticket.pricing_info.price_amount;
+      const isComplete = isSlotComplete(ticket.slot_start_time, ticket.slot_end_time, slotCapacityHours);
+      if (!isComplete) {
+        const adjustedPrice = calculateSlotPrice(basePrice, ticket.slot_start_time, ticket.slot_end_time, slotCapacityHours);
+        if (ticketPrice !== adjustedPrice) {
+          ticketPrice = adjustedPrice;
+          ticket.ticket_price = adjustedPrice;
+        }
+      }
+    }
+    const donationAmount = ticket.donation_amount ?? 0;
+    totalAmount += ticketPrice + donationAmount;
+  }
+  if (wantsGuidedTour) {
+    totalAmount += guidedTourPrice * data.tickets.length;
+  }
+
+  // Email obligatoire uniquement si tous les tickets sont gratuites (totalAmount = 0)
+  // Sinon, Stripe récupère l'email via le checkout
+  if (totalAmount === 0) {
+    if (!data.email || !data.email.trim()) {
+      throw createStructuredError(
+        400,
+        'L\'email est obligatoire pour les réservations gratuites',
+        'Email is required for free reservations'
+      );
+    }
+  }
+
   const memberTickets = data.tickets.filter(ticket => ticket.pricing_info?.price_name?.match(/membre/i));
 
-  // Traitement des tickets membres
   if (memberTickets.length > 0) {
+    // Pour les membres, email est toujours requis pour vérifier l'adhésion
+    if (!data.email || !data.email.trim()) {
+      throw createStructuredError(
+        400,
+        'L\'email est obligatoire pour vérifier l\'adhésion',
+        'Email is required to verify membership'
+      );
+    }
+
     // Récupérer les informations du membre depuis Galette
     const params = new URLSearchParams();
     params.set('email', data.email.trim());
@@ -819,8 +897,8 @@ export async function createTicketsWithPayment(
     if (!memberData.id_adh) {
       throw createStructuredError(
         400,
-        'L\'utilisateur n\'est pas un membre',
-        'The user is not a member'
+        'Erreur lors de la vérification de l\'adhésion',
+        'Error checking membership status'
       );
     }
 
@@ -828,13 +906,9 @@ export async function createTicketsWithPayment(
     const numOfChildren = memberData.children?.length || 0;
     let memberFreeTickets = memberTickets.filter(ticket => ticket.ticket_price === 0);
 
-
-    // Vérifier qu'il y a suffisamment d'enfants pour toutes les places membres
-    // Note: 1 place pour le parent + N places pour les enfants (minimum 1 si pas d'enfants)
     const maxAllowedMemberTickets = numOfChildren + 1;
 
     if (memberFreeTickets.length > maxAllowedMemberTickets) {
-      // Trouver les indices des tickets membres gratuits dans data.tickets
       const memberFreeIndices: number[] = [];
       for (let i = 0; i < data.tickets.length; i++) {
         const ticket = data.tickets[i];
@@ -852,7 +926,6 @@ export async function createTicketsWithPayment(
         data.tickets.splice(indicesToRemove[i], 1);
       }
 
-      // Vérifier qu'il reste au moins un ticket après suppression
       if (data.tickets.length === 0) {
         throw createStructuredError(
           400,
@@ -873,7 +946,6 @@ export async function createTicketsWithPayment(
       // Utiliser la date la plus ancienne parmi les nouvelles réservations
       const reservationDates = memberFreeTickets.map(t => new Date(t.reservation_date));
       const earliestDate = new Date(Math.min(...reservationDates.map(d => d.getTime())));
-
 
       // Trouver le lundi de la semaine de la date la plus ancienne
       const earliestDay = earliestDate.getDay();
@@ -915,12 +987,11 @@ export async function createTicketsWithPayment(
     }
   }
 
-  // Traitement des codes cadeaux si fournis
+  // Traitement des codes cadeaux si fournis (AVANT le calcul du totalAmount final)
   const giftCodesToUse: string[] = data.gift_codes || [];
   const usedGiftCodes: Array<{ code: string; ticketIndex: number }> = [];
 
   if (giftCodesToUse.length > 0) {
-    // Valider tous les codes avant de continuer
     const { validateGiftCode } = await import('../gift-codes/gift-codes.service.ts');
     for (const code of giftCodesToUse) {
       try {
@@ -934,36 +1005,26 @@ export async function createTicketsWithPayment(
       }
     }
 
-    // Vérifier qu'on n'a pas plus de codes que de tickets
-    if (giftCodesToUse.length > data.tickets.length) {
-      throw createStructuredError(
-        400,
-        `Vous ne pouvez pas utiliser plus de codes cadeaux (${giftCodesToUse.length}) que de tickets (${data.tickets.length})`,
-        `You cannot use more gift codes (${giftCodesToUse.length}) than tickets (${data.tickets.length})`
-      );
-    }
-
     // Créer une copie des tickets avec leur index pour pouvoir les trier
     const ticketsWithIndex = data.tickets.map((ticket, index) => ({
       ...ticket,
       originalIndex: index,
     }));
 
-    // Trier les tickets par prix décroissant (les plus chers en premier)
     ticketsWithIndex.sort((a, b) => b.ticket_price - a.ticket_price);
 
-    // Appliquer les codes aux tickets les plus chers
     for (let i = 0; i < Math.min(giftCodesToUse.length, ticketsWithIndex.length); i++) {
       const ticketWithIndex = ticketsWithIndex[i];
       const code = giftCodesToUse[i];
-
-      // Réduire le prix du ticket à 0 (le code offre une place gratuite)
       ticketWithIndex.ticket_price = 0;
+      ticketWithIndex.notes = JSON.stringify({
+        ...ticketWithIndex.notes ? JSON.parse(ticketWithIndex.notes) : {},
+        gift_code: code,
+      });
 
-      // Mettre à jour le ticket dans data.tickets
       data.tickets[ticketWithIndex.originalIndex] = {
         ...ticketWithIndex,
-        originalIndex: undefined, // Retirer l'index temporaire
+        originalIndex: undefined,
       } as any;
 
       usedGiftCodes.push({
@@ -973,45 +1034,8 @@ export async function createTicketsWithPayment(
     }
   }
 
-  // Récupérer slotCapacityHours pour calculer les tarifs ajustés
-  const { getSettingValue } = await import('../settings/settings.service.ts');
-  const slotCapacityHours = (await getSettingValue<number>(app, 'slot_capacity', 1)) || 1;
-  const { isSlotComplete, calculateSlotPrice } = await import('../slots/slots.service.ts');
-
-  // Gérer la visite guidée
-  const wantsGuidedTour = data.guided_tour === true;
-  let guidedTourPrice = 0;
-  if (wantsGuidedTour) {
-    // Récupérer le tarif de la visite guidée depuis les settings
-    const guidedTourPriceSetting = await getSettingValue<number>(app, 'guided_tour_price', 0);
-
-    if (guidedTourPriceSetting === null || guidedTourPriceSetting <= 0) {
-      throw createStructuredError(
-        400,
-        'Le tarif de la visite guidée n\'est pas configuré ou est invalide',
-        'The guided tour price is not configured or is invalid'
-      );
-    }
-
-    // Si un prix est fourni, le valider
-    if (data.guided_tour_price !== undefined) {
-      const tolerance = 0.01;
-      if (Math.abs(data.guided_tour_price - guidedTourPriceSetting) > tolerance) {
-        throw createStructuredError(
-          400,
-          `Le prix de la visite guidée ne correspond pas. Montant attendu: ${guidedTourPriceSetting}€, montant fourni: ${data.guided_tour_price}€`,
-          `The guided tour price does not match. Expected: ${guidedTourPriceSetting}€, provided: ${data.guided_tour_price}€`
-        );
-      }
-      guidedTourPrice = data.guided_tour_price;
-    } else {
-      guidedTourPrice = guidedTourPriceSetting;
-    }
-  }
-
-  // Calculer le montant total (somme de tous les ticket_price + donation_amount + visite guidée)
-  // Ajuster automatiquement les prix pour les créneaux incomplets (demi-tarif)
-  let totalAmount = 0;
+  // Recalculer le totalAmount après application des codes cadeaux
+  totalAmount = 0;
   for (const ticket of data.tickets) {
     let ticketPrice = ticket.ticket_price;
 
@@ -1027,15 +1051,7 @@ export async function createTicketsWithPayment(
         // Si le prix envoyé ne correspond pas au prix ajusté, utiliser le prix ajusté
         // (le frontend peut avoir fait une erreur de calcul)
         if (ticketPrice !== adjustedPrice) {
-          app.log.info({
-            ticketPrice,
-            adjustedPrice,
-            slotStart: ticket.slot_start_time,
-            slotEnd: ticket.slot_end_time,
-            basePrice,
-          }, 'Ajustement automatique du prix pour créneau incomplet');
           ticketPrice = adjustedPrice;
-          // Mettre à jour le prix dans le ticket pour qu'il soit cohérent
           ticket.ticket_price = adjustedPrice;
         }
       }
@@ -1059,8 +1075,6 @@ export async function createTicketsWithPayment(
     totalAmount += ticketPrice + donationAmount;
   }
 
-  // Ajouter le prix de la visite guidée au total (une fois par ticket)
-  // Chaque ticket a le prix complet de la visite guidée
   if (wantsGuidedTour) {
     totalAmount += guidedTourPrice * data.tickets.length;
   }
@@ -1113,26 +1127,32 @@ export async function createTicketsWithPayment(
     await validatePricingInfo(app, ticket.pricing_info, basePriceForValidation, ticket.reservation_date);
   }
 
-  // Si le montant total est 0, ne pas créer de checkout SumUp
+  // Si le montant total est 0, ne pas créer de checkout
   // Les tickets seront créés directement avec le statut "paid"
-  let checkout: { id: string; checkout_reference: string; status: string } | null = null;
-
-  // TODO REMOVE THIS
-  //const isFreeOrder = totalAmount === 0;
-  const isFreeOrder = true;
-
+  let checkout: { id: string; checkout_reference: string; status: string, url: string } | null = null;
+  const isFreeOrder = totalAmount === 0;
 
   if (!isFreeOrder) {
-    // Créer le checkout SumUp uniquement si le montant est supérieur à 0
     const currency = data.currency || 'EUR';
     const description = data.description || `Réservation de ${data.tickets.length} ticket(s)`;
 
-    checkout = await createSumUpCheckout(
+    // Créer une session de checkout
+    const session = await createCheckout(
       app,
       totalAmount,
       description,
-      currency
+      currency,
+      data.success_url,
+      data.cancel_url,
+      { checkout_type: 'tickets' }
     );
+
+    checkout = {
+      id: session.id,
+      checkout_reference: session.id,
+      status: session.status || 'open',
+      url: session.url, // URL de redirection
+    };
   }
 
   // Créer tous les tickets dans une transaction
@@ -1164,11 +1184,7 @@ export async function createTicketsWithPayment(
       // Le premier ticket a checkout_id = '0' pour identifier le premier ticket de chaque commande
       const checkoutId = checkout?.id ?? String(index);
       const checkoutReference = checkout?.checkout_reference ?? null;
-
-      /**
       const transactionStatus = checkout?.status ?? null;
-      **/
-      const transactionStatus = 'NOT_PAID';
 
       const result = await app.pg.query<Ticket>(
         `INSERT INTO tickets (
@@ -1182,7 +1198,8 @@ export async function createTicketsWithPayment(
           qrCode,
           data.first_name ?? null,
           data.last_name ?? null,
-          data.email.trim(),
+          // Email : obligatoire si commande gratuite, sinon optionnel (Stripe le récupérera)
+          (data.email && data.email.trim()) ? data.email.trim() : null,
           ticketData.reservation_date,
           ticketData.slot_start_time,
           ticketData.slot_end_time,
@@ -1231,19 +1248,11 @@ export async function createTicketsWithPayment(
   }
 
   return {
-    checkout_id: null,
-    checkout_reference: null,
-    tickets: createdTickets,
-  }
-
-  /**
-  return {
     checkout_id: checkout?.id ?? null,
     checkout_reference: checkout?.checkout_reference ?? null,
+    checkout_url: checkout?.url ?? null,
     tickets: createdTickets,
   };
-
-  **/
 }
 
 /**
@@ -1278,7 +1287,7 @@ export async function updateTicketsByCheckoutStatus(
     throw new Error('Base de données non disponible');
   }
 
-  // Convertir le statut SumUp en statut de ticket
+  // Convertir le statut de paiement en statut de ticket
   let ticketStatus: 'pending' | 'paid' | 'cancelled' = 'pending';
   if (checkoutStatus === 'PAID' || checkoutStatus === 'SUCCESS') {
     ticketStatus = 'paid';
@@ -1295,6 +1304,64 @@ export async function updateTicketsByCheckoutStatus(
      WHERE checkout_id = $3
      RETURNING id`,
     [ticketStatus, transactionStatus || checkoutStatus, checkoutId]
+  );
+
+  return result.rows.length;
+}
+
+/**
+ * Met à jour les informations client (nom, prénom, email) des tickets associés à un checkout_id
+ */
+export async function updateTicketsCustomerInfo(
+  app: FastifyInstance,
+  checkoutId: string,
+  customerInfo: {
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+  }
+): Promise<number> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  // Construire la requête de mise à jour dynamiquement
+  const updates: string[] = [];
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  if (customerInfo.email) {
+    updates.push(`email = $${paramIndex}`);
+    params.push(customerInfo.email.trim());
+    paramIndex++;
+  }
+
+  if (customerInfo.first_name !== undefined) {
+    updates.push(`first_name = COALESCE($${paramIndex}, first_name)`);
+    params.push(customerInfo.first_name || null);
+    paramIndex++;
+  }
+
+  if (customerInfo.last_name !== undefined) {
+    updates.push(`last_name = COALESCE($${paramIndex}, last_name)`);
+    params.push(customerInfo.last_name || null);
+    paramIndex++;
+  }
+
+  if (updates.length === 0) {
+    return 0;
+  }
+
+  updates.push(`updated_at = current_timestamp`);
+  params.push(checkoutId);
+
+  // Mettre à jour tous les tickets associés à ce checkout
+  const result = await app.pg.query<{ count: string }>(
+    `UPDATE tickets 
+     SET ${updates.join(', ')}
+     WHERE checkout_id = $${paramIndex}
+     RETURNING id`,
+    params
   );
 
   return result.rows.length;

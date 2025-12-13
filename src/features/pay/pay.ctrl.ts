@@ -1,72 +1,43 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { createSumUpCheckout, getSumUpCheckoutStatus } from './pay.utils.ts';
-import { createCheckoutSchema, getCheckoutStatusSchema, sumUpWebhookSchema } from './pay.schemas.ts';
-import type { CreateCheckoutBody, SumUpWebhookBody } from './pay.types.ts';
+import { getCheckoutStatus, constructWebhookEvent, getPaymentStats } from './pay.utils.ts';
+import { webhookSchema, getCheckoutStatusSchema, getPaymentStatsSchema } from './pay.schemas.ts';
+import type { WebhookBody } from './pay.types.ts';
 import { updateTicketsByCheckoutStatus } from '../tickets/tickets.service.ts';
+import Stripe from 'stripe';
 
 /**
- * Handler pour créer un checkout SumUp
- */
-export async function createCheckoutHandler(
-  req: FastifyRequest<{ Body: CreateCheckoutBody }>,
-  reply: FastifyReply,
-  app: FastifyInstance
-) {
-  try {
-    const { amount, currency = 'EUR' } = req.body;
-
-    if (!amount || amount <= 0) {
-      return reply.code(400).send({ error: 'Le montant doit être supérieur à 0' });
-    }
-
-
-    const checkout = await createSumUpCheckout(
-      app,
-      amount,
-      currency
-    );
-
-    return reply.send({
-      checkout_id: checkout.id,
-      checkout_reference: checkout.checkout_reference,
-      amount: checkout.amount,
-      currency: checkout.currency,
-      status: checkout.status,
-    });
-  } catch (err: any) {
-    app.log.error({ err }, 'Erreur lors de la création du checkout');
-
-    if (err.message?.includes('SUMUP_API_KEY') || err.message?.includes('SUMUP_MERCHANT_CODE')) {
-      return reply.code(500).send({ error: 'Configuration SumUp manquante' });
-    }
-
-    return reply.code(500).send({ error: 'Erreur lors de la création du checkout' });
-  }
-}
-
-/**
- * Handler pour vérifier le statut d'un checkout SumUp
+ * Handler pour vérifier le statut d'une session de checkout
  */
 export async function getCheckoutStatusHandler(
-  req: FastifyRequest<{ Params: { checkoutId: string } }>,
+  req: FastifyRequest<{ Params: { sessionId: string } }>,
   reply: FastifyReply,
   app: FastifyInstance
 ) {
   try {
-    const { checkoutId } = req.params;
+    const { sessionId } = req.params;
 
-    if (!checkoutId) {
-      return reply.code(400).send({ error: 'checkoutId est requis' });
+    if (!sessionId) {
+      return reply.code(400).send({ error: 'sessionId est requis' });
     }
 
-    const checkoutStatus = await getSumUpCheckoutStatus(app, checkoutId);
+    const sessionStatus = await getCheckoutStatus(app, sessionId);
 
-    return reply.send(checkoutStatus);
+    // Convertir le format Stripe en format standard
+    return reply.send({
+      id: sessionStatus.id,
+      checkout_reference: sessionStatus.id, // Utiliser l'ID comme référence
+      amount: sessionStatus.amount_total / 100, // Convertir de centimes en euros
+      currency: sessionStatus.currency.toUpperCase(),
+      status: sessionStatus.payment_status === 'paid' ? 'PAID' :
+        sessionStatus.status === 'expired' ? 'CANCELLED' :
+          sessionStatus.payment_status === 'unpaid' ? 'PENDING' : 'PENDING',
+      transaction_code: sessionStatus.payment_intent || undefined,
+    });
   } catch (err: any) {
-    app.log.error({ err, checkoutId: req.params.checkoutId }, 'Erreur lors de la vérification du statut');
+    app.log.error({ err, sessionId: req.params.sessionId }, 'Erreur lors de la vérification du statut');
 
     if (err.message?.includes('404') || err.message?.includes('not found')) {
-      return reply.code(404).send({ error: 'Checkout non trouvé' });
+      return reply.code(404).send({ error: 'Session non trouvée' });
     }
 
     return reply.code(500).send({ error: 'Erreur lors de la vérification du statut' });
@@ -74,49 +45,178 @@ export async function getCheckoutStatusHandler(
 }
 
 /**
- * Handler pour recevoir les webhooks SumUp
+ * Handler pour recevoir les webhooks avec body brut
  */
-export async function sumUpWebhookHandler(
-  req: FastifyRequest<{ Body: SumUpWebhookBody }>,
+async function webhookHandlerWithRawBody(
+  req: FastifyRequest,
   reply: FastifyReply,
-  app: FastifyInstance
+  app: FastifyInstance,
+  rawBody: Buffer,
+  body: WebhookBody
 ) {
   try {
-    const body = req.body;
+    const signature = req.headers['stripe-signature'] as string;
 
-    // Extraire les informations du webhook (peut être dans event ou directement dans body)
-    const event = body.event || body;
-    const checkoutId = event.checkout_id || body.checkout_id;
-    const status = (event.status || body.status) as 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'SENT' | 'SUCCESS' | undefined;
-    const transactionCode = event.transaction_code || body.transaction_code;
-
-    if (!checkoutId) {
-      app.log.warn({ body }, 'Webhook SumUp reçu sans checkout_id');
-      return reply.code(400).send({ error: 'checkout_id est requis' });
+    if (!signature) {
+      app.log.warn({}, 'Signature Stripe manquante');
+      return reply.code(400).send({ error: 'Signature manquante' });
     }
 
-    if (!status) {
-      app.log.warn({ body, checkoutId }, 'Webhook SumUp reçu sans statut');
-      return reply.code(400).send({ error: 'status est requis' });
+    // Vérifier la signature et construire l'event avec le SDK Stripe
+    // Passer directement le Buffer brut (exactement tel qu'il a été reçu)
+    let event: Stripe.Event;
+    try {
+      event = constructWebhookEvent(rawBody, signature);
+      app.log.info({ eventType: event.type, eventId: event.id }, 'Webhook signature validée');
+    } catch (err: any) {
+      // En développement, permettre de continuer même si la signature échoue
+      // (utile pour tester avec Stripe CLI qui peut avoir un secret différent)
+      const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+
+      if (isDevelopment) {
+        app.log.warn({
+          error: err.message
+        }, 'Signature webhook invalide, mais on continue en développement');
+
+        // Parser l'event manuellement depuis le body
+        try {
+          event = body as any as Stripe.Event;
+        } catch (parseErr) {
+          app.log.error({ parseErr }, 'Erreur lors du parsing de l\'event depuis body');
+          return reply.code(400).send({ error: `Signature invalide et body non parsable: ${err.message}` });
+        }
+      } else {
+        app.log.warn({
+          error: err.message
+        }, 'Signature webhook invalide');
+        return reply.code(400).send({ error: `Signature invalide: ${err.message}` });
+      }
+    }
+
+    const eventType = event.type;
+
+    // Extraire le session_id selon le type d'événement
+    let sessionId: string | undefined;
+    let checkoutStatus: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'SENT' | 'SUCCESS' | null = null;
+    let paymentIntentId: string | undefined;
+
+    if (eventType === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      sessionId = session.id;
+      checkoutStatus = session.payment_status === 'paid' ? 'PAID' : 'PENDING';
+      // Si la session est expirée, considérer comme annulée
+      if (session.status === 'expired') {
+        checkoutStatus = 'CANCELLED';
+      }
+      paymentIntentId = typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+
+      // Récupérer les informations client depuis Stripe si disponibles
+      // customer_details contient name, email, phone
+      if (session.customer_details) {
+        const customerDetails = session.customer_details;
+        const customerEmail = customerDetails.email;
+        const customerName = customerDetails.name;
+
+        // Si on a un nom complet, essayer de le séparer en prénom/nom
+        let firstName: string | undefined;
+        let lastName: string | undefined;
+        if (customerName) {
+          const nameParts = customerName.trim().split(/\s+/);
+          if (nameParts.length > 0) {
+            firstName = nameParts[0];
+            if (nameParts.length > 1) {
+              lastName = nameParts.slice(1).join(' ');
+            }
+          }
+        }
+
+        // Mettre à jour les tickets avec les informations client si disponibles
+        if (customerEmail || firstName || lastName) {
+          try {
+            const { updateTicketsCustomerInfo } = await import('../tickets/tickets.service.ts');
+            await updateTicketsCustomerInfo(app, sessionId, {
+              email: customerEmail || undefined,
+              first_name: firstName || undefined,
+              last_name: lastName || undefined,
+            });
+          } catch (err) {
+            app.log.warn({ err, sessionId }, 'Erreur lors de la mise à jour des informations client');
+          }
+        }
+      }
+    } else if (eventType === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      // Pour payment_intent, on doit récupérer la session associée depuis les metadata
+      // Pour l'instant, on utilise le payment_intent_id comme checkout_id
+      sessionId = paymentIntent.id;
+      paymentIntentId = paymentIntent.id;
+      checkoutStatus = 'PAID';
+    } else if (eventType === 'payment_intent.payment_failed') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      sessionId = paymentIntent.id;
+      paymentIntentId = paymentIntent.id;
+      checkoutStatus = 'FAILED';
+    } else if (eventType === 'checkout.session.async_payment_succeeded') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      sessionId = session.id;
+      paymentIntentId = typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+      checkoutStatus = 'PAID';
+    } else if (eventType === 'checkout.session.async_payment_failed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      sessionId = session.id;
+      paymentIntentId = typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+      checkoutStatus = 'FAILED';
+    } else if (eventType === 'checkout.session.expired') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      sessionId = session.id;
+      checkoutStatus = 'CANCELLED';
+    } else if (eventType === 'charge.succeeded' || eventType === 'charge.updated') {
+      // Pour les événements charge, on peut récupérer le payment_intent
+      // mais on ne peut pas directement récupérer le session_id
+      // Ces événements sont généralement suivis par checkout.session.completed
+      const charge = event.data.object as Stripe.Charge;
+      if (charge.payment_intent) {
+        paymentIntentId = typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : charge.payment_intent.id;
+        // On ne peut pas récupérer le session_id directement depuis un charge
+        // On ignore ces événements car checkout.session.completed sera envoyé après
+        return reply.send({
+          success: true,
+          tickets_updated: 0,
+          qr_codes: []
+        });
+      }
+    }
+
+    if (!sessionId) {
+      // Pour les événements non gérés, on retourne 200 pour éviter les retries
+      // Le schéma requiert success, tickets_updated et qr_codes
+      return reply.send({
+        success: true,
+        tickets_updated: 0,
+        qr_codes: []
+      });
     }
 
     // Mettre à jour les tickets associés uniquement pour les statuts finaux
-    // SENT est un statut intermédiaire, on ne fait rien
     let ticketsUpdated = 0;
-    if (status && status !== 'SENT' && status !== 'PENDING') {
-      // SUCCESS est équivalent à PAID
-      const finalStatus = status === 'SUCCESS' ? 'PAID' : status;
-      // On passe transactionCode si disponible, sinon le statut SumUp
-      // Le statut du paiement est déjà dans la colonne 'status' (paid/cancelled)
+    if (checkoutStatus && (checkoutStatus === 'PAID' || checkoutStatus === 'FAILED' || checkoutStatus === 'CANCELLED')) {
       ticketsUpdated = await updateTicketsByCheckoutStatus(
         app,
-        checkoutId,
-        finalStatus,
-        transactionCode || finalStatus
+        sessionId,
+        checkoutStatus,
+        paymentIntentId || checkoutStatus
       );
 
       // Envoyer un message WebSocket à la room tickets_stats si le paiement est confirmé
-      if ((status === 'PAID' || status === 'SUCCESS') && ticketsUpdated > 0) {
+      if (checkoutStatus === 'PAID' && ticketsUpdated > 0) {
         try {
           (app.ws as any)?.send('tickets_stats', 'refetch');
         } catch (wsError) {
@@ -127,7 +227,7 @@ export async function sumUpWebhookHandler(
         try {
           const { getTicketsByCheckoutId } = await import('../tickets/tickets.service.ts');
           const { sendTicketsConfirmationEmails } = await import('../tickets/tickets.email.ts');
-          const tickets = await getTicketsByCheckoutId(app, checkoutId);
+          const tickets = await getTicketsByCheckoutId(app, sessionId);
           if (tickets.length > 0) {
             await sendTicketsConfirmationEmails(app, tickets);
 
@@ -183,33 +283,26 @@ export async function sumUpWebhookHandler(
                 }
               }
             } catch (donationProofError) {
-              app.log.error({ donationProofError, checkoutId }, 'Erreur lors de la génération des certificats de don');
+              app.log.error({ donationProofError, sessionId }, 'Erreur lors de la génération des certificats de don');
               // Ne pas faire échouer le processus si la génération des certificats échoue
             }
           }
         } catch (emailError) {
-          app.log.error({ emailError, checkoutId }, 'Erreur lors de l\'envoi des emails de confirmation');
+          app.log.error({ emailError, sessionId }, 'Erreur lors de l\'envoi des emails de confirmation');
         }
       }
-    } else if (status === 'SENT') {
-      // Pour SENT, on peut juste logger mais ne pas mettre à jour les tickets
-      app.log.info({ checkoutId, status }, 'Webhook SumUp reçu avec statut SENT (intermédiaire)');
     }
 
     // Récupérer les QR codes des tickets associés au checkout
     let qrCodes: string[] = [];
     try {
       const { getTicketsByCheckoutId } = await import('../tickets/tickets.service.ts');
-      const tickets = await getTicketsByCheckoutId(app, checkoutId);
+      const tickets = await getTicketsByCheckoutId(app, sessionId);
       qrCodes = tickets.map(ticket => ticket.qr_code);
     } catch (error) {
-      app.log.warn({ error, checkoutId }, 'Erreur lors de la récupération des QR codes des tickets');
+      app.log.warn({ error, sessionId }, 'Erreur lors de la récupération des QR codes des tickets');
     }
 
-    app.log.info(
-      { checkoutId, status, ticketsUpdated, transactionCode, qrCodesCount: qrCodes.length },
-      'Webhook SumUp traité avec succès'
-    );
 
     return reply.send({
       success: true,
@@ -221,8 +314,8 @@ export async function sumUpWebhookHandler(
       err,
       errorMessage: err?.message,
       errorStack: err?.stack,
-      body: req.body
-    }, 'Erreur lors du traitement du webhook SumUp');
+      body
+    }, 'Erreur lors du traitement du webhook');
     return reply.code(500).send({ error: 'Erreur lors du traitement du webhook' });
   }
 }
@@ -231,28 +324,64 @@ export async function sumUpWebhookHandler(
  * Enregistre les routes de paiement
  */
 export function registerPayRoutes(app: FastifyInstance) {
-  app.post<{ Body: CreateCheckoutBody }>(
-    '/pay/checkout',
+  // Route pour récupérer les statistiques de paiements Stripe
+  app.get(
+    '/pay/stats',
     {
-      schema: createCheckoutSchema,
+      schema: getPaymentStatsSchema,
     },
-    async (req, reply) => createCheckoutHandler(req, reply, app)
+    async (_req, reply) => {
+      try {
+        const stats = await getPaymentStats(app);
+        return reply.send(stats);
+      } catch (err: any) {
+        app.log.error({ err }, 'Erreur lors de la récupération des statistiques de paiements');
+        return reply.code(500).send({ error: 'Erreur lors de la récupération des statistiques de paiements' });
+      }
+    }
   );
 
-  app.get<{ Params: { checkoutId: string } }>(
-    '/pay/checkout/:checkoutId',
+  // Route pour vérifier le statut d'une session de checkout
+  app.get<{ Params: { sessionId: string } }>(
+    '/pay/checkout/:sessionId',
     {
       schema: getCheckoutStatusSchema,
     },
     async (req, reply) => getCheckoutStatusHandler(req, reply, app)
   );
 
-  // Route publique pour recevoir les webhooks SumUp
-  app.post<{ Body: SumUpWebhookBody }>(
+  // Note: Le parser pour application/json est géré dans server.ts
+  // Il préserve déjà le Buffer pour la route /pay/webhook
+
+  // Route publique pour recevoir les webhooks
+  // Les parsers dans server.ts stockent déjà le Buffer brut dans req.rawBody
+  // On utilise directement ce Buffer pour la vérification de signature
+  app.post<{ Body: WebhookBody }>(
     '/pay/webhook',
     {
-      schema: sumUpWebhookSchema,
+      schema: webhookSchema,
     },
-    async (req, reply) => sumUpWebhookHandler(req, reply, app)
+    async (req, reply) => {
+      // Le Buffer brut est déjà stocké par les parsers dans server.ts
+      const rawBody = (req as any).rawBody as Buffer;
+      const body = req.body as WebhookBody;
+
+      if (!rawBody) {
+        app.log.error({}, 'Raw body non disponible dans le handler');
+        return reply.code(500).send({ error: 'Raw body non disponible' });
+      }
+
+      if (!Buffer.isBuffer(rawBody)) {
+        app.log.error({}, 'Raw body n\'est pas un Buffer');
+        return reply.code(500).send({ error: 'Raw body invalide' });
+      }
+
+      if (!body) {
+        app.log.error({}, 'Body non disponible dans le handler');
+        return reply.code(500).send({ error: 'Body non disponible' });
+      }
+
+      return webhookHandlerWithRawBody(req, reply, app, rawBody, body);
+    }
   );
 }

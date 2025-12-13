@@ -51,15 +51,15 @@ export const createTicketSchema = {
       },
       checkout_id: {
         type: 'string',
-        description: 'ID du checkout SumUp (optionnel au moment de la création)',
+        description: 'ID du checkout (optionnel au moment de la création)',
       },
       checkout_reference: {
         type: 'string',
-        description: 'Référence du checkout SumUp (optionnel)',
+        description: 'Référence du checkout (optionnel)',
       },
       transaction_status: {
         type: 'string',
-        description: 'Statut de la transaction SumUp (optionnel)',
+        description: 'Statut de la transaction (optionnel)',
       },
       notes: {
         type: 'string',
@@ -240,15 +240,15 @@ export const updateTicketSchema = {
       },
       checkout_id: {
         type: ['string', 'null'],
-        description: 'ID du checkout SumUp',
+        description: 'ID du checkout',
       },
       checkout_reference: {
         type: ['string', 'null'],
-        description: 'Référence du checkout SumUp',
+        description: 'Référence du checkout',
       },
       transaction_status: {
         type: ['string', 'null'],
-        description: 'Statut de la transaction SumUp',
+        description: 'Statut de la transaction',
       },
       status: {
         type: 'string',
@@ -529,13 +529,13 @@ export const validateTicketSchema = {
 export const createTicketsWithPaymentSchema = {
   body: {
     type: 'object',
-    required: ['email', 'tickets'],
+    required: ['tickets', 'success_url', 'cancel_url'],
     properties: {
       email: {
         type: 'string',
         format: 'email',
         maxLength: 255,
-        description: 'Email commun pour tous les tickets (obligatoire)',
+        description: 'Email commun pour tous les tickets (obligatoire uniquement si tous les tickets sont gratuites, sinon Stripe le récupère)',
       },
       first_name: {
         type: 'string',
@@ -688,6 +688,16 @@ export const createTicketsWithPaymentSchema = {
         type: 'string',
         description: 'Description du paiement (optionnel)',
       },
+      success_url: {
+        type: 'string',
+        format: 'uri',
+        description: 'URL de redirection après paiement réussi (obligatoire). Doit contenir {CHECKOUT_SESSION_ID} qui sera remplacé par Stripe.',
+      },
+      cancel_url: {
+        type: 'string',
+        format: 'uri',
+        description: 'URL de redirection en cas d\'annulation (obligatoire)',
+      },
     },
   },
   response: {
@@ -696,11 +706,16 @@ export const createTicketsWithPaymentSchema = {
       properties: {
         checkout_id: {
           type: ['string', 'null'],
-          description: 'ID du checkout SumUp (null si la commande est gratuite)',
+          description: 'ID du checkout (null si la commande est gratuite)',
         },
         checkout_reference: {
           type: ['string', 'null'],
-          description: 'Référence du checkout SumUp (null si la commande est gratuite)',
+          description: 'Référence du checkout (null si la commande est gratuite)',
+        },
+        checkout_url: {
+          type: ['string', 'null'],
+          format: 'uri',
+          description: 'URL de redirection vers la page de paiement (null si la commande est gratuite)',
         },
         tickets: {
           type: 'array',
@@ -756,7 +771,7 @@ export const getTicketsByCheckoutIdSchema = {
     properties: {
       checkoutId: {
         type: 'string',
-        description: 'ID du checkout SumUp',
+        description: 'ID du checkout',
       },
     },
   },

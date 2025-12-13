@@ -43,18 +43,57 @@ app.addHook('onRequest', async (_req, reply) => {
 });
 
 // Hook pour parser le JSON même si le Content-Type n'est pas correct
-app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+// Stocke aussi le raw body pour la vérification de signature Stripe
+app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+  // Pour la route webhook Stripe, préserver le Buffer brut (nécessaire pour la vérification de signature)
+  if (req.url === '/pay/webhook') {
+    // Stocker le Buffer brut pour Stripe (nécessaire pour la vérification de signature)
+    (req as any).rawBody = body;
+    try {
+      // Parser le JSON pour req.body
+      const json = JSON.parse(body.toString('utf-8'));
+      done(null, json);
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+    return;
+  }
+
+  // Pour les autres routes, comportement normal
+  const bodyString = body.toString('utf-8');
+  (req as any).rawBody = bodyString;
   try {
-    const json = JSON.parse(body as string);
+    const json = JSON.parse(bodyString);
     done(null, json);
   } catch (err) {
     done(err as Error, undefined);
   }
 });
 
-app.addContentTypeParser('*', { parseAs: 'string' }, (req, body, done) => {
-  if (['POST', 'PUT', 'PATCH'].includes(req.method) && body && typeof body === 'string') {
-    const trimmed = (body as string).trim();
+app.addContentTypeParser('*', { parseAs: 'buffer' }, (req, body, done) => {
+  // Pour la route webhook Stripe, préserver le Buffer brut
+  if (req.url === '/pay/webhook') {
+    // Si rawBody n'a pas déjà été défini par le parser application/json
+    if (!(req as any).rawBody) {
+      (req as any).rawBody = body;
+    }
+    try {
+      const json = JSON.parse(body.toString('utf-8'));
+      done(null, json);
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+    return;
+  }
+
+  // Pour les autres routes, comportement normal
+  const bodyString = body.toString('utf-8');
+  if (!(req as any).rawBody) {
+    (req as any).rawBody = bodyString;
+  }
+
+  if (['POST', 'PUT', 'PATCH'].includes(req.method) && bodyString) {
+    const trimmed = bodyString.trim();
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       try {
         const json = JSON.parse(trimmed);
@@ -64,7 +103,7 @@ app.addContentTypeParser('*', { parseAs: 'string' }, (req, body, done) => {
       }
     }
   }
-  done(null, body);
+  done(null, bodyString);
 });
 
 const start = async () => {
