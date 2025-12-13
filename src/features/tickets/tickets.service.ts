@@ -604,12 +604,15 @@ export async function validateTicket(
   const ticket = await getTicketByQRCode(app, qrCode);
 
   if (!ticket) {
+    app.log.warn({ qrCode: qrCode.toUpperCase() }, 'Ticket non trouvé lors de la validation');
     throw createStructuredError(
       404,
       'Le ticket n\'a pas été trouvé',
       'The ticket has not been found'
     );
   }
+
+  app.log.info({ ticketId: ticket.id, qrCode: ticket.qr_code, status: ticket.status }, 'Ticket trouvé, début de la validation');
 
   // Vérifier que le ticket n'a pas déjà été utilisé
   if (ticket.used_at) {
@@ -630,9 +633,49 @@ export async function validateTicket(
   }
 
   // Vérifier que c'est bien le bon jour (aujourd'hui = date de réservation)
+  // Utiliser PostgreSQL pour obtenir la date/heure locale (timezone Europe/Paris)
+  let dbDate: string;
+  let dbTime: string;
+  try {
+    // Utiliser NOW() avec timezone Europe/Paris pour obtenir la date/heure locale
+    const dateResult = await app.pg.query<{ current_date: string; current_time: string }>(
+      `SELECT 
+        (NOW() AT TIME ZONE 'Europe/Paris')::date::text as current_date,
+        TO_CHAR(NOW() AT TIME ZONE 'Europe/Paris', 'HH24:MI:SS') as current_time`
+    );
+    if (!dateResult.rows || dateResult.rows.length === 0) {
+      throw new Error('Impossible de récupérer la date/heure depuis la base de données');
+    }
+    dbDate = dateResult.rows[0].current_date;
+    dbTime = dateResult.rows[0].current_time;
+  } catch (dateError: any) {
+    app.log.error({ dateError, errorMessage: dateError?.message, errorStack: dateError?.stack }, 'Erreur lors de la récupération de la date/heure, utilisation de la date système');
+    // Fallback sur la date système si la requête échoue
+    const now = new Date();
+    // Convertir en timezone Europe/Paris
+    const formatter = new Intl.DateTimeFormat('fr-FR', {
+      timeZone: 'Europe/Paris',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(now);
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+    const hour = parts.find(p => p.type === 'hour')?.value;
+    const minute = parts.find(p => p.type === 'minute')?.value;
+    const second = parts.find(p => p.type === 'second')?.value;
+    dbDate = `${year}-${month}-${day}`;
+    dbTime = `${hour}:${minute}:${second}`;
+  }
+
   const reservationDate = new Date(ticket.reservation_date);
-  const now = new Date();
-  const today = new Date(now);
+  const today = new Date(dbDate);
   today.setHours(0, 0, 0, 0);
   reservationDate.setHours(0, 0, 0, 0);
 
@@ -645,7 +688,8 @@ export async function validateTicket(
   }
 
   // Vérifier que c'est bien le bon créneau (avec tolérance)
-  const currentTime = now.toTimeString().substring(0, 8); // Format HH:MM:SS
+  // Utiliser l'heure locale depuis PostgreSQL (timezone Europe/Paris)
+  const currentTime = dbTime; // Format HH:MM:SS en timezone Europe/Paris
   const slotStartTime = ticket.slot_start_time;
   const slotEndTime = ticket.slot_end_time;
 
@@ -1072,12 +1116,12 @@ export async function createTicketsWithPayment(
   // Si le montant total est 0, ne pas créer de checkout SumUp
   // Les tickets seront créés directement avec le statut "paid"
   let checkout: { id: string; checkout_reference: string; status: string } | null = null;
-  
+
   // TODO REMOVE THIS
   //const isFreeOrder = totalAmount === 0;
   const isFreeOrder = true;
 
-  
+
   if (!isFreeOrder) {
     // Créer le checkout SumUp uniquement si le montant est supérieur à 0
     const currency = data.currency || 'EUR';
@@ -1187,7 +1231,7 @@ export async function createTicketsWithPayment(
   }
 
   return {
-    checkout_id:  null,
+    checkout_id: null,
     checkout_reference: null,
     tickets: createdTickets,
   }
