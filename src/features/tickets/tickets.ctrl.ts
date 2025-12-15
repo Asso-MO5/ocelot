@@ -70,16 +70,13 @@ export async function createTicketsWithPaymentHandler(
   } catch (err: any) {
     app.log.error({ err, body: req.body }, 'Erreur lors de la création des tickets avec paiement');
 
-    // Gérer les erreurs structurées
     const handled = handleStructuredError(err, reply);
     if (handled.sent) return;
 
-    // Erreurs spécifiques non structurées
-    if (err.message?.includes('SUMUP_API_KEY') || err.message?.includes('SUMUP_MERCHANT_CODE')) {
-      return reply.code(500).send({ error: 'Configuration SumUp manquante' });
+    if (err.message?.includes('STRIPE_SECRET_KEY')) {
+      return reply.code(500).send({ error: 'Configuration Stripe manquante' });
     }
 
-    // Pour les erreurs non gérées, envoyer le message d'erreur ou un message générique
     const errorMessage = err.message || err.toString() || 'Erreur lors de la création des tickets avec paiement';
     return reply.code(500).send({ error: errorMessage });
   }

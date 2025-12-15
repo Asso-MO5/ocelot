@@ -1,73 +1,7 @@
-export const createCheckoutSchema = {
+export const webhookSchema = {
   body: {
     type: 'object',
-    required: ['amount'],
-    properties: {
-      amount: {
-        type: 'number',
-        minimum: 5,
-        maximum: 12,
-        description: 'Montant du paiement',
-      },
-      currency: {
-        type: 'string',
-        default: 'EUR',
-        description: 'Devise du paiement (défaut: EUR)',
-      },
-      description: {
-        type: 'string',
-        description: 'Description du paiement',
-      },
-    },
-  },
-  response: {
-    200: {
-      type: 'object',
-      properties: {
-        checkout_id: {
-          type: 'string',
-          description: 'ID du checkout SumUp',
-        },
-        checkout_reference: {
-          type: 'string',
-          description: 'Référence du checkout',
-        },
-        amount: {
-          type: 'number',
-          description: 'Montant du paiement',
-        },
-        currency: {
-          type: 'string',
-          description: 'Devise',
-        },
-        status: {
-          type: 'string',
-          description: 'Statut du checkout',
-        },
-      },
-    },
-    400: {
-      type: 'object',
-      properties: {
-        error: {
-          type: 'string',
-        },
-      },
-    },
-    500: {
-      type: 'object',
-      properties: {
-        error: {
-          type: 'string',
-        },
-      },
-    },
-  },
-};
-
-export const sumUpWebhookSchema = {
-  body: {
-    type: 'object',
+    required: ['id', 'type', 'data'],
     properties: {
       id: {
         type: 'string',
@@ -75,59 +9,30 @@ export const sumUpWebhookSchema = {
       },
       type: {
         type: 'string',
-        description: 'Type d\'événement (checkout.payment.succeeded, checkout.payment.failed, etc.)',
+        description: 'Type d\'événement (checkout.session.completed, payment_intent.succeeded, etc.)',
       },
-      timestamp: {
-        type: 'string',
-        description: 'Timestamp de l\'événement',
-      },
-      checkout_id: {
-        type: 'string',
-        description: 'ID du checkout SumUp',
-      },
-      checkout_reference: {
-        type: 'string',
-        description: 'Référence du checkout',
-      },
-      amount: {
+      created: {
         type: 'number',
-        description: 'Montant du paiement',
+        description: 'Timestamp Unix de l\'événement',
       },
-      currency: {
-        type: 'string',
-        description: 'Devise',
-      },
-      status: {
-        type: 'string',
-        enum: ['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'SENT', 'SUCCESS'],
-        description: 'Statut du checkout',
-      },
-      payment_type: {
-        type: 'string',
-        description: 'Type de paiement',
-      },
-      transaction_code: {
-        type: 'string',
-        description: 'Code de transaction',
-      },
-      merchant_code: {
-        type: 'string',
-        description: 'Code marchand',
-      },
-      event: {
+      data: {
         type: 'object',
-        description: 'Détails de l\'événement',
+        required: ['object'],
         properties: {
-          id: { type: 'string' },
-          type: { type: 'string' },
-          timestamp: { type: 'string' },
-          checkout_id: { type: 'string' },
-          checkout_reference: { type: 'string' },
-          amount: { type: 'number' },
-          currency: { type: 'string' },
-          status: { type: 'string' },
-          payment_type: { type: 'string' },
-          transaction_code: { type: 'string' },
+          object: {
+            type: 'object',
+            description: 'Objet de l\'événement (checkout.session ou payment_intent)',
+            properties: {
+              id: { type: 'string' },
+              object: { type: 'string' },
+              amount_total: { type: 'number' },
+              currency: { type: 'string' },
+              status: { type: 'string' },
+              payment_status: { type: 'string' },
+              payment_intent: { type: 'string' },
+              metadata: { type: 'object' },
+            },
+          },
         },
       },
     },
@@ -172,11 +77,11 @@ export const sumUpWebhookSchema = {
 export const getCheckoutStatusSchema = {
   params: {
     type: 'object',
-    required: ['checkoutId'],
+    required: ['sessionId'],
     properties: {
-      checkoutId: {
+      sessionId: {
         type: 'string',
-        description: 'ID du checkout SumUp',
+        description: 'ID de la session de checkout',
       },
     },
   },
@@ -187,10 +92,7 @@ export const getCheckoutStatusSchema = {
         id: {
           type: 'string',
         },
-        checkout_reference: {
-          type: 'string',
-        },
-        amount: {
+        amount_total: {
           type: 'number',
         },
         currency: {
@@ -198,12 +100,13 @@ export const getCheckoutStatusSchema = {
         },
         status: {
           type: 'string',
-          enum: ['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'SENT', 'SUCCESS'],
+          enum: ['open', 'complete', 'expired'],
         },
-        payment_type: {
+        payment_status: {
           type: 'string',
+          enum: ['paid', 'unpaid', 'no_payment_required'],
         },
-        transaction_code: {
+        payment_intent: {
           type: 'string',
         },
       },
@@ -222,6 +125,28 @@ export const getCheckoutStatusSchema = {
         error: {
           type: 'string',
         },
+      },
+    },
+  },
+};
+
+export const getPaymentStatsSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        total_all_time: { type: 'number' },
+        total_month: { type: 'number' },
+        total_week: { type: 'number' },
+        total_day: { type: 'number' },
+        currency: { type: 'string' },
+      },
+      required: ['total_all_time', 'total_month', 'total_week', 'total_day', 'currency'],
+    },
+    500: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
       },
     },
   },
