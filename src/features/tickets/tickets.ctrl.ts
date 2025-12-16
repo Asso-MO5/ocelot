@@ -542,6 +542,10 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     '/museum/tickets/stats',
     {
       schema: getTicketsStatsSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
     },
     async (_req, reply) => getTicketsStatsHandler(_req, reply, app)
   );
@@ -551,6 +555,10 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     '/museum/tickets/weekly-slots-stats',
     {
       schema: getWeeklySlotsStatsSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
     },
     async (_req, reply) => getWeeklySlotsStatsHandler(_req, reply, app)
   );
