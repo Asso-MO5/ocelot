@@ -940,10 +940,33 @@ export const getWeeklySlotsStatsSchema = {
               'is_half_price',
             ],
           },
-          description: 'Statistiques des créneaux horaires pour chaque jour de la semaine courante',
+          description: 'Statistiques des créneaux horaires pour chaque jour de la semaine courante (jauge horaire : un ticket compte pour chaque heure où il est présent)',
+        },
+        daily_totals: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              date: {
+                type: 'string',
+                format: 'date',
+                description: 'Date du jour (YYYY-MM-DD)',
+              },
+              day_name: {
+                type: 'string',
+                description: 'Nom du jour (lundi, mardi, etc.)',
+              },
+              total_unique_tickets: {
+                type: 'number',
+                description: 'Nombre unique de tickets attendus dans la journée (sans double comptage, pour distinguer du nombre de présences horaires)',
+              },
+            },
+            required: ['date', 'day_name', 'total_unique_tickets'],
+          },
+          description: 'Total unique de tickets par jour (pour distinguer du nombre de présences horaires dans slots_stats)',
         },
       },
-      required: ['week_start', 'week_end', 'slots_stats'],
+      required: ['week_start', 'week_end', 'slots_stats', 'daily_totals'],
     },
     500: {
       type: 'object',

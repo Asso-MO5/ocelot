@@ -11,6 +11,7 @@ import type {
   TicketPricingInfo,
   WeeklySlotsStats,
   WeeklySlotStat,
+  DailyTotal,
 } from './tickets.types.ts';
 import { createCheckout } from '../pay/pay.utils.ts';
 import { getPriceById } from '../prices/prices.service.ts';
@@ -1446,10 +1447,41 @@ export async function getTicketsStats(
 }
 
 /**
+ * Compte le nombre de tickets actifs à une heure donnée
+ * Un ticket est actif à une heure start_time s'il commence avant ou à cette heure
+ * et se termine après cette heure (pour la jauge horaire, indépendamment de la durée du créneau)
+ */
+async function countTicketsActiveAtTime(
+  app: FastifyInstance,
+  date: string,
+  startTime: string
+): Promise<number> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  // Un ticket est actif à startTime s'il commence avant ou à startTime
+  // et se termine après startTime (jauge horaire)
+  const result = await app.pg.query<{ count: string }>(
+    `SELECT COUNT(*) as count
+     FROM tickets 
+     WHERE reservation_date = $1 
+     AND status IN ('pending', 'paid')
+     AND slot_start_time <= $2
+     AND slot_end_time > $2`,
+    [date, startTime]
+  );
+
+  return parseInt(result.rows[0].count, 10);
+}
+
+/**
  * Récupère les statistiques des créneaux horaires pour la semaine courante
  * Pour chaque jour de la semaine (lundi-dimanche) et chaque start_time,
  * retourne le nombre de personnes attendues et le pourcentage d'occupation
  * par rapport à la capacité configurée (setting "capacity").
+ * 
+ * La jauge s'applique par heure : un ticket de 14h30-16h30 compte pour 14h, 15h et 16h.
  */
 export async function getWeeklySlotsStats(
   app: FastifyInstance
@@ -1475,7 +1507,12 @@ export async function getWeeklySlotsStats(
 
   const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
+  // Récupérer la capacité depuis les settings
+  const { getSettingValue } = await import('../settings/settings.service.ts');
+  const dailyCapacity = (await getSettingValue<number>(app, 'capacity', 100)) || 100;
+
   const slotsStats: WeeklySlotStat[] = [];
+  const dailyTotals: DailyTotal[] = [];
 
   for (let i = 0; i < 7; i++) {
     const currentDate = new Date(weekStart);
@@ -1483,18 +1520,47 @@ export async function getWeeklySlotsStats(
     const dateStr = currentDate.toISOString().split('T')[0];
     const dayName = dayNames[currentDate.getDay()];
 
-    // Réutiliser la logique de calcul de capacité / réservations des slots
+    // Compter le nombre unique de tickets pour cette journée (sans double comptage)
+    // Un ticket compte une seule fois par jour, indépendamment de sa durée
+    const uniqueTicketsResult = await app.pg.query<{ count: string }>(
+      `SELECT COUNT(DISTINCT id) as count
+       FROM tickets 
+       WHERE reservation_date = $1 
+       AND status IN ('pending', 'paid')`,
+      [dateStr]
+    );
+    const totalUniqueTickets = parseInt(uniqueTicketsResult.rows[0].count, 10);
+
+    dailyTotals.push({
+      date: dateStr,
+      day_name: dayName,
+      total_unique_tickets: totalUniqueTickets,
+    });
+
+    // Récupérer les slots pour cette date pour connaître les heures de début possibles
     const slotsResponse = await getSlotsForDate(app, dateStr);
 
+    // Pour chaque slot, compter les tickets actifs à l'heure de début
+    // (jauge horaire : un ticket compte pour chaque heure où il est présent)
     for (const slot of slotsResponse.slots) {
+      const expectedPeople = await countTicketsActiveAtTime(
+        app,
+        dateStr,
+        slot.start_time
+      );
+
+      const occupancyPercentage = dailyCapacity > 0
+        ? Math.round((expectedPeople / dailyCapacity) * 100)
+        : 0;
+
       slotsStats.push({
         date: dateStr,
         day_name: dayName,
         start_time: slot.start_time,
         end_time: slot.end_time,
-        expected_people: slot.booked,
-        capacity: slot.capacity,
-        occupancy_percentage: slot.occupancy_percentage,
+        expected_people: expectedPeople,
+        capacity: dailyCapacity,
+        occupancy_percentage: occupancyPercentage,
         is_half_price: slot.is_half_price,
       });
     }
@@ -1504,6 +1570,7 @@ export async function getWeeklySlotsStats(
     week_start: weekStartStr,
     week_end: weekEndStr,
     slots_stats: slotsStats,
+    daily_totals: dailyTotals,
   };
 }
 

@@ -185,12 +185,22 @@ export interface WeeklySlotStat {
 }
 
 /**
+ * Statistiques quotidiennes (total unique de tickets par jour)
+ */
+export interface DailyTotal {
+  date: string; // Format YYYY-MM-DD
+  day_name: string; // Nom du jour (lundi, mardi, etc.)
+  total_unique_tickets: number; // Nombre unique de tickets attendus dans la journée (sans double comptage)
+}
+
+/**
  * Statistiques des créneaux horaires pour la semaine courante
  */
 export interface WeeklySlotsStats {
   week_start: string; // Date du lundi de la semaine courante (YYYY-MM-DD)
   week_end: string; // Date du dimanche de la semaine courante (YYYY-MM-DD)
-  slots_stats: WeeklySlotStat[];
+  slots_stats: WeeklySlotStat[]; // Stats par créneau horaire (jauge horaire)
+  daily_totals: DailyTotal[]; // Total unique de tickets par jour (pour distinguer du nombre de présences horaires)
 }
 
 
