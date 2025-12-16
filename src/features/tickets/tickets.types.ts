@@ -170,3 +170,27 @@ export interface TicketsStats {
   week_tickets_by_day: TicketsStatsByDay[]; // Répartition par jour de la semaine
 }
 
+/**
+ * Statistiques d'un créneau horaire pour un jour donné de la semaine courante
+ */
+export interface WeeklySlotStat {
+  date: string; // Format YYYY-MM-DD
+  day_name: string; // Nom du jour (lundi, mardi, etc.)
+  start_time: string; // Heure de début du créneau (HH:MM:SS)
+  end_time: string; // Heure de fin du créneau (HH:MM:SS)
+  expected_people: number; // Nombre de personnes attendues (tickets pending + paid)
+  capacity: number; // Capacité maximale du créneau (setting capacity)
+  occupancy_percentage: number; // Pourcentage d'occupation (0-100)
+  is_half_price: boolean; // true si créneau incomplet (demi-tarif)
+}
+
+/**
+ * Statistiques des créneaux horaires pour la semaine courante
+ */
+export interface WeeklySlotsStats {
+  week_start: string; // Date du lundi de la semaine courante (YYYY-MM-DD)
+  week_end: string; // Date du dimanche de la semaine courante (YYYY-MM-DD)
+  slots_stats: WeeklySlotStat[];
+}
+
+

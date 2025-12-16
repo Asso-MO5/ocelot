@@ -870,6 +870,90 @@ export const getTicketsStatsSchema = {
   },
 };
 
+/**
+ * Schéma pour les statistiques des créneaux horaires de la semaine courante
+ */
+export const getWeeklySlotsStatsSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        week_start: {
+          type: 'string',
+          format: 'date',
+          description: 'Date du lundi de la semaine courante (YYYY-MM-DD)',
+        },
+        week_end: {
+          type: 'string',
+          format: 'date',
+          description: 'Date du dimanche de la semaine courante (YYYY-MM-DD)',
+        },
+        slots_stats: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              date: {
+                type: 'string',
+                format: 'date',
+                description: 'Date du créneau (YYYY-MM-DD)',
+              },
+              day_name: {
+                type: 'string',
+                description: 'Nom du jour (lundi, mardi, etc.)',
+              },
+              start_time: {
+                type: 'string',
+                pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$',
+                description: 'Heure de début du créneau (HH:MM:SS)',
+              },
+              end_time: {
+                type: 'string',
+                pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$',
+                description: 'Heure de fin du créneau (HH:MM:SS)',
+              },
+              expected_people: {
+                type: 'number',
+                description: 'Nombre de personnes attendues (tickets pending + paid)',
+              },
+              capacity: {
+                type: 'number',
+                description: 'Capacité maximale du créneau (setting capacity)',
+              },
+              occupancy_percentage: {
+                type: 'number',
+                description: 'Pourcentage d\'occupation (0-100)',
+              },
+              is_half_price: {
+                type: 'boolean',
+                description: 'true si le créneau est incomplet (demi-tarif)',
+              },
+            },
+            required: [
+              'date',
+              'day_name',
+              'start_time',
+              'end_time',
+              'expected_people',
+              'capacity',
+              'occupancy_percentage',
+              'is_half_price',
+            ],
+          },
+          description: 'Statistiques des créneaux horaires pour chaque jour de la semaine courante',
+        },
+      },
+      required: ['week_start', 'week_end', 'slots_stats'],
+    },
+    500: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+  },
+};
+
 export const deleteTicketSchema = {
   params: {
     type: 'object',

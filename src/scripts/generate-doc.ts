@@ -235,7 +235,8 @@ async function generateOpenAPIDoc(): Promise<void> {
     getTicketsByCheckoutIdSchema,
     getTicketsStatsSchema,
     validateTicketSchema,
-    deleteTicketSchema
+    deleteTicketSchema,
+    getWeeklySlotsStatsSchema
   } = await import('../features/tickets/tickets.schemas.ts');
 
   const {
@@ -513,7 +514,14 @@ async function generateOpenAPIDoc(): Promise<void> {
       method: 'GET',
       path: '/museum/tickets/stats',
       schema: getTicketsStatsSchema,
-      description: 'Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, montants total, semaine et mois (route publique)',
+      description: 'Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour (route publique)',
+      tag: 'Musée - Tickets',
+    },
+    {
+      method: 'GET',
+      path: '/museum/tickets/weekly-slots-stats',
+      schema: getWeeklySlotsStatsSchema,
+      description: 'Récupère les statistiques des créneaux horaires pour la semaine courante : pour chaque jour et start_time, nombre de personnes attendues et pourcentage d’occupation par rapport à la capacité (route publique)',
       tag: 'Musée - Tickets',
     },
     {
@@ -945,6 +953,7 @@ async function generateOpenAPIDoc(): Promise<void> {
           path === '/museum/slots' ||
           path === '/museum/tickets/payment' ||
           path === '/museum/tickets/stats' ||
+          path === '/museum/tickets/weekly-slots-stats' ||
           path === '/pay/webhook' ||
           path.startsWith('/pay/checkout/') ||
           path.startsWith('/museum/tickets/checkout/') ||

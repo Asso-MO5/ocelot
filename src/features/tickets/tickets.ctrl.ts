@@ -7,6 +7,7 @@ import {
   getTicketByQRCode,
   getTicketsByCheckoutId,
   getTicketsStats,
+  getWeeklySlotsStats,
   updateTicket,
   validateTicket,
   deleteTicket,
@@ -18,6 +19,7 @@ import type {
   UpdateTicketBody,
   GetTicketsQuery,
   ValidateTicketBody,
+  WeeklySlotsStats,
 } from './tickets.types.ts';
 import {
   createTicketSchema,
@@ -29,6 +31,7 @@ import {
   getTicketsStatsSchema,
   validateTicketSchema,
   deleteTicketSchema,
+  getWeeklySlotsStatsSchema,
 } from './tickets.schemas.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
@@ -327,6 +330,23 @@ export async function getTicketsStatsHandler(
 }
 
 /**
+ * Handler pour récupérer les statistiques des créneaux horaires de la semaine courante
+ */
+export async function getWeeklySlotsStatsHandler(
+  _req: FastifyRequest,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const stats: WeeklySlotsStats = await getWeeklySlotsStats(app);
+    return reply.send(stats);
+  } catch (err: any) {
+    app.log.error({ err }, 'Erreur lors de la récupération des statistiques des créneaux de la semaine');
+    return reply.code(500).send({ error: 'Erreur lors de la récupération des statistiques des créneaux de la semaine' });
+  }
+}
+
+/**
  * Handler pour mettre à jour un ticket
  */
 export async function updateTicketHandler(
@@ -524,6 +544,15 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: getTicketsStatsSchema,
     },
     async (_req, reply) => getTicketsStatsHandler(_req, reply, app)
+  );
+
+  // Route publique : statistiques des créneaux de la semaine courante
+  app.get(
+    '/museum/tickets/weekly-slots-stats',
+    {
+      schema: getWeeklySlotsStatsSchema,
+    },
+    async (_req, reply) => getWeeklySlotsStatsHandler(_req, reply, app)
   );
 
   // Route protégée membres : récupération par ID
