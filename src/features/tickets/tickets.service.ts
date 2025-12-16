@@ -9,10 +9,13 @@ import type {
   TicketsStats,
   TicketsStatsByDay,
   TicketPricingInfo,
+  WeeklySlotsStats,
+  WeeklySlotStat,
 } from './tickets.types.ts';
 import { createCheckout } from '../pay/pay.utils.ts';
 import { getPriceById } from '../prices/prices.service.ts';
 import { createStructuredError } from './tickets.errors.ts';
+import { getSlotsForDate } from '../slots/slots.service.ts';
 
 /**
  * Génère un code QR unique (8 caractères alphanumériques majuscules)
@@ -1386,56 +1389,34 @@ export async function getTicketsStats(
   weekStart.setHours(0, 0, 0, 0);
   const weekStartStr = weekStart.toISOString().split('T')[0];
 
-  // Date du début du mois
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthStartStr = monthStart.toISOString().split('T')[0];
-
   // Statistiques totales (tous les tickets avec status = 'paid')
-  const totalResult = await app.pg.query<{ count: string; sum: string }>(
+  const totalResult = await app.pg.query<{ count: string }>(
     `SELECT 
-      COUNT(*) as count,
-      COALESCE(SUM(total_amount), 0) as sum
+      COUNT(*) as count
      FROM tickets 
      WHERE status = 'paid'`
   );
   const totalTicketsSold = parseInt(totalResult.rows[0].count, 10);
-  const totalAmount = parseFloat(totalResult.rows[0].sum || '0');
 
   // Statistiques de la semaine (tickets payés depuis le début de la semaine)
-  const weekResult = await app.pg.query<{ count: string; sum: string }>(
+  const weekResult = await app.pg.query<{ count: string }>(
     `SELECT 
-      COUNT(*) as count,
-      COALESCE(SUM(total_amount), 0) as sum
+      COUNT(*) as count
      FROM tickets 
      WHERE status = 'paid' 
      AND created_at >= $1`,
     [weekStartStr]
   );
   const weekTicketsSold = parseInt(weekResult.rows[0].count, 10);
-  const weekAmount = parseFloat(weekResult.rows[0].sum || '0');
-
-  // Statistiques du mois (tickets payés depuis le début du mois)
-  const monthResult = await app.pg.query<{ count: string; sum: string }>(
-    `SELECT 
-      COUNT(*) as count,
-      COALESCE(SUM(total_amount), 0) as sum
-     FROM tickets 
-     WHERE status = 'paid' 
-     AND created_at >= $1`,
-    [monthStartStr]
-  );
-  const monthAmount = parseFloat(monthResult.rows[0].sum || '0');
 
   // Statistiques par jour de la semaine
   const weekByDayResult = await app.pg.query<{
     date: string;
     count: string;
-    sum: string;
   }>(
     `SELECT 
       DATE(created_at) as date,
-      COUNT(*) as count,
-      COALESCE(SUM(total_amount), 0) as sum
+      COUNT(*) as count
      FROM tickets 
      WHERE status = 'paid' 
      AND created_at >= $1
@@ -1454,7 +1435,6 @@ export async function getTicketsStats(
       date: row.date,
       day_name: dayName,
       tickets_count: parseInt(row.count, 10),
-      amount: parseFloat(row.sum || '0'),
     };
   });
 
@@ -1462,9 +1442,68 @@ export async function getTicketsStats(
     total_tickets_sold: totalTicketsSold,
     week_tickets_sold: weekTicketsSold,
     week_tickets_by_day: weekTicketsByDay,
-    total_amount: totalAmount,
-    week_amount: weekAmount,
-    month_amount: monthAmount,
+  };
+}
+
+/**
+ * Récupère les statistiques des créneaux horaires pour la semaine courante
+ * Pour chaque jour de la semaine (lundi-dimanche) et chaque start_time,
+ * retourne le nombre de personnes attendues et le pourcentage d'occupation
+ * par rapport à la capacité configurée (setting "capacity").
+ */
+export async function getWeeklySlotsStats(
+  app: FastifyInstance
+): Promise<WeeklySlotsStats> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = dimanche, 1 = lundi, etc.
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convertir dimanche en 6
+
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - daysFromMonday);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(0, 0, 0, 0);
+
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+  const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+  const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+
+  const slotsStats: WeeklySlotStat[] = [];
+
+  for (let i = 0; i < 7; i++) {
+    const currentDate = new Date(weekStart);
+    currentDate.setDate(weekStart.getDate() + i);
+    const dateStr = currentDate.toISOString().split('T')[0];
+    const dayName = dayNames[currentDate.getDay()];
+
+    // Réutiliser la logique de calcul de capacité / réservations des slots
+    const slotsResponse = await getSlotsForDate(app, dateStr);
+
+    for (const slot of slotsResponse.slots) {
+      slotsStats.push({
+        date: dateStr,
+        day_name: dayName,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        expected_people: slot.booked,
+        capacity: slot.capacity,
+        occupancy_percentage: slot.occupancy_percentage,
+        is_half_price: slot.is_half_price,
+      });
+    }
+  }
+
+  return {
+    week_start: weekStartStr,
+    week_end: weekEndStr,
+    slots_stats: slotsStats,
   };
 }
 

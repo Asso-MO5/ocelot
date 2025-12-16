@@ -846,39 +846,104 @@ export const getTicketsStatsSchema = {
                     type: 'number',
                     description: 'Nombre de tickets vendus ce jour',
                   },
-                  amount: {
-                    type: 'number',
-                    description: 'Montant total des tickets vendus ce jour',
-                  },
                 },
-                required: ['date', 'day_name', 'tickets_count', 'amount'],
+                required: ['date', 'day_name', 'tickets_count'],
               },
               description: 'Répartition des tickets vendus par jour de la semaine',
-            },
-            total_amount: {
-              type: 'number',
-              description: 'Montant total de tous les tickets vendus',
-            },
-            week_amount: {
-              type: 'number',
-              description: 'Montant total des tickets vendus cette semaine',
-            },
-            month_amount: {
-              type: 'number',
-              description: 'Montant total des tickets vendus ce mois',
             },
           },
           required: [
             'total_tickets_sold',
             'week_tickets_sold',
             'week_tickets_by_day',
-            'total_amount',
-            'week_amount',
-            'month_amount',
           ],
         },
       },
       required: ['tickets_stats'],
+    },
+    500: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+  },
+};
+
+/**
+ * Schéma pour les statistiques des créneaux horaires de la semaine courante
+ */
+export const getWeeklySlotsStatsSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        week_start: {
+          type: 'string',
+          format: 'date',
+          description: 'Date du lundi de la semaine courante (YYYY-MM-DD)',
+        },
+        week_end: {
+          type: 'string',
+          format: 'date',
+          description: 'Date du dimanche de la semaine courante (YYYY-MM-DD)',
+        },
+        slots_stats: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              date: {
+                type: 'string',
+                format: 'date',
+                description: 'Date du créneau (YYYY-MM-DD)',
+              },
+              day_name: {
+                type: 'string',
+                description: 'Nom du jour (lundi, mardi, etc.)',
+              },
+              start_time: {
+                type: 'string',
+                pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$',
+                description: 'Heure de début du créneau (HH:MM:SS)',
+              },
+              end_time: {
+                type: 'string',
+                pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$',
+                description: 'Heure de fin du créneau (HH:MM:SS)',
+              },
+              expected_people: {
+                type: 'number',
+                description: 'Nombre de personnes attendues (tickets pending + paid)',
+              },
+              capacity: {
+                type: 'number',
+                description: 'Capacité maximale du créneau (setting capacity)',
+              },
+              occupancy_percentage: {
+                type: 'number',
+                description: 'Pourcentage d\'occupation (0-100)',
+              },
+              is_half_price: {
+                type: 'boolean',
+                description: 'true si le créneau est incomplet (demi-tarif)',
+              },
+            },
+            required: [
+              'date',
+              'day_name',
+              'start_time',
+              'end_time',
+              'expected_people',
+              'capacity',
+              'occupancy_percentage',
+              'is_half_price',
+            ],
+          },
+          description: 'Statistiques des créneaux horaires pour chaque jour de la semaine courante',
+        },
+      },
+      required: ['week_start', 'week_end', 'slots_stats'],
     },
     500: {
       type: 'object',
