@@ -159,7 +159,6 @@ export interface TicketsStatsByDay {
   date: string; // Format YYYY-MM-DD
   day_name: string; // Nom du jour (lundi, mardi, etc.)
   tickets_count: number;
-  amount: number;
 }
 
 /**
@@ -169,8 +168,5 @@ export interface TicketsStats {
   total_tickets_sold: number; // Nombre total de tickets vendus (status = 'paid')
   week_tickets_sold: number; // Nombre de tickets vendus cette semaine
   week_tickets_by_day: TicketsStatsByDay[]; // Répartition par jour de la semaine
-  total_amount: number; // Montant total (ticket_price + donation_amount)
-  week_amount: number; // Montant de la semaine
-  month_amount: number; // Montant du mois
 }
 
