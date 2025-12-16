@@ -521,7 +521,7 @@ async function generateOpenAPIDoc(): Promise<void> {
       method: 'GET',
       path: '/museum/tickets/weekly-slots-stats',
       schema: getWeeklySlotsStatsSchema,
-      description: 'Récupère les statistiques des créneaux horaires pour la semaine courante : pour chaque jour et start_time, nombre de personnes attendues et pourcentage d’occupation par rapport à la capacité (route publique)',
+      description: 'Récupère les statistiques des créneaux horaires pour la semaine courante : pour chaque jour et start_time, nombre de personnes attendues et pourcentage d’occupation par rapport à la capacité',
       tag: 'Musée - Tickets',
     },
     {
@@ -952,8 +952,6 @@ async function generateOpenAPIDoc(): Promise<void> {
         const isPublicRoute = path === '/museum/schedules/public' ||
           path === '/museum/slots' ||
           path === '/museum/tickets/payment' ||
-          path === '/museum/tickets/stats' ||
-          path === '/museum/tickets/weekly-slots-stats' ||
           path === '/pay/webhook' ||
           path.startsWith('/pay/checkout/') ||
           path.startsWith('/museum/tickets/checkout/') ||

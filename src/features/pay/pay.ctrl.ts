@@ -4,6 +4,8 @@ import { webhookSchema, getCheckoutStatusSchema, getPaymentStatsSchema } from '.
 import type { WebhookBody } from './pay.types.ts';
 import { updateTicketsByCheckoutStatus } from '../tickets/tickets.service.ts';
 import Stripe from 'stripe';
+import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
+import { roles } from '../auth/auth.const.ts';
 
 /**
  * Handler pour vérifier le statut d'une session de checkout
@@ -329,6 +331,10 @@ export function registerPayRoutes(app: FastifyInstance) {
     '/pay/stats',
     {
       schema: getPaymentStatsSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
     },
     async (_req, reply) => {
       try {
