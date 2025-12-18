@@ -110,3 +110,18 @@ export interface PaginatedGiftCodePacksResponse {
   totalPages: number;
 }
 
+/**
+ * Achat public de codes cadeaux
+ */
+export interface PurchaseGiftCodesBody {
+  quantity: number;
+  email: string;
+  language?: 'fr' | 'en';
+  success_url: string;
+  cancel_url: string;
+}
+
+export interface ConfirmPurchaseGiftCodesBody {
+  checkout_id: string;
+}
+

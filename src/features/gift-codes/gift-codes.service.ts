@@ -9,7 +9,11 @@ import type {
   GetGiftCodePacksQuery,
   PaginatedGiftCodePacksResponse,
   GiftCodePackWithCodes,
+  PurchaseGiftCodesBody,
 } from './gift-codes.types.ts';
+import { createCheckout, getCheckoutStatus } from '../pay/pay.utils.ts';
+import { getSettingValue } from '../settings/settings.service.ts';
+import { emailUtils } from '../email/email.utils.ts';
 
 /**
  * Génère un code cadeau unique (12 caractères alphanumériques majuscules)
@@ -408,6 +412,144 @@ export async function getGiftCodePacks(
     page,
     limit,
     totalPages,
+  };
+}
+
+/**
+ * Crée une session de paiement pour l'achat public de codes cadeaux
+ * Prix unitaire récupéré depuis le setting "gift_code_price"
+ */
+export async function purchaseGiftCodes(
+  app: FastifyInstance,
+  data: PurchaseGiftCodesBody
+): Promise<{ checkout_id: string; checkout_url: string }> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  if (!data.quantity || data.quantity < 1) {
+    throw new Error('La quantité doit être au moins 1');
+  }
+  if (data.quantity > 100) {
+    throw new Error('La quantité maximale autorisée est 100');
+  }
+
+  const pricePerCode = (await getSettingValue<number>(app, 'gift_code_price', 0)) || 0;
+  if (pricePerCode <= 0) {
+    throw new Error('Le prix des codes cadeaux (gift_code_price) doit être configuré');
+  }
+
+  const totalAmount = pricePerCode * data.quantity;
+  const currency = 'EUR';
+
+  const metadata: Record<string, string> = {
+    purchase_type: 'gift_codes',
+    gift_codes_quantity: String(data.quantity),
+    buyer_email: data.email,
+    language: data.language || 'fr',
+  };
+
+  const checkout = await createCheckout(
+    app,
+    totalAmount,
+    `Achat de ${data.quantity} code(s) cadeau`,
+    currency,
+    data.success_url,
+    data.cancel_url,
+    metadata
+  );
+
+  return {
+    checkout_id: checkout.id,
+    checkout_url: checkout.url,
+  };
+}
+
+/**
+ * Confirme un achat public de codes cadeaux après paiement
+ * - Vérifie le statut Stripe (payment_status = paid)
+ * - Génère le pack et envoie l'email avec les codes
+ */
+export async function confirmPurchaseGiftCodes(
+  app: FastifyInstance,
+  checkoutId: string
+): Promise<{ pack_id: string; codes: string[] }> {
+  if (!app.pg) {
+    throw new Error('Base de données non disponible');
+  }
+
+  const status = await getCheckoutStatus(app, checkoutId);
+  if (status.payment_status !== 'paid') {
+    throw new Error('Le paiement n\'est pas confirmé pour cette session');
+  }
+
+  const quantity = parseInt(status.metadata?.gift_codes_quantity || '0', 10);
+  const buyerEmail = status.metadata?.buyer_email;
+  const language = (status.metadata?.language as 'fr' | 'en') || 'fr';
+
+  if (!quantity || quantity <= 0) {
+    throw new Error('Quantité invalide dans la session de paiement');
+  }
+  if (!buyerEmail) {
+    throw new Error('Email de l\'acheteur manquant dans la session de paiement');
+  }
+
+  // Créer le pack de codes
+  const pack = await createGiftCodePack(app, {
+    quantity,
+    notes: JSON.stringify({
+      purchase_type: 'gift_codes_public',
+      checkout_id: checkoutId,
+      buyer_email: buyerEmail,
+    }),
+  });
+
+  // Associer l'email du destinataire aux codes
+  await app.pg.query(
+    `UPDATE gift_codes 
+     SET recipient_email = $1, updated_at = current_timestamp 
+     WHERE pack_id = $2`,
+    [buyerEmail, pack.pack_id]
+  );
+
+  // Envoyer l'email avec les codes et les instructions
+  const codesList = pack.codes.map(c => c.code).join('<br>');
+  const instructionsUrl = 'https://museedujeuvideo.org/fr/ticket';
+
+  const subject = language === 'en'
+    ? 'Your gift codes - Musée du Jeu Vidéo'
+    : 'Vos codes cadeaux - Musée du Jeu Vidéo';
+
+  const body = `
+    <p>${language === 'en' ? 'Hello,' : 'Bonjour,'}</p>
+    <p>${language === 'en'
+      ? 'Here are your gift codes:'
+      : 'Voici vos codes cadeaux :'}</p>
+    <p style="font-family: monospace; font-size: 16px; font-weight: bold;">
+      ${codesList}
+    </p>
+    <p>${language === 'en'
+      ? 'To use them: go to the booking page, select a date and a slot, choose a ticket and enter your code via \"Add a gift code\" in the personal information section.'
+      : 'Pour les utiliser : rendez-vous sur la page de réservation, sélectionnez une date et un horaire, choisissez une place et saisissez votre code via \"Ajouter un code cadeau\" dans la section informations personnelles.'}</p>
+    <p>${language === 'en'
+      ? `Booking page: <a href=\"${instructionsUrl}\">${instructionsUrl}</a>`
+      : `Page de réservation : <a href=\"${instructionsUrl}\">${instructionsUrl}</a>`}</p>
+    <p>${language === 'en'
+      ? 'Best regards,<br>The MO5.com team'
+      : 'Cordialement,<br>L\'équipe MO5.com'}</p>
+  `;
+
+  await emailUtils.sendEmail({
+    email: buyerEmail,
+    name: buyerEmail,
+    subject,
+    body,
+    language,
+  });
+
+  return {
+    pack_id: pack.pack_id,
+    codes: pack.codes.map(c => c.code),
   };
 }
 

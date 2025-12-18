@@ -23,6 +23,7 @@ export interface CheckoutStatus {
   status: 'open' | 'complete' | 'expired';
   payment_status: 'paid' | 'unpaid' | 'no_payment_required';
   payment_intent?: string;
+  metadata?: Record<string, string>;
 }
 
 /**

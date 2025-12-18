@@ -3977,7 +3977,7 @@
                       "applied_at": {
                         "type": "string",
                         "format": "date-time",
-                        "default": "2025-12-13T13:02:49.039Z",
+                        "default": "2025-12-17T23:15:11.781Z",
                         "description": "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                       }
                     },
@@ -5245,7 +5245,6 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "email",
                   "tickets",
                   "success_url",
                   "cancel_url"
@@ -5255,7 +5254,7 @@
                     "type": "string",
                     "format": "email",
                     "maxLength": 255,
-                    "description": "Email commun pour tous les tickets (obligatoire)"
+                    "description": "Email commun pour tous les tickets (obligatoire uniquement si tous les tickets sont gratuites, sinon Stripe le récupère)"
                   },
                   "first_name": {
                     "type": "string",
@@ -5612,7 +5611,7 @@
         "tags": [
           "Musée - Tickets"
         ],
-        "summary": "Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, montants total, semaine et mois (route publique)",
+        "summary": "Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour (route publique)",
         "description": "",
         "operationId": "get_museum_tickets_stats",
         "parameters": [],
@@ -5651,41 +5650,21 @@
                               "tickets_count": {
                                 "type": "number",
                                 "description": "Nombre de tickets vendus ce jour"
-                              },
-                              "amount": {
-                                "type": "number",
-                                "description": "Montant total des tickets vendus ce jour"
                               }
                             },
                             "required": [
                               "date",
                               "day_name",
-                              "tickets_count",
-                              "amount"
+                              "tickets_count"
                             ]
                           },
                           "description": "Répartition des tickets vendus par jour de la semaine"
-                        },
-                        "total_amount": {
-                          "type": "number",
-                          "description": "Montant total de tous les tickets vendus"
-                        },
-                        "week_amount": {
-                          "type": "number",
-                          "description": "Montant total des tickets vendus cette semaine"
-                        },
-                        "month_amount": {
-                          "type": "number",
-                          "description": "Montant total des tickets vendus ce mois"
                         }
                       },
                       "required": [
                         "total_tickets_sold",
                         "week_tickets_sold",
-                        "week_tickets_by_day",
-                        "total_amount",
-                        "week_amount",
-                        "month_amount"
+                        "week_tickets_by_day"
                       ]
                     }
                   },
@@ -5711,7 +5690,154 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/museum/tickets/weekly-slots-stats": {
+      "get": {
+        "tags": [
+          "Musée - Tickets"
+        ],
+        "summary": "Récupère les statistiques des créneaux horaires pour la semaine courante : pour chaque jour et start_time, nombre de personnes attendues et pourcentage d’occupation par rapport à la capacité",
+        "description": "",
+        "operationId": "get_museum_tickets_weekly-slots-stats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "week_start": {
+                      "type": "string",
+                      "format": "date",
+                      "description": "Date du lundi de la semaine courante (YYYY-MM-DD)"
+                    },
+                    "week_end": {
+                      "type": "string",
+                      "format": "date",
+                      "description": "Date du dimanche de la semaine courante (YYYY-MM-DD)"
+                    },
+                    "slots_stats": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "Date du créneau (YYYY-MM-DD)"
+                          },
+                          "day_name": {
+                            "type": "string",
+                            "description": "Nom du jour (lundi, mardi, etc.)"
+                          },
+                          "start_time": {
+                            "type": "string",
+                            "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
+                            "description": "Heure de début du créneau (HH:MM:SS)"
+                          },
+                          "end_time": {
+                            "type": "string",
+                            "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
+                            "description": "Heure de fin du créneau (HH:MM:SS)"
+                          },
+                          "expected_people": {
+                            "type": "number",
+                            "description": "Nombre de personnes attendues (tickets pending + paid)"
+                          },
+                          "capacity": {
+                            "type": "number",
+                            "description": "Capacité maximale du créneau (setting capacity)"
+                          },
+                          "occupancy_percentage": {
+                            "type": "number",
+                            "description": "Pourcentage d'occupation (0-100)"
+                          },
+                          "is_half_price": {
+                            "type": "boolean",
+                            "description": "true si le créneau est incomplet (demi-tarif)"
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "day_name",
+                          "start_time",
+                          "end_time",
+                          "expected_people",
+                          "capacity",
+                          "occupancy_percentage",
+                          "is_half_price"
+                        ]
+                      },
+                      "description": "Statistiques des créneaux horaires pour chaque jour de la semaine courante (jauge horaire : un ticket compte pour chaque heure où il est présent)"
+                    },
+                    "daily_totals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "Date du jour (YYYY-MM-DD)"
+                          },
+                          "day_name": {
+                            "type": "string",
+                            "description": "Nom du jour (lundi, mardi, etc.)"
+                          },
+                          "total_unique_tickets": {
+                            "type": "number",
+                            "description": "Nombre unique de tickets attendus dans la journée (sans double comptage, pour distinguer du nombre de présences horaires)"
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "day_name",
+                          "total_unique_tickets"
+                        ]
+                      },
+                      "description": "Total unique de tickets par jour (pour distinguer du nombre de présences horaires dans slots_stats)"
+                    }
+                  },
+                  "required": [
+                    "week_start",
+                    "week_end",
+                    "slots_stats",
+                    "daily_totals"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/museum/slots": {
@@ -6755,6 +6881,206 @@
                     "error": {
                       "type": "string"
                     }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/museum/gift-codes/purchase": {
+      "post": {
+        "tags": [
+          "Musée - Codes cadeaux"
+        ],
+        "summary": "Crée une session de paiement Stripe pour acheter des codes cadeaux (route publique). Utilise le setting gift_code_price comme prix unitaire et retourne checkout_id + checkout_url.",
+        "description": "",
+        "operationId": "post_museum_gift-codes_purchase",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Code 201",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkout_id": {
+                      "type": "string"
+                    },
+                    "checkout_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "checkout_id",
+                    "checkout_url"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Code 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "quantity",
+                  "email",
+                  "success_url",
+                  "cancel_url"
+                ],
+                "properties": {
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Nombre de codes cadeaux à acheter"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email de l'acheteur / destinataire"
+                  },
+                  "language": {
+                    "type": "string",
+                    "enum": [
+                      "fr",
+                      "en"
+                    ],
+                    "default": "fr",
+                    "description": "Langue de l'email de confirmation"
+                  },
+                  "success_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL de redirection après paiement réussi"
+                  },
+                  "cancel_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL de redirection en cas d'annulation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/museum/gift-codes/purchase/confirm": {
+      "post": {
+        "tags": [
+          "Musée - Codes cadeaux"
+        ],
+        "summary": "Confirme un achat de codes cadeaux après paiement Stripe (route publique). Vérifie la session, génère un pack de codes et les envoie par email à l'acheteur.",
+        "description": "",
+        "operationId": "post_museum_gift-codes_purchase_confirm",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pack_id": {
+                      "type": "string"
+                    },
+                    "codes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pack_id",
+                    "codes"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Code 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "checkout_id"
+                ],
+                "properties": {
+                  "checkout_id": {
+                    "type": "string",
+                    "description": "ID de la session Stripe à confirmer"
                   }
                 }
               }

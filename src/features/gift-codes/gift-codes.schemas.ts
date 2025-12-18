@@ -280,6 +280,94 @@ export const getGiftCodePacksSchema = {
   },
 };
 
+export const purchaseGiftCodesSchema = {
+  body: {
+    type: 'object',
+    required: ['quantity', 'email', 'success_url', 'cancel_url'],
+    properties: {
+      quantity: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 100,
+        description: 'Nombre de codes cadeaux à acheter',
+      },
+      email: {
+        type: 'string',
+        format: 'email',
+        description: 'Email de l\'acheteur / destinataire',
+      },
+      language: {
+        type: 'string',
+        enum: ['fr', 'en'],
+        default: 'fr',
+        description: 'Langue de l\'email de confirmation',
+      },
+      success_url: {
+        type: 'string',
+        format: 'uri',
+        description: 'URL de redirection après paiement réussi',
+      },
+      cancel_url: {
+        type: 'string',
+        format: 'uri',
+        description: 'URL de redirection en cas d\'annulation',
+      },
+    },
+  },
+  response: {
+    201: {
+      type: 'object',
+      properties: {
+        checkout_id: { type: 'string' },
+        checkout_url: { type: 'string' },
+      },
+      required: ['checkout_id', 'checkout_url'],
+    },
+    400: {
+      type: 'object',
+      properties: { error: { type: 'string' } },
+    },
+    500: {
+      type: 'object',
+      properties: { error: { type: 'string' } },
+    },
+  },
+};
+
+export const confirmPurchaseGiftCodesSchema = {
+  body: {
+    type: 'object',
+    required: ['checkout_id'],
+    properties: {
+      checkout_id: {
+        type: 'string',
+        description: 'ID de la session Stripe à confirmer',
+      },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        pack_id: { type: 'string' },
+        codes: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+      required: ['pack_id', 'codes'],
+    },
+    400: {
+      type: 'object',
+      properties: { error: { type: 'string' } },
+    },
+    500: {
+      type: 'object',
+      properties: { error: { type: 'string' } },
+    },
+  },
+};
+
 export const validateGiftCodeSchema = {
   params: {
     type: 'object',
