@@ -206,6 +206,7 @@ export async function getCheckoutStatus(
       currency: session.currency || 'eur',
       status: session.status || 'open',
       payment_status: session.payment_status || 'unpaid',
+      ...(session.metadata && { metadata: session.metadata as Record<string, string> }),
       ...(session.payment_intent && {
         payment_intent: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id
       }),

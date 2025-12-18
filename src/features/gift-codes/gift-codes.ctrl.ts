@@ -5,18 +5,24 @@ import {
   getGiftCodesSchema,
   getGiftCodePacksSchema,
   validateGiftCodeSchema,
+  purchaseGiftCodesSchema,
+  confirmPurchaseGiftCodesSchema,
 } from './gift-codes.schemas.ts';
 import type {
   CreateGiftCodePackBody,
   DistributeGiftCodesBody,
   GetGiftCodesQuery,
   GetGiftCodePacksQuery,
+  PurchaseGiftCodesBody,
+  ConfirmPurchaseGiftCodesBody,
 } from './gift-codes.types.ts';
 import {
   createGiftCodePack,
   getGiftCodes,
   validateGiftCode,
   getGiftCodePacks,
+  purchaseGiftCodes,
+  confirmPurchaseGiftCodes,
 } from './gift-codes.service.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
@@ -191,6 +197,44 @@ export async function getGiftCodePacksHandler(
 }
 
 /**
+ * Handler public : initier l'achat de codes cadeaux
+ */
+export async function purchaseGiftCodesHandler(
+  req: FastifyRequest<{ Body: PurchaseGiftCodesBody }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const result = await purchaseGiftCodes(app, req.body);
+    return reply.code(201).send(result);
+  } catch (err: any) {
+    app.log.error({ err, body: req.body }, 'Erreur lors de la création du checkout pour les codes cadeaux');
+    const message = err.message || 'Erreur lors de la création du checkout';
+    return reply.code(400).send({ error: message });
+  }
+}
+
+/**
+ * Handler public : confirmer l'achat de codes cadeaux après paiement
+ */
+export async function confirmPurchaseGiftCodesHandler(
+  req: FastifyRequest<{ Body: ConfirmPurchaseGiftCodesBody }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const { checkout_id } = req.body;
+    const result = await confirmPurchaseGiftCodes(app, checkout_id);
+    return reply.send(result);
+  } catch (err: any) {
+    app.log.error({ err, body: req.body }, 'Erreur lors de la confirmation de l\'achat de codes cadeaux');
+    const msg = err.message || 'Erreur lors de la confirmation';
+    const isPayment = msg.includes('paiement') || msg.includes('payment');
+    return reply.code(isPayment ? 400 : 500).send({ error: msg });
+  }
+}
+
+/**
  * Enregistre les routes pour les codes cadeaux
  */
 export function registerGiftCodesRoutes(app: FastifyInstance) {
@@ -253,6 +297,24 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
       schema: validateGiftCodeSchema,
     },
     async (req, reply) => validateGiftCodeHandler(req, reply, app)
+  );
+
+  // Route publique : achat de codes cadeaux (checkout Stripe)
+  app.post<{ Body: PurchaseGiftCodesBody }>(
+    '/museum/gift-codes/purchase',
+    {
+      schema: purchaseGiftCodesSchema,
+    },
+    async (req, reply) => purchaseGiftCodesHandler(req, reply, app)
+  );
+
+  // Route publique : confirmation après paiement réussi
+  app.post<{ Body: ConfirmPurchaseGiftCodesBody }>(
+    '/museum/gift-codes/purchase/confirm',
+    {
+      schema: confirmPurchaseGiftCodesSchema,
+    },
+    async (req, reply) => confirmPurchaseGiftCodesHandler(req, reply, app)
   );
 }
 

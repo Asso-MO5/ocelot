@@ -252,7 +252,9 @@ async function generateOpenAPIDoc(): Promise<void> {
     distributeGiftCodesSchema,
     getGiftCodesSchema,
     getGiftCodePacksSchema,
-    validateGiftCodeSchema
+    validateGiftCodeSchema,
+    purchaseGiftCodesSchema,
+    confirmPurchaseGiftCodesSchema,
   } = await import('../features/gift-codes/gift-codes.schemas.ts');
 
   const {
@@ -585,6 +587,20 @@ async function generateOpenAPIDoc(): Promise<void> {
       path: '/museum/gift-codes/validate/:code',
       schema: validateGiftCodeSchema,
       description: 'Valide un code cadeau (route publique). Vérifie que le code existe, n\'est pas utilisé et n\'est pas expiré. Permet au frontend de valider un code avant de l\'utiliser dans une commande.',
+      tag: 'Musée - Codes cadeaux',
+    },
+    {
+      method: 'POST',
+      path: '/museum/gift-codes/purchase',
+      schema: purchaseGiftCodesSchema,
+      description: 'Crée une session de paiement Stripe pour acheter des codes cadeaux (route publique). Utilise le setting gift_code_price comme prix unitaire et retourne checkout_id + checkout_url.',
+      tag: 'Musée - Codes cadeaux',
+    },
+    {
+      method: 'POST',
+      path: '/museum/gift-codes/purchase/confirm',
+      schema: confirmPurchaseGiftCodesSchema,
+      description: 'Confirme un achat de codes cadeaux après paiement Stripe (route publique). Vérifie la session, génère un pack de codes et les envoie par email à l\'acheteur.',
       tag: 'Musée - Codes cadeaux',
     },
     {
@@ -955,7 +971,9 @@ async function generateOpenAPIDoc(): Promise<void> {
           path === '/pay/webhook' ||
           path.startsWith('/pay/checkout/') ||
           path.startsWith('/museum/tickets/checkout/') ||
-          path.startsWith('/museum/gift-codes/validate/');
+          path.startsWith('/museum/gift-codes/validate/') ||
+          path === '/museum/gift-codes/purchase' ||
+          path === '/museum/gift-codes/purchase/confirm';
 
         if ((isProtected || (isWriteMethod && !isPublicWrite)) && !isPublicRoute) {
           pathObj.security = [{ cookieAuth: [] }];
