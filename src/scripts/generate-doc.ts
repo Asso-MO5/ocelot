@@ -272,6 +272,13 @@ async function generateOpenAPIDoc(): Promise<void> {
     getCalendarSchema
   } = await import('../features/events/events.schemas.ts');
 
+  const {
+    upsertPresenceSchema,
+    getPresencesSchema,
+    refusePresenceSchema,
+    deletePresenceSchema,
+  } = await import('../features/member-presences/member-presences.schemas.ts');
+
   // Définir les routes avec leurs schémas
   const routes = [
     {
@@ -737,6 +744,34 @@ async function generateOpenAPIDoc(): Promise<void> {
       description: 'Récupère le calendrier avec événements et horaires d\'ouverture du musée',
       tag: 'Musée - Calendrier',
     },
+    {
+      method: 'POST',
+      path: '/museum/member-presences',
+      schema: upsertPresenceSchema,
+      description: 'Créer ou mettre à jour la présence du membre connecté pour une date. Le membre peut indiquer s\'il vient le matin, l\'après-midi, ou les deux.',
+      tag: 'Présences membres',
+    },
+    {
+      method: 'GET',
+      path: '/museum/member-presences',
+      schema: getPresencesSchema,
+      description: 'Récupère les présences. Pour un membre : ses propres présences. Pour bureau/dev : toutes les présences de tous les membres. Retourne les jours avec leurs tableaux de présences.',
+      tag: 'Présences membres',
+    },
+    {
+      method: 'PUT',
+      path: '/museum/member-presences/:id/refuse',
+      schema: refusePresenceSchema,
+      description: 'Refuser ou accepter une présence (bureau et dev uniquement). Permet aux admins de refuser certaines présences.',
+      tag: 'Présences membres',
+    },
+    {
+      method: 'DELETE',
+      path: '/museum/member-presences/:id',
+      schema: deletePresenceSchema,
+      description: 'Supprimer une présence. Un membre peut supprimer sa propre présence. Les admins peuvent supprimer n\'importe quelle présence.',
+      tag: 'Présences membres',
+    },
   ];
 
   // Générer le document OpenAPI
@@ -801,6 +836,10 @@ async function generateOpenAPIDoc(): Promise<void> {
       {
         name: 'Musée - Calendrier',
         description: 'Endpoint de récupération du calendrier avec événements et horaires',
+      },
+      {
+        name: 'Présences membres',
+        description: 'Endpoints de gestion des présences des membres du staff au musée',
       },
     ],
     paths: {} as Record<string, any>,

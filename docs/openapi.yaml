@@ -33,6 +33,8 @@ tags:
     description: "Endpoints de gestion des événements (musée, association, externes)"
   - name: "Musée - Calendrier"
     description: "Endpoint de récupération du calendrier avec événements et horaires"
+  - name: "Présences membres"
+    description: "Endpoints de gestion des présences des membres du staff au musée"
 paths:
   /auth/signin:
     get:
@@ -3383,7 +3385,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2025-12-17T23:15:11.781Z"
+                      default: "2025-12-18T23:33:31.756Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -7113,6 +7115,246 @@ paths:
                     type: "string"
                   view:
                     type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
+  /museum/member-presences:
+    post:
+      tags:
+        - Présences membres
+      summary: "Créer ou mettre à jour la présence du membre connecté pour une date. Le membre peut indiquer s'il vient le matin, l'après-midi, ou les deux."
+      description: ""
+      operationId: "post_museum_member-presences"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                    format: "uuid"
+                  user_id:
+                    type: "string"
+                    format: "uuid"
+                  user_name:
+                    type: "string"
+                  date:
+                    type: "string"
+                    format: "date"
+                  period:
+                    type: "string"
+                    enum:
+                      - morning
+                      - afternoon
+                      - both
+                  refused_by_admin:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                    format: "date-time"
+                  updated_at:
+                    type: "string"
+                    format: "date-time"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - date
+                - period
+              properties:
+                date:
+                  type: "string"
+                  format: "date"
+                  description: "Date de présence (format YYYY-MM-DD)"
+                period:
+                  type: "string"
+                  enum:
+                    - morning
+                    - afternoon
+                    - both
+                  description: "Période de présence : matin, après-midi, ou les deux"
+      security:
+        - cookieAuth:
+    get:
+      tags:
+        - Présences membres
+      summary: "Récupère les présences. Pour un membre : ses propres présences. Pour bureau/dev : toutes les présences de tous les membres. Retourne les jours avec leurs tableaux de présences."
+      description: ""
+      operationId: "get_museum_member-presences"
+      parameters:
+        - name: "start_date"
+          in: "query"
+          description: "Date de début (format YYYY-MM-DD)"
+          required: true
+          schema:
+            type: "string"
+            format: "date"
+            description: "Date de début (format YYYY-MM-DD)"
+        - name: "end_date"
+          in: "query"
+          description: "Date de fin (optionnel, par défaut = start_date)"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+            description: "Date de fin (optionnel, par défaut = start_date)"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  days:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        date:
+                          type: "string"
+                          format: "date"
+                        day_name:
+                          type: "string"
+                        presences:
+                          type: "array"
+                          items:
+                            type: "object"
+                            properties:
+                              id:
+                                type: "string"
+                                format: "uuid"
+                              user_id:
+                                type: "string"
+                                format: "uuid"
+                              user_name:
+                                type: "string"
+                              date:
+                                type: "string"
+                                format: "date"
+                              period:
+                                type: "string"
+                                enum:
+                                  - morning
+                                  - afternoon
+                                  - both
+                              refused_by_admin:
+                                type: "boolean"
+                              created_at:
+                                type: "string"
+                                format: "date-time"
+                              updated_at:
+                                type: "string"
+                                format: "date-time"
+                  start_date:
+                    type: "string"
+                    format: "date"
+                  end_date:
+                    type: "string"
+                    format: "date"
+              example: null
+          headers: null
+  /museum/member-presences/:id/refuse:
+    put:
+      tags:
+        - Présences membres
+      summary: "Refuser ou accepter une présence (bureau et dev uniquement). Permet aux admins de refuser certaines présences."
+      description: ""
+      operationId: "put_museum_member-presences_:id_refuse"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID de la présence"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID de la présence"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                    format: "uuid"
+                  user_id:
+                    type: "string"
+                    format: "uuid"
+                  user_name:
+                    type: "string"
+                  date:
+                    type: "string"
+                    format: "date"
+                  period:
+                    type: "string"
+                    enum:
+                      - morning
+                      - afternoon
+                      - both
+                  refused_by_admin:
+                    type: "boolean"
+                  created_at:
+                    type: "string"
+                    format: "date-time"
+                  updated_at:
+                    type: "string"
+                    format: "date-time"
+              example: null
+          headers: null
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - refused
+              properties:
+                refused:
+                  type: "boolean"
+                  description: "true pour refuser, false pour accepter"
+      security:
+        - cookieAuth:
+  /museum/member-presences/:id:
+    delete:
+      tags:
+        - Présences membres
+      summary: "Supprimer une présence. Un membre peut supprimer sa propre présence. Les admins peuvent supprimer n'importe quelle présence."
+      description: ""
+      operationId: "delete_museum_member-presences_:id"
+      parameters:
+        - name: "id"
+          in: "path"
+          description: "ID de la présence"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+            description: "ID de la présence"
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  success:
+                    type: "boolean"
               example: null
           headers: null
       security:

@@ -19,6 +19,7 @@ import { registerDonationProofRoutes } from './features/donation-proof/donation-
 import { registerGiftCodesRoutes } from './features/gift-codes/gift-codes.ctrl.ts';
 import { registerSpecialPeriodsRoutes } from './features/special-periods/special-periods.ctrl.ts';
 import { registerEventsRoutes } from './features/events/events.ctrl.ts';
+import { registerMemberPresencesRoutes } from './features/member-presences/member-presences.ctrl.ts';
 import { sendToRoom } from './features/websocket/websocket.manager.ts';
 import { registerErrorHandlers, registerProcessErrorHandlers } from './features/terror/error.handler.ts';
 import { cancelExpiredPendingTickets } from './features/tickets/tickets.service.ts';
@@ -174,6 +175,7 @@ const start = async () => {
     registerGiftCodesRoutes(app);
     registerSpecialPeriodsRoutes(app);
     registerEventsRoutes(app);
+    registerMemberPresencesRoutes(app);
 
     await app.register(cookie, {
       secret: process.env.COOKIE_SECRET || 'your-secret-key-change-in-production',
