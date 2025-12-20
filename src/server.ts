@@ -63,6 +63,13 @@ app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, 
   // Pour les autres routes, comportement normal
   const bodyString = body.toString('utf-8');
   (req as any).rawBody = bodyString;
+
+  // Si le body est vide, retourner undefined
+  if (!bodyString.trim()) {
+    done(null, undefined);
+    return;
+  }
+
   try {
     const json = JSON.parse(bodyString);
     done(null, json);

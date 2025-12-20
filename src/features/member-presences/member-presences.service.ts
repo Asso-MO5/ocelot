@@ -118,7 +118,13 @@ export async function getPresencesForMember(
   // Récupérer les présences pour cette plage
   const result = await app.pg.query<MemberPresence & { user_name: string }>(
     `SELECT 
-       mp.*,
+       mp.id,
+       mp.user_id,
+       mp.period,
+       mp.refused_by_admin,
+       mp.created_at,
+       mp.updated_at,
+       TO_CHAR(mp.date, 'YYYY-MM-DD') as date,
        u.name as user_name
      FROM member_presences mp
      JOIN users u ON u.id = mp.user_id
@@ -131,7 +137,9 @@ export async function getPresencesForMember(
   // Organiser les présences par jour
   const presencesByDate = new Map<string, MemberPresence[]>();
   for (const row of result.rows) {
-    const dateStr = row.date;
+    // La date est déjà formatée en string par TO_CHAR
+    const dateStr = String(row.date);
+
     if (!presencesByDate.has(dateStr)) {
       presencesByDate.set(dateStr, []);
     }
@@ -139,7 +147,7 @@ export async function getPresencesForMember(
       id: row.id,
       user_id: row.user_id,
       user_name: row.user_name,
-      date: row.date,
+      date: dateStr,
       period: row.period,
       refused_by_admin: row.refused_by_admin,
       created_at: row.created_at,
@@ -193,7 +201,13 @@ export async function getAllPresences(
   // Récupérer toutes les présences pour cette plage
   const result = await app.pg.query<MemberPresence & { user_name: string }>(
     `SELECT 
-       mp.*,
+       mp.id,
+       mp.user_id,
+       mp.period,
+       mp.refused_by_admin,
+       mp.created_at,
+       mp.updated_at,
+       TO_CHAR(mp.date, 'YYYY-MM-DD') as date,
        u.name as user_name
      FROM member_presences mp
      JOIN users u ON u.id = mp.user_id
@@ -205,7 +219,9 @@ export async function getAllPresences(
   // Organiser les présences par jour
   const presencesByDate = new Map<string, MemberPresence[]>();
   for (const row of result.rows) {
-    const dateStr = row.date;
+    // La date est déjà formatée en string par TO_CHAR
+    const dateStr = String(row.date);
+
     if (!presencesByDate.has(dateStr)) {
       presencesByDate.set(dateStr, []);
     }
@@ -213,7 +229,7 @@ export async function getAllPresences(
       id: row.id,
       user_id: row.user_id,
       user_name: row.user_name,
-      date: row.date,
+      date: dateStr,
       period: row.period,
       refused_by_admin: row.refused_by_admin,
       created_at: row.created_at,
