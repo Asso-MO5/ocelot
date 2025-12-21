@@ -890,7 +890,7 @@ export async function createTicketsWithPayment(
 
     if (!res.ok) {
       throw createStructuredError(
-        500,
+        401,
         'Erreur lors de la vérification de l\'adhésion',
         'Error checking membership status'
       );
@@ -1439,10 +1439,152 @@ export async function getTicketsStats(
     };
   });
 
+  // Total des dons reçus sur les tickets payés
+  const donationsResult = await app.pg.query<{ total: string }>(
+    `SELECT 
+      COALESCE(SUM(donation_amount), 0) as total
+     FROM tickets 
+     WHERE status = 'paid'`
+  );
+  const totalDonations = parseFloat(donationsResult.rows[0].total || '0');
+
+  // Coût moyen d'un ticket (ticket_price)
+  const avgPriceResult = await app.pg.query<{ avg: string }>(
+    `SELECT 
+      COALESCE(AVG(ticket_price), 0) as avg
+     FROM tickets 
+     WHERE status = 'paid'`
+  );
+  const averageTicketPrice = parseFloat(avgPriceResult.rows[0].avg || '0');
+
+  // Statistiques par horaire (slot_start_time) - tous les tickets payés
+  const hourlyResult = await app.pg.query<{
+    start_time: string;
+    count: string;
+  }>(
+    `SELECT 
+      slot_start_time as start_time,
+      COUNT(*) as count
+     FROM tickets 
+     WHERE status = 'paid'
+     GROUP BY slot_start_time
+     ORDER BY count DESC, start_time ASC`
+  );
+
+  const hourlyStats = hourlyResult.rows.map((row) => ({
+    start_time: row.start_time,
+    tickets_count: parseInt(row.count, 10),
+    percentage: totalTicketsSold > 0
+      ? Math.round((parseInt(row.count, 10) / totalTicketsSold) * 100 * 100) / 100
+      : 0,
+  }));
+
+  // Statistiques sur les réservations groupées (même checkout_reference)
+  // Seulement les tickets avec checkout_reference non null
+  const groupedCheckoutsResult = await app.pg.query<{
+    checkout_reference: string;
+    count: string;
+  }>(
+    `SELECT 
+      checkout_reference,
+      COUNT(*) as count
+     FROM tickets 
+     WHERE checkout_reference IS NOT NULL
+       AND status = 'paid'
+     GROUP BY checkout_reference`
+  );
+
+  const checkoutCounts = groupedCheckoutsResult.rows.map((row) => parseInt(row.count, 10));
+  const totalCheckouts = checkoutCounts.length;
+  const averageTicketsPerCheckout = totalCheckouts > 0
+    ? checkoutCounts.reduce((sum, count) => sum + count, 0) / totalCheckouts
+    : 0;
+  const maxTicketsInCheckout = checkoutCounts.length > 0
+    ? Math.max(...checkoutCounts)
+    : 0;
+
+  // Distribution du nombre de tickets par checkout
+  const distributionMap = new Map<number, number>();
+  checkoutCounts.forEach((count) => {
+    distributionMap.set(count, (distributionMap.get(count) || 0) + 1);
+  });
+
+  const checkoutDistribution = Array.from(distributionMap.entries())
+    .map(([tickets_count, checkouts_count]) => ({
+      tickets_count,
+      checkouts_count,
+    }))
+    .sort((a, b) => a.tickets_count - b.tickets_count);
+
+  // Total des revenus (ticket_price + donation_amount) pour les tickets payés
+  const revenueResult = await app.pg.query<{ total: string }>(
+    `SELECT 
+      COALESCE(SUM(ticket_price + donation_amount), 0) as total
+     FROM tickets 
+     WHERE status = 'paid'`
+  );
+  const totalRevenue = parseFloat(revenueResult.rows[0].total || '0');
+
+  // Taux de conversion (paid / (paid + pending)) en pourcentage
+  const conversionResult = await app.pg.query<{
+    paid: string;
+    pending: string;
+  }>(
+    `SELECT 
+      COUNT(*) FILTER (WHERE status = 'paid') as paid,
+      COUNT(*) FILTER (WHERE status = 'pending') as pending
+     FROM tickets`
+  );
+  const paidCount = parseInt(conversionResult.rows[0].paid || '0', 10);
+  const pendingCount = parseInt(conversionResult.rows[0].pending || '0', 10);
+  const totalWithStatus = paidCount + pendingCount;
+  const conversionRate = totalWithStatus > 0
+    ? Math.round((paidCount / totalWithStatus) * 100 * 100) / 100
+    : 0;
+
+  // Répartition par statut
+  const statusResult = await app.pg.query<{
+    status: string;
+    count: string;
+  }>(
+    `SELECT 
+      status,
+      COUNT(*) as count
+     FROM tickets 
+     GROUP BY status`
+  );
+
+  const statusDistribution: TicketsStats['status_distribution'] = {
+    paid: 0,
+    pending: 0,
+    cancelled: 0,
+    used: 0,
+    expired: 0,
+  };
+
+  statusResult.rows.forEach((row) => {
+    const status = row.status as keyof typeof statusDistribution;
+    if (status in statusDistribution) {
+      statusDistribution[status] = parseInt(row.count, 10);
+    }
+  });
+
   return {
     total_tickets_sold: totalTicketsSold,
     week_tickets_sold: weekTicketsSold,
     week_tickets_by_day: weekTicketsByDay,
+    total_donations: totalDonations,
+    average_ticket_price: Math.round(averageTicketPrice * 100) / 100,
+    hourly_stats: hourlyStats,
+    grouped_reservations: {
+      total_checkouts: totalCheckouts,
+      average_tickets_per_checkout: Math.round(averageTicketsPerCheckout * 100) / 100,
+      max_tickets_in_checkout: maxTicketsInCheckout,
+      checkout_distribution: checkoutDistribution,
+    },
+    total_revenue: Math.round(totalRevenue * 100) / 100,
+    conversion_rate: conversionRate,
+    status_distribution: statusDistribution,
   };
 }
 

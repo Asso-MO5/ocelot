@@ -851,11 +851,106 @@ export const getTicketsStatsSchema = {
               },
               description: 'Répartition des tickets vendus par jour de la semaine',
             },
+            total_donations: {
+              type: 'number',
+              description: 'Total des dons reçus sur les tickets payés',
+            },
+            average_ticket_price: {
+              type: 'number',
+              description: 'Coût moyen d\'un ticket (ticket_price)',
+            },
+            hourly_stats: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  start_time: {
+                    type: 'string',
+                    pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$',
+                    description: 'Heure de début (HH:MM:SS)',
+                  },
+                  tickets_count: {
+                    type: 'number',
+                    description: 'Nombre de tickets vendus à cette heure',
+                  },
+                  percentage: {
+                    type: 'number',
+                    description: 'Pourcentage par rapport au total',
+                  },
+                },
+                required: ['start_time', 'tickets_count', 'percentage'],
+              },
+              description: 'Statistiques par horaire (slot_start_time) pour voir les horaires à forte influence',
+            },
+            grouped_reservations: {
+              type: 'object',
+              properties: {
+                total_checkouts: {
+                  type: 'number',
+                  description: 'Nombre total de checkout_reference uniques (avec checkout_reference non null)',
+                },
+                average_tickets_per_checkout: {
+                  type: 'number',
+                  description: 'Nombre moyen de tickets par checkout',
+                },
+                max_tickets_in_checkout: {
+                  type: 'number',
+                  description: 'Nombre maximum de tickets dans un seul checkout',
+                },
+                checkout_distribution: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      tickets_count: {
+                        type: 'number',
+                        description: 'Nombre de tickets dans le checkout',
+                      },
+                      checkouts_count: {
+                        type: 'number',
+                        description: 'Nombre de checkouts avec ce nombre de tickets',
+                      },
+                    },
+                    required: ['tickets_count', 'checkouts_count'],
+                  },
+                  description: 'Distribution du nombre de tickets par checkout',
+                },
+              },
+              required: ['total_checkouts', 'average_tickets_per_checkout', 'max_tickets_in_checkout', 'checkout_distribution'],
+              description: 'Statistiques sur les réservations groupées (même checkout_reference)',
+            },
+            total_revenue: {
+              type: 'number',
+              description: 'Total des revenus (ticket_price + donation_amount) pour les tickets payés',
+            },
+            conversion_rate: {
+              type: 'number',
+              description: 'Taux de conversion (paid / (paid + pending)) en pourcentage',
+            },
+            status_distribution: {
+              type: 'object',
+              properties: {
+                paid: { type: 'number', description: 'Nombre de tickets payés' },
+                pending: { type: 'number', description: 'Nombre de tickets en attente' },
+                cancelled: { type: 'number', description: 'Nombre de tickets annulés' },
+                used: { type: 'number', description: 'Nombre de tickets utilisés' },
+                expired: { type: 'number', description: 'Nombre de tickets expirés' },
+              },
+              required: ['paid', 'pending', 'cancelled', 'used', 'expired'],
+              description: 'Répartition par statut',
+            },
           },
           required: [
             'total_tickets_sold',
             'week_tickets_sold',
             'week_tickets_by_day',
+            'total_donations',
+            'average_ticket_price',
+            'hourly_stats',
+            'grouped_reservations',
+            'total_revenue',
+            'conversion_rate',
+            'status_distribution',
           ],
         },
       },

@@ -162,12 +162,47 @@ export interface TicketsStatsByDay {
 }
 
 /**
+ * Statistiques par horaire (slot_start_time)
+ */
+export interface HourlyStats {
+  start_time: string; // Heure de début (HH:MM:SS)
+  tickets_count: number; // Nombre de tickets vendus à cette heure
+  percentage: number; // Pourcentage par rapport au total
+}
+
+/**
+ * Statistiques des réservations groupées (même checkout_reference)
+ */
+export interface GroupedReservationsStats {
+  total_checkouts: number; // Nombre total de checkout_reference uniques (avec checkout_reference non null)
+  average_tickets_per_checkout: number; // Nombre moyen de tickets par checkout
+  max_tickets_in_checkout: number; // Nombre maximum de tickets dans un seul checkout
+  checkout_distribution: Array<{
+    tickets_count: number; // Nombre de tickets dans le checkout
+    checkouts_count: number; // Nombre de checkouts avec ce nombre de tickets
+  }>; // Distribution du nombre de tickets par checkout
+}
+
+/**
  * Statistiques globales des tickets
  */
 export interface TicketsStats {
   total_tickets_sold: number; // Nombre total de tickets vendus (status = 'paid')
   week_tickets_sold: number; // Nombre de tickets vendus cette semaine
   week_tickets_by_day: TicketsStatsByDay[]; // Répartition par jour de la semaine
+  total_donations: number; // Total des dons reçus sur les tickets payés
+  average_ticket_price: number; // Coût moyen d'un ticket (ticket_price)
+  hourly_stats: HourlyStats[]; // Statistiques par horaire (slot_start_time)
+  grouped_reservations: GroupedReservationsStats; // Stats sur les réservations groupées (même checkout_reference)
+  total_revenue: number; // Total des revenus (ticket_price + donation_amount) pour les tickets payés
+  conversion_rate: number; // Taux de conversion (paid / (paid + pending)) en pourcentage
+  status_distribution: {
+    paid: number;
+    pending: number;
+    cancelled: number;
+    used: number;
+    expired: number;
+  }; // Répartition par statut
 }
 
 /**
