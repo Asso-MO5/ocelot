@@ -70,7 +70,7 @@ export function calculateSlotPrice(
   }
 
   // Créneau incomplet : demi-tarif, arrondi à l'inférieur
-  return Math.floor(basePrice / 2);
+  return Math.round(basePrice / 2);
 }
 
 /**
