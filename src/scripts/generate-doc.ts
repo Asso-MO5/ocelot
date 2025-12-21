@@ -523,7 +523,7 @@ async function generateOpenAPIDoc(): Promise<void> {
       method: 'GET',
       path: '/museum/tickets/stats',
       schema: getTicketsStatsSchema,
-      description: 'Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour (route publique)',
+      description: 'Récupère les statistiques complètes des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, total des dons, coût moyen, statistiques par horaire (pour identifier les horaires à forte influence), statistiques sur les réservations groupées (même checkout_reference), revenus totaux, taux de conversion et répartition par statut. Réservé aux rôles bureau et dev.',
       tag: 'Musée - Tickets',
     },
     {
