@@ -122,22 +122,21 @@ function generateSlotsForSchedule(
 }
 
 /**
- * Compte le nombre de tickets actifs au début d'un créneau donné
- * Chaque créneau a sa propre jauge indépendante, sans tenir compte du chevauchement
- * Un ticket est actif au début du créneau s'il commence avant ou à cette heure
- * et se termine après cette heure
+ * Compte le nombre de tickets qui commencent exactement à l'heure de début du créneau
+ * Pas de chevauchement : on compte uniquement les tickets qui commencent à cette heure
+ * Chaque ticket n'est compté que dans le créneau où il commence
  * 
- * Exemple : créneau 14h-16h (jauge à 14h)
- * - Ticket 13h-15h : actif (13h <= 14h ET 15h > 14h)
- * - Ticket 14h-16h : actif (14h <= 14h ET 16h > 14h)
- * - Ticket 15h-17h : non actif (15h > 14h)
- * - Ticket 16h-18h : non actif (16h > 14h)
+ * Exemple : créneau 14h-16h
+ * - Ticket 13h-15h : non compté (ne commence pas à 14h)
+ * - Ticket 14h-16h : compté (commence à 14h)
+ * - Ticket 15h-17h : non compté (ne commence pas à 14h)
+ * - Ticket 16h-18h : non compté (ne commence pas à 14h)
  * 
- * Exemple : créneau 15h-17h (jauge à 15h)
- * - Ticket 13h-15h : non actif (15h n'est pas > 15h)
- * - Ticket 14h-16h : actif (14h <= 15h ET 16h > 15h)
- * - Ticket 15h-17h : actif (15h <= 15h ET 17h > 15h)
- * - Ticket 16h-18h : non actif (16h > 15h)
+ * Exemple : créneau 15h-17h
+ * - Ticket 13h-15h : non compté (ne commence pas à 15h)
+ * - Ticket 14h-16h : non compté (ne commence pas à 15h)
+ * - Ticket 15h-17h : compté (commence à 15h)
+ * - Ticket 16h-18h : non compté (ne commence pas à 15h)
  */
 async function countTicketsForSlot(
   app: FastifyInstance,
@@ -149,16 +148,14 @@ async function countTicketsForSlot(
     throw new Error('Base de données non disponible');
   }
 
-  // Compter uniquement les tickets actifs au début du créneau (slotStart)
-  // Un ticket est actif à slotStart s'il commence avant ou à slotStart
-  // et se termine après slotStart (jauge horaire indépendante)
+  // Compter uniquement les tickets qui commencent exactement à l'heure de début du créneau
+  // Pas de chevauchement : chaque ticket n'est compté que dans le créneau où il commence
   const result = await app.pg.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM tickets 
      WHERE reservation_date = $1 
      AND status IN ('pending', 'paid')
-     AND slot_start_time <= $2
-     AND slot_end_time > $2`,
+     AND slot_start_time = $2`,
     [date, slotStart]
   );
 

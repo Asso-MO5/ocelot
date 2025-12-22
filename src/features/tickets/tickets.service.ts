@@ -1599,9 +1599,9 @@ export async function getTicketsStats(
 }
 
 /**
- * Compte le nombre de tickets actifs à une heure donnée
- * Un ticket est actif à une heure start_time s'il commence avant ou à cette heure
- * et se termine après cette heure (pour la jauge horaire, indépendamment de la durée du créneau)
+ * Compte le nombre de tickets payés qui commencent exactement à une heure donnée
+ * Pas de chevauchement : on compte uniquement les tickets qui commencent à cette heure
+ * Pour les statistiques, on ne compte que les tickets avec le statut 'paid'
  */
 async function countTicketsActiveAtTime(
   app: FastifyInstance,
@@ -1612,15 +1612,15 @@ async function countTicketsActiveAtTime(
     throw new Error('Base de données non disponible');
   }
 
-  // Un ticket est actif à startTime s'il commence avant ou à startTime
-  // et se termine après startTime (jauge horaire)
+  // Compter uniquement les tickets payés qui commencent exactement à startTime
+  // Pas de chevauchement : chaque ticket n'est compté que dans le créneau où il commence
+  // Pour les statistiques, on ne compte que les tickets payés
   const result = await app.pg.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM tickets 
      WHERE reservation_date = $1 
-     AND status IN ('pending', 'paid')
-     AND slot_start_time <= $2
-     AND slot_end_time > $2`,
+     AND status = 'paid'
+     AND slot_start_time = $2`,
     [date, startTime]
   );
 
@@ -1633,7 +1633,8 @@ async function countTicketsActiveAtTime(
  * retourne le nombre de personnes attendues et le pourcentage d'occupation
  * par rapport à la capacité configurée (setting "capacity").
  * 
- * La jauge s'applique par heure : un ticket de 14h30-16h30 compte pour 14h, 15h et 16h.
+ * Pas de chevauchement : on compte uniquement les tickets qui commencent exactement
+ * à l'heure de début du créneau. Chaque ticket n'est compté qu'une seule fois.
  */
 export async function getWeeklySlotsStats(
   app: FastifyInstance
@@ -1692,8 +1693,8 @@ export async function getWeeklySlotsStats(
     // Récupérer les slots pour cette date pour connaître les heures de début possibles
     const slotsResponse = await getSlotsForDate(app, dateStr);
 
-    // Pour chaque slot, compter les tickets actifs à l'heure de début
-    // (jauge horaire : un ticket compte pour chaque heure où il est présent)
+    // Pour chaque slot, compter uniquement les tickets qui commencent à cette heure
+    // Pas de chevauchement : chaque ticket n'est compté que dans le créneau où il commence
     for (const slot of slotsResponse.slots) {
       const expectedPeople = await countTicketsActiveAtTime(
         app,
