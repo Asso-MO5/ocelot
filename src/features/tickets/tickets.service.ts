@@ -1457,18 +1457,28 @@ export async function getTicketsStats(
   );
   const averageTicketPrice = parseFloat(avgPriceResult.rows[0].avg || '0');
 
-  // Statistiques par horaire (slot_start_time) - tous les tickets payés
+  // Statistiques par horaire - compter les tickets actifs à chaque heure
+  // Un ticket est actif à une heure s'il commence avant ou à cette heure
+  // et se termine après cette heure (jauge horaire indépendante, sans chevauchement)
   const hourlyResult = await app.pg.query<{
     start_time: string;
     count: string;
   }>(
-    `SELECT 
-      slot_start_time as start_time,
-      COUNT(*) as count
-     FROM tickets 
-     WHERE status = 'paid'
-     GROUP BY slot_start_time
-     ORDER BY count DESC, start_time ASC`
+    `WITH hours AS (
+      -- Générer toutes les heures de 0h à 23h
+      SELECT generate_series(0, 23) as hour
+    )
+    SELECT 
+      LPAD(h.hour::text, 2, '0') || ':00:00' as start_time,
+      COUNT(DISTINCT t.id) as count
+    FROM hours h
+    LEFT JOIN tickets t ON 
+      t.status = 'paid'
+      AND t.slot_start_time::time <= (LPAD(h.hour::text, 2, '0') || ':00:00')::time
+      AND t.slot_end_time::time > (LPAD(h.hour::text, 2, '0') || ':00:00')::time
+    GROUP BY h.hour
+    HAVING COUNT(DISTINCT t.id) > 0
+    ORDER BY count DESC, start_time ASC`
   );
 
   const hourlyStats = hourlyResult.rows.map((row) => ({
