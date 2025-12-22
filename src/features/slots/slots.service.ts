@@ -122,16 +122,22 @@ function generateSlotsForSchedule(
 }
 
 /**
- * Compte le nombre de tickets qui se chevauchent avec un créneau donné
- * Un ticket se chevauche avec un créneau s'il commence avant la fin du créneau
- * et se termine après le début du créneau
+ * Compte le nombre de tickets actifs au début d'un créneau donné
+ * Chaque créneau a sa propre jauge indépendante, sans tenir compte du chevauchement
+ * Un ticket est actif au début du créneau s'il commence avant ou à cette heure
+ * et se termine après cette heure
  * 
- * Exemple : créneau 14h-16h
- * - Ticket 13h-15h : chevauche (se termine après 14h)
- * - Ticket 14h-16h : chevauche (identique)
- * - Ticket 15h-17h : chevauche (commence avant 16h)
- * - Ticket 16h-18h : chevauche (commence à 16h, se termine après 16h)
- * - Ticket 17h-19h : ne chevauche pas (commence après 16h)
+ * Exemple : créneau 14h-16h (jauge à 14h)
+ * - Ticket 13h-15h : actif (13h <= 14h ET 15h > 14h)
+ * - Ticket 14h-16h : actif (14h <= 14h ET 16h > 14h)
+ * - Ticket 15h-17h : non actif (15h > 14h)
+ * - Ticket 16h-18h : non actif (16h > 14h)
+ * 
+ * Exemple : créneau 15h-17h (jauge à 15h)
+ * - Ticket 13h-15h : non actif (15h n'est pas > 15h)
+ * - Ticket 14h-16h : actif (14h <= 15h ET 16h > 15h)
+ * - Ticket 15h-17h : actif (15h <= 15h ET 17h > 15h)
+ * - Ticket 16h-18h : non actif (16h > 15h)
  */
 async function countTicketsForSlot(
   app: FastifyInstance,
@@ -143,16 +149,17 @@ async function countTicketsForSlot(
     throw new Error('Base de données non disponible');
   }
 
-  // Récupérer tous les tickets pour cette date qui se chevauchent avec ce créneau
-  // Un ticket se chevauche s'il commence avant la fin du créneau ET se termine après le début du créneau
+  // Compter uniquement les tickets actifs au début du créneau (slotStart)
+  // Un ticket est actif à slotStart s'il commence avant ou à slotStart
+  // et se termine après slotStart (jauge horaire indépendante)
   const result = await app.pg.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM tickets 
      WHERE reservation_date = $1 
      AND status IN ('pending', 'paid')
-     AND slot_start_time < $3
+     AND slot_start_time <= $2
      AND slot_end_time > $2`,
-    [date, slotStart, slotEnd]
+    [date, slotStart]
   );
 
   return parseInt(result.rows[0].count, 10);
