@@ -1390,21 +1390,21 @@ export async function getTicketsStats(
   weekStart.setHours(0, 0, 0, 0);
   const weekStartStr = weekStart.toISOString().split('T')[0];
 
-  // Statistiques totales (tous les tickets avec status = 'paid')
+  // Statistiques totales (tous les tickets avec status = 'paid' ou 'used')
   const totalResult = await app.pg.query<{ count: string }>(
     `SELECT 
       COUNT(*) as count
      FROM tickets 
-     WHERE status = 'paid'`
+     WHERE status IN ('paid', 'used')`
   );
   const totalTicketsSold = parseInt(totalResult.rows[0].count, 10);
 
-  // Statistiques de la semaine (tickets payés depuis le début de la semaine)
+  // Statistiques de la semaine (tickets payés ou utilisés depuis le début de la semaine)
   const weekResult = await app.pg.query<{ count: string }>(
     `SELECT 
       COUNT(*) as count
      FROM tickets 
-     WHERE status = 'paid' 
+     WHERE status IN ('paid', 'used') 
      AND created_at >= $1`,
     [weekStartStr]
   );
@@ -1419,7 +1419,7 @@ export async function getTicketsStats(
       DATE(created_at) as date,
       COUNT(*) as count
      FROM tickets 
-     WHERE status = 'paid' 
+     WHERE status IN ('paid', 'used') 
      AND created_at >= $1
      GROUP BY DATE(created_at)
      ORDER BY date ASC`,
@@ -1439,21 +1439,21 @@ export async function getTicketsStats(
     };
   });
 
-  // Total des dons reçus sur les tickets payés
+  // Total des dons reçus sur les tickets payés ou utilisés
   const donationsResult = await app.pg.query<{ total: string }>(
     `SELECT 
       COALESCE(SUM(donation_amount), 0) as total
      FROM tickets 
-     WHERE status = 'paid'`
+     WHERE status IN ('paid', 'used')`
   );
   const totalDonations = parseFloat(donationsResult.rows[0].total || '0');
 
-  // Coût moyen d'un ticket (ticket_price)
+  // Coût moyen d'un ticket (ticket_price) pour les tickets payés ou utilisés
   const avgPriceResult = await app.pg.query<{ avg: string }>(
     `SELECT 
       COALESCE(AVG(ticket_price), 0) as avg
      FROM tickets 
-     WHERE status = 'paid'`
+     WHERE status IN ('paid', 'used')`
   );
   const averageTicketPrice = parseFloat(avgPriceResult.rows[0].avg || '0');
 
@@ -1473,7 +1473,7 @@ export async function getTicketsStats(
       COUNT(DISTINCT t.id) as count
     FROM hours h
     LEFT JOIN tickets t ON 
-      t.status = 'paid'
+      t.status IN ('paid', 'used')
       AND t.slot_start_time::time <= (LPAD(h.hour::text, 2, '0') || ':00:00')::time
       AND t.slot_end_time::time > (LPAD(h.hour::text, 2, '0') || ':00:00')::time
     GROUP BY h.hour
@@ -1490,7 +1490,7 @@ export async function getTicketsStats(
   }));
 
   // Statistiques sur les réservations groupées (même checkout_reference)
-  // Seulement les tickets avec checkout_reference non null
+  // Seulement les tickets avec checkout_reference non null, payés ou utilisés
   const groupedCheckoutsResult = await app.pg.query<{
     checkout_reference: string;
     count: string;
@@ -1500,7 +1500,7 @@ export async function getTicketsStats(
       COUNT(*) as count
      FROM tickets 
      WHERE checkout_reference IS NOT NULL
-       AND status = 'paid'
+       AND status IN ('paid', 'used')
      GROUP BY checkout_reference`
   );
 
@@ -1526,12 +1526,12 @@ export async function getTicketsStats(
     }))
     .sort((a, b) => a.tickets_count - b.tickets_count);
 
-  // Total des revenus (ticket_price + donation_amount) pour les tickets payés
+  // Total des revenus (ticket_price + donation_amount) pour les tickets payés ou utilisés
   const revenueResult = await app.pg.query<{ total: string }>(
     `SELECT 
       COALESCE(SUM(ticket_price + donation_amount), 0) as total
      FROM tickets 
-     WHERE status = 'paid'`
+     WHERE status IN ('paid', 'used')`
   );
   const totalRevenue = parseFloat(revenueResult.rows[0].total || '0');
 
@@ -1599,9 +1599,9 @@ export async function getTicketsStats(
 }
 
 /**
- * Compte le nombre de tickets payés qui commencent exactement à une heure donnée
+ * Compte le nombre de tickets payés ou utilisés qui commencent exactement à une heure donnée
  * Pas de chevauchement : on compte uniquement les tickets qui commencent à cette heure
- * Pour les statistiques, on ne compte que les tickets avec le statut 'paid'
+ * Pour les statistiques, on ne compte que les tickets avec le statut 'paid' ou 'used'
  */
 async function countTicketsActiveAtTime(
   app: FastifyInstance,
@@ -1612,14 +1612,14 @@ async function countTicketsActiveAtTime(
     throw new Error('Base de données non disponible');
   }
 
-  // Compter uniquement les tickets payés qui commencent exactement à startTime
+  // Compter uniquement les tickets payés ou utilisés qui commencent exactement à startTime
   // Pas de chevauchement : chaque ticket n'est compté que dans le créneau où il commence
-  // Pour les statistiques, on ne compte que les tickets payés
+  // Pour les statistiques, on ne compte que les tickets payés et utilisés
   const result = await app.pg.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM tickets 
      WHERE reservation_date = $1 
-     AND status = 'paid'
+     AND status IN ('paid', 'used')
      AND slot_start_time = $2`,
     [date, startTime]
   );
@@ -1673,13 +1673,13 @@ export async function getWeeklySlotsStats(
     const dateStr = currentDate.toISOString().split('T')[0];
     const dayName = dayNames[currentDate.getDay()];
 
-    // Compter le nombre unique de tickets pour cette journée (sans double comptage)
+    // Compter le nombre unique de tickets payés ou utilisés pour cette journée (sans double comptage)
     // Un ticket compte une seule fois par jour, indépendamment de sa durée
     const uniqueTicketsResult = await app.pg.query<{ count: string }>(
       `SELECT COUNT(DISTINCT id) as count
        FROM tickets 
        WHERE reservation_date = $1 
-       AND status IN ('pending', 'paid')`,
+       AND status IN ('paid', 'used')`,
       [dateStr]
     );
     const totalUniqueTickets = parseInt(uniqueTicketsResult.rows[0].count, 10);
