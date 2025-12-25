@@ -6,9 +6,6 @@ import { generateDonationProofFromTicket } from './donation-proof.service.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
 
-/**
- * Handler pour générer et télécharger un certificat de don
- */
 export async function generateDonationProofHandler(
   req: FastifyRequest<{ Querystring: GenerateDonationProofQuery }>,
   reply: FastifyReply,
@@ -21,14 +18,12 @@ export async function generateDonationProofHandler(
       return reply.code(400).send({ error: 'ticket_id est requis' });
     }
 
-    // Récupérer le ticket
     const ticket = await getTicketById(app, ticket_id);
 
     if (!ticket) {
       return reply.code(404).send({ error: 'Ticket non trouvé' });
     }
 
-    // Vérifier que le ticket a un don
     const donationAmount = typeof ticket.donation_amount === 'string'
       ? parseFloat(ticket.donation_amount)
       : ticket.donation_amount;
@@ -37,7 +32,6 @@ export async function generateDonationProofHandler(
       return reply.code(400).send({ error: 'Ce ticket ne contient pas de don' });
     }
 
-    // Générer le PDF
     const pdfBuffer = await generateDonationProofFromTicket(
       ticket,
       address,
@@ -49,10 +43,8 @@ export async function generateDonationProofHandler(
       return reply.code(400).send({ error: 'Impossible de générer le certificat de don' });
     }
 
-    // Générer un nom de fichier
     const fileName = `certificat-don-${ticket.id.substring(0, 8)}.pdf`;
 
-    // Envoyer le PDF
     reply
       .type('application/pdf')
       .header('Content-Disposition', `attachment; filename="${fileName}"`)
@@ -63,9 +55,6 @@ export async function generateDonationProofHandler(
   }
 }
 
-/**
- * Handler pour générer un certificat de don de debug avec des données de test
- */
 export async function generateDonationProofDebugHandler(
   req: FastifyRequest,
   reply: FastifyReply,
@@ -74,7 +63,6 @@ export async function generateDonationProofDebugHandler(
   try {
     const { generateDonationProofPDF } = await import('./donation-proof.service.ts');
 
-    // Données de test pour le debug
     const testData = {
       amount: 50.00,
       first_name: 'Jean',
@@ -86,13 +74,9 @@ export async function generateDonationProofDebugHandler(
       invoice_id: 'TEST-12345',
     };
 
-    // Générer le PDF
     const pdfBuffer = await generateDonationProofPDF(testData);
-
-    // Générer un nom de fichier
     const fileName = 'certificat-don-debug.pdf';
 
-    // Envoyer le PDF
     reply
       .type('application/pdf')
       .header('Content-Disposition', `attachment; filename="${fileName}"`)
@@ -106,11 +90,7 @@ export async function generateDonationProofDebugHandler(
   }
 }
 
-/**
- * Enregistre les routes pour les certificats de don
- */
 export function registerDonationProofRoutes(app: FastifyInstance) {
-  // Route protégée : génération et téléchargement du certificat de don
   app.get<{ Querystring: GenerateDonationProofQuery }>(
     '/museum/donation-proof/generate',
     {
@@ -123,7 +103,6 @@ export function registerDonationProofRoutes(app: FastifyInstance) {
     async (req, reply) => generateDonationProofHandler(req, reply, app)
   );
 
-  // Route protégée : génération d'un certificat de debug avec des données de test
   app.get(
     '/museum/donation-proof/debug',
     {

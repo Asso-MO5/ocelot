@@ -24,9 +24,6 @@ import {
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
 
-/**
- * Handler pour créer ou mettre à jour un tarif (upsert)
- */
 export async function createPriceHandler(
   req: FastifyRequest<{ Body: CreatePriceBody }>,
   reply: FastifyReply,
@@ -35,12 +32,10 @@ export async function createPriceHandler(
   try {
     const { price, isUpdate } = await createPrice(app, req.body);
 
-    // Retourner 200 si mise à jour, 201 si création
     return reply.code(isUpdate ? 200 : 201).send(price);
   } catch (err: any) {
     app.log.error({ err, body: req.body }, 'Erreur lors de la création/mise à jour du tarif');
 
-    // Erreurs de validation (400)
     if (
       err.message?.includes('requis') ||
       err.message?.includes('doit être') ||
@@ -55,9 +50,6 @@ export async function createPriceHandler(
   }
 }
 
-/**
- * Handler pour récupérer tous les tarifs
- */
 export async function getPricesHandler(
   req: FastifyRequest<{ Querystring: GetPricesQuery }>,
   reply: FastifyReply,
@@ -66,11 +58,9 @@ export async function getPricesHandler(
   try {
     const prices = await getPrices(app, req.query);
 
-    // Récupérer le tarif de la visite guidée depuis les settings
     const { getSettingValue } = await import('../settings/settings.service.ts');
     const guidedTourPrice = await getSettingValue<number>(app, 'guided_tour_price', 0);
 
-    // Retourner les prix avec le tarif de la visite guidée
     return reply.send({
       prices,
       guided_tour_price: guidedTourPrice ?? null,
@@ -81,9 +71,6 @@ export async function getPricesHandler(
   }
 }
 
-/**
- * Handler pour récupérer un tarif par son ID
- */
 export async function getPriceByIdHandler(
   req: FastifyRequest<{ Params: { id: string }; Querystring: { lang?: string } }>,
   reply: FastifyReply,
@@ -103,9 +90,6 @@ export async function getPriceByIdHandler(
   }
 }
 
-/**
- * Handler pour mettre à jour un tarif
- */
 export async function updatePriceHandler(
   req: FastifyRequest<{ Params: { id: string }; Body: UpdatePriceBody }>,
   reply: FastifyReply,
@@ -129,9 +113,6 @@ export async function updatePriceHandler(
   }
 }
 
-/**
- * Handler pour supprimer un tarif
- */
 export async function deletePriceHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
@@ -151,9 +132,6 @@ export async function deletePriceHandler(
   }
 }
 
-/**
- * Handler pour réordonner les tarifs
- */
 export async function reorderPricesHandler(
   req: FastifyRequest<{ Body: ReorderPricesBody }>,
   reply: FastifyReply,
@@ -173,19 +151,7 @@ export async function reorderPricesHandler(
   }
 }
 
-/**
- * Enregistre les routes pour les tarifs
- * 
- * Routes publiques : GET (lecture)
- * Routes protégées : POST (upsert), PUT, DELETE (écriture) - uniquement pour les rôles "bureau" et "dev"
- * 
- * POST /museum/prices : Crée ou met à jour un tarif (upsert)
- *   - Si un id est fourni et existe : met à jour le tarif (retourne 200)
- *   - Si un id est fourni mais n'existe pas : crée un nouveau tarif avec cet ID (retourne 201)
- *   - Si aucun id n'est fourni : crée un nouveau tarif avec un ID généré (retourne 201)
- */
 export function registerPricesRoutes(app: FastifyInstance) {
-  // Routes publiques : lecture des tarifs
   app.get<{ Querystring: GetPricesQuery }>(
     '/museum/prices',
     {
@@ -202,7 +168,6 @@ export function registerPricesRoutes(app: FastifyInstance) {
     async (req, reply) => getPriceByIdHandler(req, reply, app)
   );
 
-  // Routes protégées : modification des tarifs (uniquement bureau et dev)
   app.post<{ Body: CreatePriceBody }>(
     '/museum/prices',
     {
@@ -239,7 +204,6 @@ export function registerPricesRoutes(app: FastifyInstance) {
     async (req, reply) => deletePriceHandler(req, reply, app)
   );
 
-  // Route protégée : réordonner les tarifs (uniquement bureau et dev)
   app.post<{ Body: ReorderPricesBody }>(
     '/museum/prices/reorder',
     {

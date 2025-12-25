@@ -18,19 +18,9 @@ export type EventCategory = 'live' | 'mediation' | 'workshop' | 'conference' | '
 export type EventStatus = 'draft' | 'private' | 'member' | 'public';
 
 /**
- * Rôle de gestionnaire
- */
-export type EventManagerRole = 'dev' | 'bureau' | 'museum' | 'com';
-
-/**
  * Type de localisation
  */
 export type EventLocationType = 'museum' | 'external';
-
-/**
- * Type de relation entre événements
- */
-export type EventRelationType = 'related' | 'sub_event';
 
 /**
  * Événement en base de données

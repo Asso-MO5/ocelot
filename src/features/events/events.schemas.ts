@@ -1,7 +1,3 @@
-/**
- * Schémas de validation Fastify pour les événements
- */
-
 export const createEventSchema = {
   body: {
     type: 'object',

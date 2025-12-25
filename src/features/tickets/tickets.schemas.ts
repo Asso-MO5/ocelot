@@ -1,6 +1,3 @@
-/**
- * Schémas de validation Fastify pour les tickets
- */
 
 export const createTicketSchema = {
   body: {
@@ -965,9 +962,6 @@ export const getTicketsStatsSchema = {
   },
 };
 
-/**
- * Schéma pour les statistiques des créneaux horaires de la semaine courante
- */
 export const getWeeklySlotsStatsSchema = {
   response: {
     200: {

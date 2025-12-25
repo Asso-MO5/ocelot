@@ -8,9 +8,6 @@ import type {
   ReorderPricesBody,
 } from './prices.types.ts';
 
-/**
- * Sauvegarde les traductions pour une entité
- */
 async function saveTranslations(
   app: FastifyInstance,
   entityType: string,
@@ -21,13 +18,11 @@ async function saveTranslations(
     return;
   }
 
-  // Supprimer les traductions existantes pour cette entité
   await app.pg.query(
     'DELETE FROM translations WHERE entity_type = $1 AND entity_id = $2',
     [entityType, entityId]
   );
 
-  // Insérer les nouvelles traductions
   for (const translation of translations) {
     await app.pg.query(
       `INSERT INTO translations (entity_type, entity_id, field_name, lang, translation)
@@ -45,9 +40,6 @@ async function saveTranslations(
   }
 }
 
-/**
- * Récupère les traductions pour une entité
- */
 async function getTranslations(
   app: FastifyInstance,
   entityType: string,
@@ -77,7 +69,6 @@ async function getTranslations(
     params
   );
 
-  // Organiser les traductions par langue puis par champ
   const translations: Record<string, Record<string, string>> = {};
   for (const row of result.rows) {
     if (!translations[row.lang]) {
@@ -89,9 +80,6 @@ async function getTranslations(
   return translations;
 }
 
-/**
- * Enrichit un prix avec ses traductions
- */
 async function enrichPriceWithTranslations(
   app: FastifyInstance,
   price: Price,
@@ -104,7 +92,6 @@ async function enrichPriceWithTranslations(
     translations: Object.keys(translations).length > 0 ? translations : undefined,
   };
 
-  // Si une langue spécifique est demandée, ajouter les champs name et description directement
   if (lang && translations[lang]) {
     enriched.name = translations[lang]['name'];
     enriched.description = translations[lang]['description'] || null;
@@ -113,11 +100,6 @@ async function enrichPriceWithTranslations(
   return enriched;
 }
 
-/**
- * Crée ou met à jour un tarif (upsert)
- * Si un id est fourni et existe, met à jour le tarif
- * Sinon, crée un nouveau tarif
- */
 export async function createPrice(
   app: FastifyInstance,
   data: CreatePriceBody
@@ -126,17 +108,14 @@ export async function createPrice(
     throw new Error('Base de données non disponible');
   }
 
-  // Validation : montant doit être positif
   if (data.amount < 0) {
     throw new Error('Le montant doit être positif ou nul');
   }
 
-  // Validation : si start_date est défini, end_date doit aussi l'être (ou vice versa)
   if ((data.start_date && !data.end_date) || (!data.start_date && data.end_date)) {
     throw new Error('start_date et end_date doivent être définis ensemble ou laissés vides');
   }
 
-  // Validation : start_date doit être avant end_date
   if (data.start_date && data.end_date) {
     const start = new Date(data.start_date);
     const end = new Date(data.end_date);
@@ -145,7 +124,6 @@ export async function createPrice(
     }
   }
 
-  // Validation : au moins une traduction pour name doit être fournie
   const nameTranslations = data.translations.filter(t => t.field_name === 'name');
   if (nameTranslations.length === 0) {
     throw new Error('Au moins une traduction pour le champ "name" est requise');
@@ -154,7 +132,6 @@ export async function createPrice(
   let price: Price;
   let isUpdate = false;
 
-  // Si un ID est fourni, vérifier s'il existe
   if (data.id) {
     const existing = await app.pg.query<Price>(
       'SELECT * FROM prices WHERE id = $1',
@@ -162,10 +139,8 @@ export async function createPrice(
     );
 
     if (existing.rows[0]) {
-      // Mettre à jour le tarif existant
       isUpdate = true;
 
-      // Construire la requête de mise à jour
       const updates: string[] = [];
       const params: any[] = [];
       let paramIndex = 1;
@@ -214,7 +189,6 @@ export async function createPrice(
 
       price = result.rows[0];
     } else {
-      // Si position n'est pas fournie, on l'assigne automatiquement à la fin
       let position = data.position;
       if (position === undefined) {
         const maxPositionResult = await app.pg.query<{ max_position: number | null }>(
@@ -223,7 +197,6 @@ export async function createPrice(
         position = (maxPositionResult.rows[0]?.max_position ?? 0) + 1;
       }
 
-      // Créer un nouveau tarif avec l'ID fourni
       const result = await app.pg.query<Price>(
         `INSERT INTO prices (
           id, amount, audience_type, start_date, end_date, is_active, requires_proof, position
@@ -243,7 +216,6 @@ export async function createPrice(
       price = result.rows[0];
     }
   } else {
-    // Si position n'est pas fournie, on l'assigne automatiquement à la fin
     let position = data.position;
     if (position === undefined) {
       const maxPositionResult = await app.pg.query<{ max_position: number | null }>(
@@ -252,7 +224,6 @@ export async function createPrice(
       position = (maxPositionResult.rows[0]?.max_position ?? 0) + 1;
     }
 
-    // Créer un nouveau tarif sans ID (génération automatique)
     const result = await app.pg.query<Price>(
       `INSERT INTO prices (
         amount, audience_type, start_date, end_date, is_active, requires_proof, position
@@ -271,17 +242,12 @@ export async function createPrice(
     price = result.rows[0];
   }
 
-  // Sauvegarder les traductions (écrase les anciennes si mise à jour)
   await saveTranslations(app, 'price', price.id, data.translations);
 
-  // Retourner le prix enrichi avec les traductions
   const enrichedPrice = await enrichPriceWithTranslations(app, price);
   return { price: enrichedPrice, isUpdate };
 }
 
-/**
- * Récupère tous les tarifs avec filtres optionnels
- */
 export async function getPrices(
   app: FastifyInstance,
   query: GetPricesQuery = {}
@@ -307,9 +273,6 @@ export async function getPrices(
   }
 
   if (query.date) {
-    // Pour une date spécifique, on cherche les tarifs valides :
-    // 1. Sans dates de validité (start_date IS NULL AND end_date IS NULL)
-    // 2. Avec dates de validité qui couvrent la date demandée
     sql += ` AND (
       (start_date IS NULL AND end_date IS NULL)
       OR
@@ -323,7 +286,6 @@ export async function getPrices(
 
   const result = await app.pg.query<Price>(sql, params);
 
-  // Enrichir chaque prix avec ses traductions
   const enrichedPrices = await Promise.all(
     result.rows.map(price => enrichPriceWithTranslations(app, price, query.lang))
   );
@@ -331,9 +293,6 @@ export async function getPrices(
   return enrichedPrices;
 }
 
-/**
- * Récupère un tarif par son ID
- */
 export async function getPriceById(
   app: FastifyInstance,
   id: string,
@@ -352,13 +311,9 @@ export async function getPriceById(
     return null;
   }
 
-  // Enrichir avec les traductions
   return await enrichPriceWithTranslations(app, result.rows[0], lang);
 }
 
-/**
- * Met à jour un tarif
- */
 export async function updatePrice(
   app: FastifyInstance,
   id: string,
@@ -368,7 +323,6 @@ export async function updatePrice(
     throw new Error('Base de données non disponible');
   }
 
-  // Vérifier que le tarif existe (sans traductions pour la vérification)
   const existingResult = await app.pg.query<Price>(
     'SELECT * FROM prices WHERE id = $1',
     [id]
@@ -380,12 +334,10 @@ export async function updatePrice(
 
   const existing = existingResult.rows[0];
 
-  // Validation : montant doit être positif
   if (data.amount !== undefined && data.amount < 0) {
     throw new Error('Le montant doit être positif ou nul');
   }
 
-  // Validation : dates de validité
   const startDate = data.start_date !== undefined ? data.start_date : existing.start_date;
   const endDate = data.end_date !== undefined ? data.end_date : existing.end_date;
 
@@ -401,7 +353,6 @@ export async function updatePrice(
     }
   }
 
-  // Construire la requête de mise à jour dynamiquement
   const updates: string[] = [];
   const params: any[] = [];
   let paramIndex = 1;
@@ -448,7 +399,6 @@ export async function updatePrice(
     paramIndex++;
   }
 
-  // Mettre à jour le tarif si nécessaire
   if (updates.length > 0) {
     updates.push(`updated_at = current_timestamp`);
     params.push(id);
@@ -459,12 +409,10 @@ export async function updatePrice(
     );
   }
 
-  // Mettre à jour les traductions si fournies
   if (data.translations !== undefined) {
     await saveTranslations(app, 'price', id, data.translations);
   }
 
-  // Récupérer le tarif mis à jour avec les traductions
   const result = await app.pg.query<Price>(
     'SELECT * FROM prices WHERE id = $1',
     [id]
@@ -473,9 +421,6 @@ export async function updatePrice(
   return await enrichPriceWithTranslations(app, result.rows[0]);
 }
 
-/**
- * Supprime un tarif
- */
 export async function deletePrice(
   app: FastifyInstance,
   id: string
@@ -484,13 +429,11 @@ export async function deletePrice(
     throw new Error('Base de données non disponible');
   }
 
-  // Supprimer d'abord les traductions associées
   await app.pg.query(
     'DELETE FROM translations WHERE entity_type = $1 AND entity_id = $2',
     ['price', id]
   );
 
-  // Supprimer le tarif
   const result = await app.pg.query(
     'DELETE FROM prices WHERE id = $1',
     [id]
@@ -499,10 +442,6 @@ export async function deletePrice(
   return result.rowCount !== null && result.rowCount > 0;
 }
 
-/**
- * Réordonne les tarifs selon l'ordre fourni
- * Met à jour les positions de tous les tarifs selon l'ordre des IDs fournis
- */
 export async function reorderPrices(
   app: FastifyInstance,
   data: ReorderPricesBody
@@ -515,7 +454,6 @@ export async function reorderPrices(
     throw new Error('Le tableau price_ids ne peut pas être vide');
   }
 
-  // Vérifier que tous les IDs existent
   const placeholders = data.price_ids.map((_, i) => `$${i + 1}`).join(', ');
   const existingPrices = await app.pg.query<Price>(
     `SELECT id FROM prices WHERE id IN (${placeholders})`,
@@ -526,14 +464,12 @@ export async function reorderPrices(
     throw new Error('Un ou plusieurs IDs de tarifs sont invalides');
   }
 
-  // Mettre à jour les positions dans une transaction
   try {
     await app.pg.query('BEGIN');
 
-    // Mettre à jour chaque tarif avec sa nouvelle position
     for (let i = 0; i < data.price_ids.length; i++) {
       const priceId = data.price_ids[i];
-      const newPosition = i + 1; // Position commence à 1
+      const newPosition = i + 1;
 
       await app.pg.query(
         'UPDATE prices SET position = $1, updated_at = current_timestamp WHERE id = $2',
@@ -543,13 +479,11 @@ export async function reorderPrices(
 
     await app.pg.query('COMMIT');
 
-    // Récupérer tous les tarifs mis à jour dans l'ordre
     const result = await app.pg.query<Price>(
       `SELECT * FROM prices WHERE id IN (${placeholders}) ORDER BY position ASC`,
       data.price_ids
     );
 
-    // Enrichir avec les traductions
     const enrichedPrices = await Promise.all(
       result.rows.map(price => enrichPriceWithTranslations(app, price))
     );

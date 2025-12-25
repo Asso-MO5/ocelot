@@ -8,12 +8,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * @description Converts a number to a string in french
- * @param {Number} n - Number to convert
- * @returns
- */
-function mountToLetter(n: number): string {
+export function mountToLetter(n: number): string {
   if (n === 0) {
     return "";
   }
@@ -81,13 +76,9 @@ function mountToLetter(n: number): string {
   }
 }
 
-/**
- * Obtient le chemin d'une image depuis le dossier data
- */
 function getImagePathFromData(imageName: string): string {
   const imagePath = join(__dirname, 'data', imageName);
   try {
-    // Vérifier que le fichier existe
     readFileSync(imagePath);
     return imagePath;
   } catch (error) {
@@ -95,9 +86,6 @@ function getImagePathFromData(imageName: string): string {
   }
 }
 
-/**
- * Interface pour les données nécessaires à la génération du certificat
- */
 export interface DonationProofData {
   amount: number;
   first_name: string;
@@ -106,14 +94,9 @@ export interface DonationProofData {
   postal_code?: string;
   city?: string;
   date: Date;
-  invoice_id: string; // ID de la facture/checkout
+  invoice_id: string;
 }
 
-/**
- * Génère un certificat de don CERFA 11580 en PDF
- * @param data Données du donateur et du don
- * @returns Buffer du PDF généré
- */
 export async function generateDonationProofPDF(
   data: DonationProofData
 ): Promise<Buffer> {
@@ -140,14 +123,9 @@ export async function generateDonationProofPDF(
     doc.on('error', reject);
 
     try {
-      // === PAGE 1 ===
       const cerfa1Path = getImagePathFromData('cerfa_11580_1.png');
-      doc.image(cerfa1Path, 0, 0, { width: 595, height: 842 }); // A4 en points (595 x 842)
+      doc.image(cerfa1Path, 0, 0, { width: 595, height: 842 });
 
-      // === Case donateur ===
-
-
-      // === INFO ASSO ===
       doc.fontSize(12)
         .text('Association MO5.com', 150, 114);
 
@@ -163,17 +141,14 @@ export async function generateDonationProofPDF(
           { width: 400 }
         );
 
-      // orga d'interet general
       doc.fontSize(14)
         .text('X', 40, 378);
 
-      // === PAGE 2 ===
       doc.addPage();
 
       const cerfa2Path = getImagePathFromData('cerfa_11580_2.png');
       doc.image(cerfa2Path, 0, 0, { width: 595, height: 842 });
 
-      // === ID ====
       doc.fontSize(12)
         .font('Helvetica')
         .fillColor('black')
@@ -191,7 +166,6 @@ export async function generateDonationProofPDF(
         doc.text(city, 215, 122);
       }
 
-      // === Amount ===
       doc.fontSize(10)
         .text(amount.toString(), 230, 197)
         .text(
@@ -200,32 +174,23 @@ export async function generateDonationProofPDF(
           224
         );
 
-      // === donation date ===
       doc.fontSize(13)
         .text(day.toString(), 190, 250)
         .text(month.toString(), 218, 250)
         .text(year.toString(), 268, 250);
 
-      // === Checkboxes ===
       doc.fontSize(14);
-      // 200 du CGI
       doc.text('X', 145, 291);
-      // 238 du CGI
       doc.text('X', 291, 291);
-      // don manuel
       doc.text('X', 328, 343);
-      // numeraire
       doc.text('X', 37, 408);
-      // Case mode versement
       doc.text('X', 328, 474);
 
-      // Date signature
       doc.fontSize(13)
         .text(day.toString(), 400, 705)
         .text(month.toString(), 420, 705)
         .text(year.toString(), 445, 705);
 
-      // Finaliser le PDF
       doc.end();
     } catch (error) {
       reject(error);
@@ -233,22 +198,12 @@ export async function generateDonationProofPDF(
   });
 }
 
-/**
- * Génère un certificat de don à partir d'un ticket
- * Si le ticket a un don (donation_amount > 0), génère le certificat
- * @param ticket Ticket avec don
- * @param address Adresse complète (optionnelle, peut être récupérée depuis Galette)
- * @param postal_code Code postal (optionnel)
- * @param city Ville (optionnelle)
- * @returns Buffer du PDF ou null si pas de don
- */
 export async function generateDonationProofFromTicket(
   ticket: Ticket,
   address?: string,
   postal_code?: string,
   city?: string
 ): Promise<Buffer | null> {
-  // Ne pas générer si pas de don
   const donationAmount = typeof ticket.donation_amount === 'string'
     ? parseFloat(ticket.donation_amount)
     : ticket.donation_amount;
@@ -257,10 +212,7 @@ export async function generateDonationProofFromTicket(
     return null;
   }
 
-  // Utiliser la date de création du ticket comme date du don
   const donationDate = new Date(ticket.created_at);
-
-  // Générer un ID de facture basé sur le checkout_id ou l'ID du ticket
   const invoiceId = ticket.checkout_reference || ticket.checkout_id || ticket.id.substring(0, 8).toUpperCase();
 
   return generateDonationProofPDF({

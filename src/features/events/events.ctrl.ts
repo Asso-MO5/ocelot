@@ -22,10 +22,7 @@ import {
   getCalendarSchema,
 } from './events.schemas.ts';
 
-/**
- * Handler pour créer un événement
- */
-export async function createEventHandler(
+async function createEventHandler(
   req: FastifyRequest<{ Body: CreateEventBody }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -42,10 +39,7 @@ export async function createEventHandler(
   }
 }
 
-/**
- * Handler pour récupérer les événements
- */
-export async function getEventsHandler(
+async function getEventsHandler(
   req: FastifyRequest<{ Querystring: GetEventsQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -62,10 +56,7 @@ export async function getEventsHandler(
   }
 }
 
-/**
- * Handler pour récupérer un événement par son ID
- */
-export async function getEventByIdHandler(
+async function getEventByIdHandler(
   req: FastifyRequest<{ Params: { id: string }; Querystring: { include_relations?: boolean } }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -87,10 +78,7 @@ export async function getEventByIdHandler(
   }
 }
 
-/**
- * Handler pour mettre à jour un événement
- */
-export async function updateEventHandler(
+async function updateEventHandler(
   req: FastifyRequest<{ Params: { id: string }; Body: UpdateEventBody }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -113,10 +101,7 @@ export async function updateEventHandler(
   }
 }
 
-/**
- * Handler pour supprimer un événement
- */
-export async function deleteEventHandler(
+async function deleteEventHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -138,10 +123,7 @@ export async function deleteEventHandler(
   }
 }
 
-/**
- * Handler pour récupérer le calendrier
- */
-export async function getCalendarHandler(
+async function getCalendarHandler(
   req: FastifyRequest<{ Querystring: GetCalendarQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -158,11 +140,7 @@ export async function getCalendarHandler(
   }
 }
 
-/**
- * Enregistre les routes des événements
- */
 export function registerEventsRoutes(app: FastifyInstance) {
-  // CRUD des événements (routes globales, pas uniquement musée)
   app.post('/events', {
     schema: createEventSchema,
     handler: (req, reply) => createEventHandler(req, reply, app),
@@ -188,7 +166,6 @@ export function registerEventsRoutes(app: FastifyInstance) {
     handler: (req, reply) => deleteEventHandler(req, reply, app),
   });
 
-  // Calendrier du musée (reste sous /museum car c'est spécifique au musée)
   app.get('/museum/calendar', {
     schema: getCalendarSchema,
     handler: (req, reply) => getCalendarHandler(req, reply, app),

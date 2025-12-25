@@ -1,9 +1,5 @@
 import type { FastifyInstance } from 'fastify';
 
-/**
- * Sauvegarde un utilisateur en base de données s'il n'existe pas déjà
- * Met à jour le nom si l'utilisateur existe déjà
- */
 export async function saveUserIfNotExists(
   app: FastifyInstance,
   discordId: string,

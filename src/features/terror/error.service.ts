@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ErrorContext } from './error.types.ts';
 import { createHash } from 'node:crypto';
 
-export async function sendErrorToDiscord(
+async function sendErrorToDiscord(
   app: FastifyInstance,
   error: Error,
   context?: ErrorContext
@@ -76,24 +76,18 @@ export async function sendErrorToDiscord(
   }
 }
 
-/**
- * Génère un hash unique pour une erreur (basé sur le message, le stack trace et le type)
- */
 function generateErrorHash(error: Error, context?: ErrorContext): string {
   const hashInput = `${error.name}:${error.message}:${error.stack?.substring(0, 500)}:${context?.type || 'Route Error'}`;
   return createHash('sha256').update(hashInput).digest('hex');
 }
 
-/**
- * Vérifie si une erreur similaire a déjà été enregistrée récemment (dans les dernières heures)
- */
 async function isDuplicateError(
   app: FastifyInstance,
   errorHash: string,
   duplicateWindowHours: number = 1
 ): Promise<boolean> {
   if (!app.pg) {
-    return false; // Pas de base de données, on considère que ce n'est pas un doublon
+    return false;
   }
 
   try {
@@ -108,15 +102,11 @@ async function isDuplicateError(
     return parseInt(result.rows[0].count, 10) > 0;
   } catch (err) {
     app.log.error({ err }, 'Erreur lors de la vérification de doublon');
-    return false; // En cas d'erreur, on considère que ce n'est pas un doublon pour ne pas bloquer
+    return false;
   }
 }
 
-/**
- * Sauvegarde une erreur en base de données
- * Retourne true si l'erreur est un doublon récent
- */
-export async function saveErrorToDatabase(
+async function saveErrorToDatabase(
   app: FastifyInstance,
   error: Error,
   context?: ErrorContext
@@ -133,11 +123,9 @@ export async function saveErrorToDatabase(
     const stack = error.stack || null;
     const errorHash = generateErrorHash(error, context);
 
-    // Vérifier si c'est un doublon (dans la dernière heure par défaut)
     const duplicateWindowHours = parseInt(process.env.ERROR_DUPLICATE_WINDOW_HOURS || '1', 10);
     const isDuplicate = await isDuplicateError(app, errorHash, duplicateWindowHours);
 
-    // Sauvegarder l'erreur en base
     const result = await app.pg.query(
       `INSERT INTO errors (
         error_name, error_message, stack_trace, status_code,
@@ -154,7 +142,7 @@ export async function saveErrorToDatabase(
         context?.ip || null,
         context?.type || 'Route Error',
         errorHash,
-        false, // Sera mis à jour après l'envoi à Discord
+        false,
       ]
     );
 
@@ -167,10 +155,8 @@ export async function saveErrorToDatabase(
   }
 }
 
-/**
- * Met à jour le statut d'envoi à Discord pour une erreur
- */
-export async function markErrorAsSentToDiscord(
+
+async function markErrorAsSentToDiscord(
   app: FastifyInstance,
   errorId: string
 ): Promise<void> {
@@ -188,28 +174,22 @@ export async function markErrorAsSentToDiscord(
   }
 }
 
-/**
- * Traite une erreur : sauvegarde en base et envoie à Discord si nécessaire
- */
+
 export async function handleError(
   app: FastifyInstance,
   error: Error,
   context?: ErrorContext
 ): Promise<void> {
-  // Sauvegarder en base de données
   const { isDuplicate, errorId } = await saveErrorToDatabase(app, error, context);
 
-  // Si c'est un doublon récent, on n'envoie pas à Discord pour éviter le spam
   if (isDuplicate) {
     app.log.debug({ error: error.message, errorId }, 'Erreur dupliquée détectée, non envoyée à Discord');
     return;
   }
 
-  // Envoyer à Discord uniquement si ce n'est pas un doublon
   try {
     await sendErrorToDiscord(app, error, context);
 
-    // Marquer comme envoyé à Discord si on a un ID
     if (errorId) {
       await markErrorAsSentToDiscord(app, errorId);
     }

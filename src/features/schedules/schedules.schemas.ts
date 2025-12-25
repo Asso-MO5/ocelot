@@ -1,7 +1,3 @@
-/**
- * Schémas de validation Fastify pour les horaires
- */
-
 export const createScheduleSchema = {
   body: {
     type: 'object',

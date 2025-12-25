@@ -1,7 +1,3 @@
-/**
- * Schémas de validation Fastify pour les tarifs
- */
-
 export const createPriceSchema = {
   body: {
     type: 'object',

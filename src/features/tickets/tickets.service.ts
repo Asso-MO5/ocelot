@@ -33,13 +33,11 @@ async function generateUniqueQRCode(app: FastifyInstance): Promise<string> {
   const maxAttempts = 10;
 
   while (attempts < maxAttempts) {
-    // Générer un code aléatoire
     let code = '';
     for (let i = 0; i < length; i++) {
       code += characters.charAt(Math.floor(Math.random() * characters.length));
     }
 
-    // Vérifier l'unicité
     const existing = await app.pg.query<{ qr_code: string }>(
       'SELECT qr_code FROM tickets WHERE qr_code = $1',
       [code]
@@ -67,28 +65,22 @@ function buildNotesContent(
 ): string | null {
   const parts: any = {};
 
-  // Si des notes libres existent, les ajouter
   if (notes && notes.trim()) {
-    // Essayer de parser si c'est déjà du JSON
     try {
       const parsed = JSON.parse(notes);
       Object.assign(parts, parsed);
     } catch {
-      // Si ce n'est pas du JSON, l'ajouter comme note libre
       parts.free_notes = notes;
     }
   }
 
-  // Si des informations de tarif sont fournies, les ajouter
   if (pricingInfo) {
-    // Ajouter la date d'application si elle n'est pas déjà présente
     if (!pricingInfo.applied_at) {
       pricingInfo.applied_at = new Date().toISOString();
     }
     parts.pricing_info = pricingInfo;
   }
 
-  // Si une visite guidée est demandée, l'ajouter avec son prix
   if (guidedTour === true) {
     parts.guided_tour = true;
     if (guidedTourPrice !== undefined && guidedTourPrice > 0) {
@@ -96,48 +88,23 @@ function buildNotesContent(
     }
   }
 
-  // Si aucune information n'est présente, retourner null
   if (Object.keys(parts).length === 0) {
     return null;
   }
 
-  // Retourner le JSON stringifié
   return JSON.stringify(parts);
 }
 
-/**
- * Extrait les informations de tarif depuis le champ notes
- */
-export function extractPricingInfo(notes: string | null): TicketPricingInfo | null {
-  if (!notes) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(notes);
-    return parsed.pricing_info || null;
-  } catch {
-    // Si ce n'est pas du JSON valide, retourner null
-    return null;
-  }
-}
-
-/**
- * Valide les informations de tarif au moment de la création du ticket
- * Vérifie que le tarif existe, est actif, et que le montant correspond
- */
 async function validatePricingInfo(
   app: FastifyInstance,
   pricingInfo: TicketPricingInfo | undefined,
   ticketPrice: number,
   reservationDate: string
 ): Promise<void> {
-  // Si aucune information de tarif n'est fournie, on accepte (tarif personnalisé)
   if (!pricingInfo || !pricingInfo.price_id) {
     return;
   }
 
-  // Récupérer le tarif depuis la base de données
   const price = await getPriceById(app, pricingInfo.price_id);
 
   if (!price) {
@@ -148,7 +115,6 @@ async function validatePricingInfo(
     );
   }
 
-  // Vérifier que le tarif est actif
   if (!price.is_active) {
     throw createStructuredError(
       400,
@@ -157,7 +123,6 @@ async function validatePricingInfo(
     );
   }
 
-  // Vérifier que les dates de validité du tarif couvrent la date de réservation
   if (price.start_date || price.end_date) {
     const reservationDateObj = new Date(reservationDate);
     reservationDateObj.setHours(0, 0, 0, 0);
@@ -187,7 +152,6 @@ async function validatePricingInfo(
     }
   }
 
-  // Vérifier que le montant correspond (avec une tolérance de 0.01€ pour les arrondis)
   const expectedAmount = parseFloat(price.amount.toString());
   const providedAmount = pricingInfo.price_amount;
   const tolerance = 0.01;
@@ -200,7 +164,6 @@ async function validatePricingInfo(
     );
   }
 
-  // Vérifier que le montant du ticket correspond au montant du tarif (prix de base) ou au demi-tarif (pour créneaux incomplets)
   const halfPrice = Math.floor(expectedAmount / 2);
   const isFullPrice = Math.abs(expectedAmount - ticketPrice) <= tolerance;
   const isHalfPrice = Math.abs(halfPrice - ticketPrice) <= tolerance;
@@ -213,7 +176,6 @@ async function validatePricingInfo(
     );
   }
 
-  // Vérifier que le type d'audience correspond si fourni
   if (pricingInfo.audience_type && pricingInfo.audience_type !== price.audience_type) {
     throw createStructuredError(
       400,
@@ -222,7 +184,6 @@ async function validatePricingInfo(
     );
   }
 
-  // Vérifier que requires_proof correspond si fourni
   if (
     pricingInfo.requires_proof !== undefined &&
     pricingInfo.requires_proof !== price.requires_proof
@@ -267,11 +228,9 @@ export async function createTicket(
     throw new Error('Le montant du don doit être positif ou nul');
   }
 
-  // Calculer le montant total (pas de visite guidée dans createTicket)
   const guidedTourPrice = 0;
   const totalAmount = data.ticket_price + donationAmount + guidedTourPrice;
 
-  // Validation : dates et heures
   if (!data.reservation_date) {
     throw new Error('La date de réservation est obligatoire');
   }
@@ -280,23 +239,17 @@ export async function createTicket(
     throw new Error('Les heures de début et de fin du créneau sont obligatoires');
   }
 
-  // Validation : heure de fin doit être après l'heure de début
   const startTime = new Date(`2000-01-01T${data.slot_start_time}`);
   const endTime = new Date(`2000-01-01T${data.slot_end_time}`);
   if (startTime >= endTime) {
     throw new Error('L\'heure de fin doit être postérieure à l\'heure de début');
   }
 
-  // Validation : vérifier que le tarif existe et est valide si pricing_info est fourni
   await validatePricingInfo(app, data.pricing_info, data.ticket_price, data.reservation_date);
 
-  // Générer un code QR unique
   const qrCode = await generateUniqueQRCode(app);
-
-  // Construire le contenu de notes avec les informations de tarif
   const notesContent = buildNotesContent(data.notes, data.pricing_info, false, undefined);
 
-  // Créer le ticket
   const result = await app.pg.query<Ticket>(
     `INSERT INTO tickets (
       qr_code, first_name, last_name, email, reservation_date,
@@ -389,7 +342,6 @@ export async function getTickets(
   const dataParams = [...params, limit, offset];
   const result = await app.pg.query<Ticket>(dataSql, dataParams);
 
-  // Calculer le nombre total de pages
   const totalPages = Math.ceil(total / limit);
 
   return {
@@ -451,13 +403,11 @@ export async function updateTicket(
     throw new Error('Base de données non disponible');
   }
 
-  // Vérifier que le ticket existe
   const existing = await getTicketById(app, id);
   if (!existing) {
     throw new Error('Ticket non trouvé');
   }
 
-  // Validation : montants
   const ticketPrice = data.ticket_price !== undefined ? data.ticket_price : existing.ticket_price;
   const donationAmount = data.donation_amount !== undefined ? data.donation_amount : existing.donation_amount;
 
@@ -469,10 +419,8 @@ export async function updateTicket(
     throw new Error('Le montant du don doit être positif ou nul');
   }
 
-  // Calculer le nouveau montant total si les montants ont changé
   const totalAmount = ticketPrice + donationAmount;
 
-  // Construire la requête de mise à jour dynamiquement
   const updates: string[] = [];
   const params: any[] = [];
   let paramIndex = 1;
@@ -528,7 +476,6 @@ export async function updateTicket(
     paramIndex++;
   }
 
-  // Mettre à jour le montant total si les montants ont changé
   if (data.ticket_price !== undefined || data.donation_amount !== undefined) {
     updates.push(`total_amount = $${paramIndex}`);
     params.push(totalAmount);
@@ -618,7 +565,6 @@ export async function validateTicket(
 
   app.log.info({ ticketId: ticket.id, qrCode: ticket.qr_code, status: ticket.status }, 'Ticket trouvé, début de la validation');
 
-  // Vérifier que le ticket n'a pas déjà été utilisé
   if (ticket.used_at) {
     throw createStructuredError(
       400,
@@ -627,7 +573,6 @@ export async function validateTicket(
     );
   }
 
-  // Vérifier que le ticket est payé
   if (ticket.status !== 'paid') {
     throw createStructuredError(
       400,
@@ -636,12 +581,9 @@ export async function validateTicket(
     );
   }
 
-  // Vérifier que c'est bien le bon jour (aujourd'hui = date de réservation)
-  // Utiliser PostgreSQL pour obtenir la date/heure locale (timezone Europe/Paris)
   let dbDate: string;
   let dbTime: string;
   try {
-    // Utiliser NOW() avec timezone Europe/Paris pour obtenir la date/heure locale
     const dateResult = await app.pg.query<{ current_date: string; current_time: string }>(
       `SELECT 
         (NOW() AT TIME ZONE 'Europe/Paris')::date::text as current_date,
@@ -654,9 +596,7 @@ export async function validateTicket(
     dbTime = dateResult.rows[0].current_time;
   } catch (dateError: any) {
     app.log.error({ dateError, errorMessage: dateError?.message, errorStack: dateError?.stack }, 'Erreur lors de la récupération de la date/heure, utilisation de la date système');
-    // Fallback sur la date système si la requête échoue
     const now = new Date();
-    // Convertir en timezone Europe/Paris
     const formatter = new Intl.DateTimeFormat('fr-FR', {
       timeZone: 'Europe/Paris',
       year: 'numeric',
@@ -691,13 +631,10 @@ export async function validateTicket(
     throw new Error(`Ce ticket est valable pour le ${ticket.reservation_date}, pas pour aujourd'hui`);
   }
 
-  // Vérifier que c'est bien le bon créneau (avec tolérance)
-  // Utiliser l'heure locale depuis PostgreSQL (timezone Europe/Paris)
-  const currentTime = dbTime; // Format HH:MM:SS en timezone Europe/Paris
+  const currentTime = dbTime;
   const slotStartTime = ticket.slot_start_time;
   const slotEndTime = ticket.slot_end_time;
 
-  // Convertir les heures en minutes depuis minuit pour faciliter les comparaisons
   function timeToMinutes(timeStr: string): number {
     const [hours, minutes, seconds] = timeStr.split(':').map(Number);
     return hours * 60 + minutes + (seconds || 0) / 60;
@@ -707,8 +644,6 @@ export async function validateTicket(
   const slotStartMinutes = timeToMinutes(slotStartTime);
   const slotEndMinutes = timeToMinutes(slotEndTime);
 
-  // Vérifier que l'heure actuelle est dans le créneau avec tolérance
-  // Tolérance avant le début et après la fin
   const minAllowedTime = slotStartMinutes - toleranceMinutes;
   const maxAllowedTime = slotEndMinutes + toleranceMinutes;
 
@@ -734,7 +669,6 @@ export async function validateTicket(
     );
   }
 
-  // Marquer le ticket comme utilisé
   const result = await app.pg.query<Ticket>(
     `UPDATE tickets 
      SET status = 'used', used_at = current_timestamp, updated_at = current_timestamp
@@ -798,13 +732,10 @@ export async function createTicketsWithPayment(
     );
   }
 
-  // Calculer le montant total AVANT de vérifier l'email
-  // (pour savoir si email est requis ou non)
   const { getSettingValue } = await import('../settings/settings.service.ts');
   const slotCapacityHours = (await getSettingValue<number>(app, 'slot_capacity', 1)) || 1;
   const { isSlotComplete, calculateSlotPrice } = await import('../slots/slots.service.ts');
 
-  // Gérer la visite guidée
   const wantsGuidedTour = data.guided_tour === true;
   let guidedTourPrice = 0;
   if (wantsGuidedTour) {
@@ -831,12 +762,10 @@ export async function createTicketsWithPayment(
     }
   }
 
-  // Calculer le totalAmount (avant application des codes cadeaux)
   let totalAmount = 0;
   for (const ticket of data.tickets) {
     let ticketPrice = ticket.ticket_price;
 
-    // Si le créneau est incomplet, appliquer le demi-tarif
     if (ticket.slot_start_time && ticket.slot_end_time && ticket.pricing_info?.price_amount) {
       const basePrice = ticket.pricing_info.price_amount;
       const isComplete = isSlotComplete(ticket.slot_start_time, ticket.slot_end_time, slotCapacityHours);
@@ -855,8 +784,6 @@ export async function createTicketsWithPayment(
     totalAmount += guidedTourPrice * data.tickets.length;
   }
 
-  // Email obligatoire uniquement si tous les tickets sont gratuites (totalAmount = 0)
-  // Sinon, Stripe récupère l'email via le checkout
   if (totalAmount === 0) {
     if (!data.email || !data.email.trim()) {
       throw createStructuredError(
@@ -870,7 +797,6 @@ export async function createTicketsWithPayment(
   const memberTickets = data.tickets.filter(ticket => ticket.pricing_info?.price_name?.match(/membre/i));
 
   if (memberTickets.length > 0) {
-    // Pour les membres, email est toujours requis pour vérifier l'adhésion
     if (!data.email || !data.email.trim()) {
       throw createStructuredError(
         400,
@@ -879,7 +805,6 @@ export async function createTicketsWithPayment(
       );
     }
 
-    // Récupérer les informations du membre depuis Galette
     const params = new URLSearchParams();
     params.set('email', data.email.trim());
     const res = await fetch(process.env.GALETTE_URL + '/members?' + params.toString(), {
@@ -906,7 +831,6 @@ export async function createTicketsWithPayment(
       );
     }
 
-    // Compter le nombre d'enfants (children)
     const numOfChildren = memberData.children?.length || 0;
     let memberFreeTickets = memberTickets.filter(ticket => ticket.ticket_price === 0);
 
@@ -921,11 +845,9 @@ export async function createTicketsWithPayment(
         }
       }
 
-      // Supprimer les tickets en trop en partant de la fin (pour ne pas décaler les indices)
       const ticketsToRemove = memberFreeTickets.length - maxAllowedMemberTickets;
       const indicesToRemove = memberFreeIndices.slice(-ticketsToRemove);
 
-      // Retirer les tickets en trop avec splice (en partant de la fin)
       for (let i = indicesToRemove.length - 1; i >= 0; i--) {
         data.tickets.splice(indicesToRemove[i], 1);
       }
@@ -938,16 +860,12 @@ export async function createTicketsWithPayment(
         );
       }
 
-      // Recalculer les tickets membres après suppression
       memberFreeTickets = data.tickets.filter(
         ticket => ticket.pricing_info?.price_name?.match(/membre/i) && ticket.ticket_price === 0
       );
     }
 
-    // Vérifier le délai de 1 semaines pour les membres
-    // On compte les dates différentes et les créneaux différents sur les 2 dernières semaines
     if (memberFreeTickets.length > 0) {
-      // Utiliser la date la plus ancienne parmi les nouvelles réservations
       const reservationDates = memberFreeTickets.map(t => new Date(t.reservation_date));
       const earliestDate = new Date(Math.min(...reservationDates.map(d => d.getTime())));
 
@@ -960,7 +878,6 @@ export async function createTicketsWithPayment(
       weekMonday.setDate(weekMonday.getDate() - daysToMonday);
       const weekMondayStr = weekMonday.toISOString().split('T')[0];
 
-      // Récupérer tous les tickets membres payés de la même semaine (checkout_id = '0' = premier ticket de chaque commande)
       const existingMemberTickets = await app.pg.query<{
         reservation_date: string;
       }>(
@@ -1009,7 +926,6 @@ export async function createTicketsWithPayment(
       }
     }
 
-    // Créer une copie des tickets avec leur index pour pouvoir les trier
     const ticketsWithIndex = data.tickets.map((ticket, index) => ({
       ...ticket,
       originalIndex: index,
@@ -1043,7 +959,6 @@ export async function createTicketsWithPayment(
   for (const ticket of data.tickets) {
     let ticketPrice = ticket.ticket_price;
 
-    // Si le créneau est incomplet, appliquer le demi-tarif (arrondi à l'inférieur)
     if (ticket.slot_start_time && ticket.slot_end_time && ticket.pricing_info?.price_amount) {
       const basePrice = ticket.pricing_info.price_amount;
       const isComplete = isSlotComplete(ticket.slot_start_time, ticket.slot_end_time, slotCapacityHours);
@@ -1052,8 +967,6 @@ export async function createTicketsWithPayment(
         // Créneau incomplet : recalculer le prix avec demi-tarif
         const adjustedPrice = calculateSlotPrice(basePrice, ticket.slot_start_time, ticket.slot_end_time, slotCapacityHours);
 
-        // Si le prix envoyé ne correspond pas au prix ajusté, utiliser le prix ajusté
-        // (le frontend peut avoir fait une erreur de calcul)
         if (ticketPrice !== adjustedPrice) {
           ticketPrice = adjustedPrice;
           ticket.ticket_price = adjustedPrice;
@@ -1125,14 +1038,10 @@ export async function createTicketsWithPayment(
         'The end time must be after the start time for all tickets'
       );
     }
-    // Validation : vérifier que le tarif existe et est valide si pricing_info est fourni
-    // On valide avec le prix de base (price_amount) avant ajustement
     const basePriceForValidation = ticket.pricing_info?.price_amount ?? ticket.ticket_price;
     await validatePricingInfo(app, ticket.pricing_info, basePriceForValidation, ticket.reservation_date);
   }
 
-  // Si le montant total est 0, ne pas créer de checkout
-  // Les tickets seront créés directement avec le statut "paid"
   let checkout: { id: string; checkout_reference: string; status: string, url: string } | null = null;
   const isFreeOrder = totalAmount === 0;
 
@@ -1140,7 +1049,6 @@ export async function createTicketsWithPayment(
     const currency = data.currency || 'EUR';
     const description = data.description || `Réservation de ${data.tickets.length} ticket(s)`;
 
-    // Créer une session de checkout
     const session = await createCheckout(
       app,
       totalAmount,
@@ -1159,33 +1067,21 @@ export async function createTicketsWithPayment(
     };
   }
 
-  // Créer tous les tickets dans une transaction
   const createdTickets: Ticket[] = [];
 
   try {
-    // Utiliser une transaction pour garantir que tous les tickets sont créés ou aucun
     await app.pg.query('BEGIN');
 
     for (const [index, ticketData] of data.tickets.entries()) {
-      // Utiliser le prix ajusté (déjà calculé plus haut pour les créneaux incomplets)
       const ticketPrice = ticketData.ticket_price;
       const donationAmount = ticketData.donation_amount ?? 0;
-      // Le prix de la visite guidée est appliqué à chaque ticket (pas réparti)
-      // Chaque ticket contient le prix complet de la visite guidée
       const ticketGuidedTourPrice = wantsGuidedTour ? guidedTourPrice : 0;
       const ticketTotalAmount = ticketPrice + donationAmount + ticketGuidedTourPrice;
 
-      // Générer un code QR unique pour chaque ticket
       const qrCode = await generateUniqueQRCode(app);
-
-      // Construire le contenu de notes avec les informations de tarif et la visite guidée pour ce ticket
       const notesContent = buildNotesContent(ticketData.notes, ticketData.pricing_info, wantsGuidedTour, guidedTourPrice);
 
-      // Si la commande est gratuite, les tickets sont directement payés
-      // Sinon, ils sont en attente de paiement
       const ticketStatus = isFreeOrder ? 'paid' : 'pending';
-      // Pour les commandes gratuites, on utilise l'index comme checkout_id (converti en string)
-      // Le premier ticket a checkout_id = '0' pour identifier le premier ticket de chaque commande
       const checkoutId = checkout?.id ?? String(index);
       const checkoutReference = checkout?.checkout_reference ?? null;
       const transactionStatus = checkout?.status ?? null;
@@ -1223,7 +1119,6 @@ export async function createTicketsWithPayment(
       createdTickets.push(result.rows[0]);
     }
 
-    // Utiliser les codes cadeaux après la création des tickets
     if (usedGiftCodes.length > 0) {
       const { useGiftCode } = await import('../gift-codes/gift-codes.service.ts');
       for (const { code, ticketIndex } of usedGiftCodes) {
@@ -1240,14 +1135,12 @@ export async function createTicketsWithPayment(
     throw err;
   }
 
-  // Si la commande est gratuite, envoyer les emails de confirmation immédiatement
   if (isFreeOrder) {
     try {
       const { sendTicketsConfirmationEmails } = await import('./tickets.email.ts');
       await sendTicketsConfirmationEmails(app, createdTickets);
     } catch (emailError) {
       app.log.error({ emailError }, 'Erreur lors de l\'envoi des emails de confirmation pour la commande gratuite');
-      // Ne pas faire échouer la création des tickets si l'email échoue
     }
   }
 
@@ -1291,7 +1184,6 @@ export async function updateTicketsByCheckoutStatus(
     throw new Error('Base de données non disponible');
   }
 
-  // Convertir le statut de paiement en statut de ticket
   let ticketStatus: 'pending' | 'paid' | 'cancelled' = 'pending';
   if (checkoutStatus === 'PAID' || checkoutStatus === 'SUCCESS') {
     ticketStatus = 'paid';
@@ -1299,7 +1191,6 @@ export async function updateTicketsByCheckoutStatus(
     ticketStatus = 'cancelled';
   }
 
-  // Mettre à jour tous les tickets associés à ce checkout
   const result = await app.pg.query<{ count: string }>(
     `UPDATE tickets 
      SET status = $1, 
@@ -1329,7 +1220,6 @@ export async function updateTicketsCustomerInfo(
     throw new Error('Base de données non disponible');
   }
 
-  // Construire la requête de mise à jour dynamiquement
   const updates: string[] = [];
   const params: any[] = [];
   let paramIndex = 1;
@@ -1359,7 +1249,6 @@ export async function updateTicketsCustomerInfo(
   updates.push(`updated_at = current_timestamp`);
   params.push(checkoutId);
 
-  // Mettre à jour tous les tickets associés à ce checkout
   const result = await app.pg.query<{ count: string }>(
     `UPDATE tickets 
      SET ${updates.join(', ')}
@@ -1660,7 +1549,6 @@ export async function getWeeklySlotsStats(
 
   const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
-  // Récupérer la capacité depuis les settings
   const { getSettingValue } = await import('../settings/settings.service.ts');
   const dailyCapacity = (await getSettingValue<number>(app, 'capacity', 100)) || 100;
 
@@ -1673,8 +1561,6 @@ export async function getWeeklySlotsStats(
     const dateStr = currentDate.toISOString().split('T')[0];
     const dayName = dayNames[currentDate.getDay()];
 
-    // Compter le nombre unique de tickets payés ou utilisés pour cette journée (sans double comptage)
-    // Un ticket compte une seule fois par jour, indépendamment de sa durée
     const uniqueTicketsResult = await app.pg.query<{ count: string }>(
       `SELECT COUNT(DISTINCT id) as count
        FROM tickets 
@@ -1690,11 +1576,8 @@ export async function getWeeklySlotsStats(
       total_unique_tickets: totalUniqueTickets,
     });
 
-    // Récupérer les slots pour cette date pour connaître les heures de début possibles
     const slotsResponse = await getSlotsForDate(app, dateStr);
 
-    // Pour chaque slot, compter uniquement les tickets qui commencent à cette heure
-    // Pas de chevauchement : chaque ticket n'est compté que dans le créneau où il commence
     for (const slot of slotsResponse.slots) {
       const expectedPeople = await countTicketsActiveAtTime(
         app,
@@ -1738,13 +1621,10 @@ export async function cancelExpiredPendingTickets(
     throw new Error('Base de données non disponible');
   }
 
-
-  // Calculer la date limite (15 minutes avant maintenant)
   const fifteenMinutesAgo = new Date();
   fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15);
   const limitDate = fifteenMinutesAgo.toISOString();
 
-  // Mettre à jour les tickets pending de plus de 15 minutes
   const result = await app.pg.query<{ count: string }>(
     `UPDATE tickets 
      SET status = 'cancelled', 
@@ -1765,60 +1645,5 @@ export async function cancelExpiredPendingTickets(
   }
 
   return cancelledCount;
-}
-
-/**
- * Récupère les tickets validés pour un créneau donné
- * Retourne le nombre de tickets validés et la liste complète des tickets
- * 
- * @param reservation_date Date de réservation (format YYYY-MM-DD)
- * @param slot_start_time Heure de début du créneau (format HH:MM:SS)
- * @param slot_end_time Heure de fin du créneau (format HH:MM:SS)
- * @param includeAdjacentSlots Si true, inclut les créneaux adjacents (un peu avant et après)
- */
-export async function getValidatedTicketsBySlot(
-  app: FastifyInstance,
-  reservation_date: string,
-  slot_start_time: string,
-  slot_end_time: string,
-  includeAdjacentSlots: boolean = true
-): Promise<{ count: number; tickets: Ticket[] }> {
-  if (!app.pg) {
-    throw new Error('Base de données non disponible');
-  }
-
-  let sql = `
-    SELECT * FROM tickets 
-    WHERE reservation_date = $1
-    AND status = 'used'
-    AND used_at IS NOT NULL
-  `;
-  const params: any[] = [reservation_date];
-  let paramIndex = 2;
-
-  if (includeAdjacentSlots) {
-    // Inclure les créneaux qui se chevauchent avec le créneau demandé
-    // Un créneau se chevauche s'il commence avant la fin du créneau demandé
-    // et se termine après le début du créneau demandé
-    sql += ` AND (
-      (slot_start_time < $${paramIndex + 1} AND slot_end_time > $${paramIndex})
-    )`;
-    params.push(slot_start_time, slot_end_time);
-    paramIndex += 2;
-  } else {
-    // Filtrer exactement sur le créneau (début ET fin correspondent)
-    sql += ` AND slot_start_time = $${paramIndex} AND slot_end_time = $${paramIndex + 1}`;
-    params.push(slot_start_time, slot_end_time);
-    paramIndex += 2;
-  }
-
-  sql += ' ORDER BY used_at DESC';
-
-  const result = await app.pg.query<Ticket>(sql, params);
-
-  return {
-    count: result.rows.length,
-    tickets: result.rows,
-  };
 }
 

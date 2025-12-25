@@ -13,28 +13,26 @@ export function registerWebSocketRoutes(app: FastifyInstance) {
 
     broadcast(`New user joined. ${connections.size} total users.`, connection as any);
 
-    connection.on('message', message => {
+    connection.on('message', (message: any) => {
       try {
         const text = message.toString();
         console.log(`Received from ${clientIP}:`, text);
 
-        // Broadcast message to all other clients
         broadcast(`User says: ${text}`, connection as any);
       } catch (error) {
         console.error('Error processing message:', error);
       }
     });
 
-    connection.on('error', (error) => {
+    connection.on('error', (error: Error) => {
       console.error(`WebSocket error for ${clientIP}:`, error);
     });
 
-    connection.on('close', (code, reason) => {
+    connection.on('close', (code: number, reason: Buffer) => {
       connections.delete(connection);
       console.log(`Client ${clientIP} disconnected - Code: ${code}`);
       console.log(`Remaining connections: ${connections.size}`);
 
-      // Notify remaining clients
       broadcast(`User left. ${connections.size} total users.`);
     });
   });

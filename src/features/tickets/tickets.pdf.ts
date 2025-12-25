@@ -9,34 +9,24 @@ import {
   prepareTicketData,
   getLogoBase64,
 } from './tickets.email.ts';
-
-/**
- * Génère un PDF du ticket
- * Retourne null si le ticket n'est pas valide
- */
 export async function generateTicketPDF(
   ticket: Ticket,
   isValid: boolean = true
 ): Promise<Buffer | null> {
-  // Ne pas générer le PDF si le ticket n'est pas valide
-  if (!isValid) {
-    return null;
-  }
+  if (!isValid) return null;
+
 
   const language = normalizeLanguage(ticket.language);
   const { visitorName, ticketPrice, donationAmount, totalAmount } = prepareTicketData(ticket);
 
-  // Générer le QR code avant de créer le document
   const qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code);
   const qrCodeBuffer = Buffer.from(qrCodeBase64.split(',')[1] || qrCodeBase64, 'base64');
 
-  // Créer le document PDF
   const doc = new PDFDocument({
     size: 'A4',
     margins: { top: 50, bottom: 50, left: 50, right: 50 },
   });
 
-  // Buffer pour stocker le PDF
   const buffers: Buffer[] = [];
   doc.on('data', buffers.push.bind(buffers));
 
@@ -49,16 +39,13 @@ export async function generateTicketPDF(
     doc.on('error', reject);
 
     try {
-      // Couleur principale du musée
       const primaryColor = '#e73b21';
       const secondaryColor = '#666';
       const backgroundColor = '#f9f9f9';
 
-      // Logo (si disponible)
       const logoBase64 = getLogoBase64();
       if (logoBase64) {
         try {
-          // Convertir base64 en buffer
           const logoBuffer = Buffer.from(logoBase64.split(',')[1] || logoBase64, 'base64');
           doc.image(logoBuffer, {
             fit: [200, 100],
@@ -66,11 +53,10 @@ export async function generateTicketPDF(
           });
           doc.moveDown(1);
         } catch (error) {
-          // Si le logo ne peut pas être chargé, continuer sans
+          // No catch error
         }
       }
 
-      // Titre
       doc.fontSize(24)
         .fillColor(primaryColor)
         .text(language === 'fr' ? 'Votre billet' : 'Your ticket', {

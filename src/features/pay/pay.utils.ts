@@ -7,9 +7,6 @@ import type {
 import Stripe from 'stripe';
 
 
-/**
- * Crée une instance Stripe avec la clé secrète depuis les variables d'environnement
- */
 function getStripeInstance(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
@@ -21,20 +18,10 @@ function getStripeInstance(): Stripe {
 }
 
 
-/**
- * Convertit un montant en centimes (Stripe utilise les centimes)
- */
 function convertToCents(amount: number): number {
   return Math.round(amount * 100);
 }
 
-/**
- * Calcule les statistiques de paiements (toutes les transactions réussies)
- * - total_all_time : total de tous les paiements réussis
- * - total_month : total depuis le début du mois courant
- * - total_week : total des 7 derniers jours
- * - total_day : total depuis minuit aujourd'hui
- */
 export async function getPaymentStats(app: FastifyInstance): Promise<PaymentStats> {
   const stripe = getStripeInstance();
 
@@ -62,7 +49,6 @@ export async function getPaymentStats(app: FastifyInstance): Promise<PaymentStat
   let currency: string | null = null;
 
   try {
-    // Pagination manuelle sur les PaymentIntents (les plus récents d'abord)
     let hasMore = true;
     let startingAfter: string | undefined = undefined;
 
@@ -122,9 +108,6 @@ export async function getPaymentStats(app: FastifyInstance): Promise<PaymentStat
   };
 }
 
-/**
- * Crée une session de checkout
- */
 export async function createCheckout(
   app: FastifyInstance,
   amount: number,
@@ -136,10 +119,8 @@ export async function createCheckout(
 ): Promise<CheckoutSessionResponse> {
   const stripe = getStripeInstance();
 
-  // Convertir le montant en centimes
   const amountInCents = convertToCents(amount);
 
-  // Les URLs doivent être fournies par le frontend
   if (!successUrl) {
     throw new Error('success_url est obligatoire');
   }
@@ -148,7 +129,6 @@ export async function createCheckout(
   }
 
   try {
-    // Utiliser le SDK Stripe pour créer la session
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: [
@@ -170,7 +150,6 @@ export async function createCheckout(
 
     app.log.info({ sessionId: session.id, amount, currency }, 'Session Stripe créée');
 
-    // Convertir en format CheckoutSessionResponse
     return {
       id: session.id,
       url: session.url || '',
@@ -186,9 +165,6 @@ export async function createCheckout(
   }
 }
 
-/**
- * Vérifie le statut d'une session de checkout
- */
 export async function getCheckoutStatus(
   app: FastifyInstance,
   sessionId: string
@@ -196,10 +172,8 @@ export async function getCheckoutStatus(
   const stripe = getStripeInstance();
 
   try {
-    // Utiliser le SDK Stripe pour récupérer la session
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    // Convertir en format CheckoutStatus
     return {
       id: session.id,
       amount_total: session.amount_total || 0,
@@ -217,22 +191,6 @@ export async function getCheckoutStatus(
   }
 }
 
-/**
- * Vérifie la signature d'un webhook Stripe et construit l'objet Event
- * 
- * Utilise la méthode officielle Stripe: stripe.webhooks.constructEvent()
- * qui gère automatiquement:
- * - La vérification de signature (v1 et v0)
- * - La vérification du timestamp (protection contre replay attacks)
- * - La construction de l'objet Event typé
- * 
- * @param payload - Le body brut de la requête (string ou Buffer)
- * @param signature - Le header Stripe-Signature
- * @returns L'objet Event Stripe si la signature est valide
- * @throws Stripe.errors.StripeSignatureVerificationError si la signature est invalide
- * 
- * @see https://docs.stripe.com/webhooks
- */
 export function constructWebhookEvent(
   payload: string | Buffer,
   signature: string
@@ -247,8 +205,6 @@ export function constructWebhookEvent(
     throw new Error('Signature est requise');
   }
 
-  // Utiliser le SDK Stripe pour construire et vérifier l'event
-  // Cette méthode gère automatiquement la vérification de signature et du timestamp
   const stripe = getStripeInstance();
 
   return stripe.webhooks.constructEvent(

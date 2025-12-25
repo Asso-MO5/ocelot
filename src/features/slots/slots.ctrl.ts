@@ -3,9 +3,6 @@ import type { GetSlotsQuery } from './slots.types.ts';
 import { getSlotsForDate } from './slots.service.ts';
 import { getSlotsSchema } from './slots.schemas.ts';
 
-/**
- * Handler pour récupérer les créneaux horaires pour une date
- */
 export async function getSlotsHandler(
   req: FastifyRequest<{ Querystring: GetSlotsQuery }>,
   reply: FastifyReply,
@@ -31,13 +28,7 @@ export async function getSlotsHandler(
   }
 }
 
-/**
- * Enregistre les routes pour les créneaux horaires (slots)
- * 
- * Route publique : GET /museum/slots?date=YYYY-MM-DD
- */
 export function registerSlotsRoutes(app: FastifyInstance) {
-  // Route publique : récupération des créneaux pour une date
   app.get<{ Querystring: GetSlotsQuery }>(
     '/museum/slots',
     {

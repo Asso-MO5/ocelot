@@ -1,6 +1,3 @@
-/**
- * Schéma pour créer ou mettre à jour une présence
- */
 export const upsertPresenceSchema = {
   body: {
     type: 'object',
@@ -35,9 +32,6 @@ export const upsertPresenceSchema = {
   },
 };
 
-/**
- * Schéma pour récupérer les présences
- */
 export const getPresencesSchema = {
   querystring: {
     type: 'object',
@@ -92,9 +86,6 @@ export const getPresencesSchema = {
   },
 };
 
-/**
- * Schéma pour refuser une présence (admin uniquement)
- */
 export const refusePresenceSchema = {
   params: {
     type: 'object',
@@ -134,9 +125,6 @@ export const refusePresenceSchema = {
   },
 };
 
-/**
- * Schéma pour supprimer une présence
- */
 export const deletePresenceSchema = {
   params: {
     type: 'object',

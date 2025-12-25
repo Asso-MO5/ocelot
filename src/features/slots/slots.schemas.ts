@@ -1,7 +1,3 @@
-/**
- * Schémas de validation Fastify pour les créneaux horaires (slots)
- */
-
 export const getSlotsSchema = {
   querystring: {
     type: 'object',

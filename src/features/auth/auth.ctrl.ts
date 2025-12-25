@@ -37,15 +37,12 @@ export async function signinHandler(_req: FastifyRequest, reply: FastifyReply) {
 
 export async function meHandler(req: FastifyRequest, reply: FastifyReply, app: FastifyInstance) {
   try {
-    // Utiliser le middleware d'authentification pour récupérer l'utilisateur
     const user = await requireAuth(req, reply, app);
-
 
     if (!user) {
       return reply.status(401).send({ error: 'Non authentifié' });
     }
 
-    // Sauvegarder l'utilisateur s'il n'existe pas en base de données
     await saveUserIfNotExists(app, user.id, user.username);
 
     const publicUserData: DiscordUserPublic = {
@@ -69,8 +66,7 @@ export async function callbackHandler(
   reply: FastifyReply,
   app: FastifyInstance
 ) {
-  const code = req.query.code;
-  const error = req.query.error;
+  const { code, error } = req.query as { code?: string; error?: string };
 
   const redirectUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   if (error) {
@@ -132,7 +128,6 @@ export async function callbackHandler(
     });
   }
 
-  // Récupérer les données utilisateur et les sauvegarder
   try {
     const userResponse = await fetch('https://discord.com/api/users/@me', {
       headers: { 'Authorization': `Bearer ${discordData.access_token}` },
@@ -144,7 +139,6 @@ export async function callbackHandler(
     }
   } catch (err) {
     app.log.error({ err }, 'Erreur lors de la récupération des données utilisateur dans callback');
-    // On continue même en cas d'erreur, la connexion peut quand même fonctionner
   }
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';

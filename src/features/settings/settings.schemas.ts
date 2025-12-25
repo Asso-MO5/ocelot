@@ -1,7 +1,3 @@
-/**
- * Schémas de validation Fastify pour les paramètres du musée
- */
-
 export const upsertSettingSchema = {
   body: {
     type: 'object',

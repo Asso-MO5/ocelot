@@ -1,6 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
-  createSchedule,
   upsertSchedule,
   getSchedules,
   getPublicSchedules,
@@ -28,31 +27,6 @@ import {
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
 
-/**
- * Handler pour créer un horaire
- */
-export async function createScheduleHandler(
-  req: FastifyRequest<{ Body: CreateScheduleBody }>,
-  reply: FastifyReply,
-  app: FastifyInstance
-) {
-  try {
-    const schedule = await createSchedule(app, req.body);
-    return reply.code(201).send(schedule);
-  } catch (err: any) {
-    app.log.error({ err, body: req.body }, 'Erreur lors de la création de l\'horaire');
-
-    if (err.message?.includes('requis') || err.message?.includes('requis')) {
-      return reply.code(400).send({ error: err.message });
-    }
-
-    return reply.code(500).send({ error: 'Erreur lors de la création de l\'horaire' });
-  }
-}
-
-/**
- * Handler pour créer ou mettre à jour un horaire (UPSERT)
- */
 export async function upsertScheduleHandler(
   req: FastifyRequest<{ Body: CreateScheduleBody }>,
   reply: FastifyReply,
@@ -72,10 +46,8 @@ export async function upsertScheduleHandler(
   }
 }
 
-/**
- * Handler pour récupérer tous les horaires (pour les membres authentifiés)
- */
-export async function getSchedulesHandler(
+
+async function getSchedulesHandler(
   req: FastifyRequest<{ Querystring: GetSchedulesQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -90,10 +62,7 @@ export async function getSchedulesHandler(
   }
 }
 
-/**
- * Handler pour récupérer uniquement les horaires publics (route publique)
- */
-export async function getPublicSchedulesHandler(
+async function getPublicSchedulesHandler(
   req: FastifyRequest<{ Querystring: GetPublicSchedulesQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -107,9 +76,6 @@ export async function getPublicSchedulesHandler(
   }
 }
 
-/**
- * Handler pour récupérer un horaire par son ID
- */
 export async function getScheduleByIdHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
@@ -129,9 +95,6 @@ export async function getScheduleByIdHandler(
   }
 }
 
-/**
- * Handler pour mettre à jour un horaire
- */
 export async function updateScheduleHandler(
   req: FastifyRequest<{ Params: { id: string }; Body: UpdateScheduleBody }>,
   reply: FastifyReply,
@@ -155,9 +118,6 @@ export async function updateScheduleHandler(
   }
 }
 
-/**
- * Handler pour supprimer un horaire
- */
 export async function deleteScheduleHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
@@ -177,9 +137,6 @@ export async function deleteScheduleHandler(
   }
 }
 
-/**
- * Handler pour réordonner les horaires
- */
 export async function reorderSchedulesHandler(
   req: FastifyRequest<{ Body: ReorderSchedulesBody }>,
   reply: FastifyReply,
@@ -199,15 +156,7 @@ export async function reorderSchedulesHandler(
   }
 }
 
-/**
- * Enregistre les routes pour les horaires
- * 
- * Routes publiques : GET /museum/schedules/public (horaires publics uniquement)
- * Routes protégées membres : GET /museum/schedules (tous les horaires pour les membres authentifiés)
- * Routes protégées : POST, PUT, DELETE (écriture) - uniquement pour les rôles "bureau" et "dev"
- */
 export function registerSchedulesRoutes(app: FastifyInstance) {
-  // Route publique : horaires publics uniquement (pour le site public)
   app.get<{ Querystring: GetPublicSchedulesQuery }>(
     '/museum/schedules/public',
     {
@@ -216,7 +165,6 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
     async (req, reply) => getPublicSchedulesHandler(req, reply, app)
   );
 
-  // Route protégée : tous les horaires (pour les membres authentifiés)
   app.get<{ Querystring: GetSchedulesQuery }>(
     '/museum/schedules',
     {
@@ -234,8 +182,6 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
     async (req, reply) => getScheduleByIdHandler(req, reply, app)
   );
 
-  // Routes protégées : modification des horaires (uniquement bureau et dev)
-  // POST fait un UPSERT : crée ou met à jour selon les critères
   app.post<{ Body: CreateScheduleBody }>(
     '/museum/schedules',
     {
@@ -272,7 +218,6 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
     async (req, reply) => deleteScheduleHandler(req, reply, app)
   );
 
-  // Route protégée : réordonner les horaires (uniquement bureau et dev)
   app.post<{ Body: ReorderSchedulesBody }>(
     '/museum/schedules/reorder',
     {
