@@ -6,9 +6,6 @@ import type {
   GetSpecialPeriodsQuery,
 } from './special-periods.types.ts';
 
-/**
- * Crée une période spéciale
- */
 export async function createSpecialPeriod(
   app: FastifyInstance,
   data: CreateSpecialPeriodBody
@@ -17,7 +14,6 @@ export async function createSpecialPeriod(
     throw new Error('Base de données non disponible');
   }
 
-  // Validation : end_date doit être >= start_date
   const startDate = new Date(data.start_date);
   const endDate = new Date(data.end_date);
   if (endDate < startDate) {
@@ -43,9 +39,6 @@ export async function createSpecialPeriod(
   return result.rows[0];
 }
 
-/**
- * Récupère toutes les périodes spéciales avec filtres optionnels
- */
 export async function getSpecialPeriods(
   app: FastifyInstance,
   query: GetSpecialPeriodsQuery = {}
@@ -65,7 +58,6 @@ export async function getSpecialPeriods(
   }
 
   if (query.date) {
-    // Vérifier si la date est dans une période
     sql += ` AND start_date <= $${paramIndex} AND end_date >= $${paramIndex}`;
     params.push(query.date);
     paramIndex++;
@@ -89,9 +81,6 @@ export async function getSpecialPeriods(
   return result.rows;
 }
 
-/**
- * Vérifie si une date est dans une période de vacances
- */
 export async function isHolidayPeriod(
   app: FastifyInstance,
   date: string,
@@ -120,9 +109,6 @@ export async function isHolidayPeriod(
   return parseInt(result.rows[0].count, 10) > 0;
 }
 
-/**
- * Vérifie si une date est dans une période de fermeture
- */
 export async function isClosurePeriod(
   app: FastifyInstance,
   date: string
@@ -146,9 +132,6 @@ export async function isClosurePeriod(
   return parseInt(result.rows[0].count, 10) > 0;
 }
 
-/**
- * Récupère une période spéciale par son ID
- */
 export async function getSpecialPeriodById(
   app: FastifyInstance,
   id: string
@@ -165,9 +148,6 @@ export async function getSpecialPeriodById(
   return result.rows[0] || null;
 }
 
-/**
- * Met à jour une période spéciale
- */
 export async function updateSpecialPeriod(
   app: FastifyInstance,
   id: string,
@@ -177,13 +157,11 @@ export async function updateSpecialPeriod(
     throw new Error('Base de données non disponible');
   }
 
-  // Vérifier que la période existe
   const existing = await getSpecialPeriodById(app, id);
   if (!existing) {
     throw new Error('Période spéciale non trouvée');
   }
 
-  // Validation des dates si fournies
   const startDate = data.start_date ? new Date(data.start_date) : new Date(existing.start_date);
   const endDate = data.end_date ? new Date(data.end_date) : new Date(existing.end_date);
   if (endDate < startDate) {
@@ -254,9 +232,6 @@ export async function updateSpecialPeriod(
   return result.rows[0];
 }
 
-/**
- * Supprime une période spéciale
- */
 export async function deleteSpecialPeriod(
   app: FastifyInstance,
   id: string

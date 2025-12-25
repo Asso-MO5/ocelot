@@ -46,7 +46,6 @@ export const emailUtils = {
         htmlContent: body
       };
 
-      // Ajouter les pièces jointes si présentes
       if (attachments && attachments.length > 0) {
         payload.attachment = attachments.map(att => ({
           name: att.name,
@@ -66,8 +65,6 @@ export const emailUtils = {
       });
 
       const data = await res.json();
-
-      console.log(data);
 
       return data;
 

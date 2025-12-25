@@ -1,27 +1,21 @@
 import type { FastifyInstance } from 'fastify';
-import type { Ticket } from './tickets.types.ts';
+import type { Ticket, TicketHTMLOptions } from './tickets.types.ts';
 import { emailUtils } from '../email/email.utils.ts';
-// @ts-ignore - qrcode n'a pas de types TypeScript officiels
+// @ts-ignore
 import QRCode from 'qrcode';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-/**
- * Lit le logo en base64 depuis le fichier
- */
+
 export function getLogoBase64(): string {
   try {
     const logoPath = join(process.cwd(), 'src', 'templates', 'logo-base64.txt');
     return readFileSync(logoPath, 'utf-8').trim();
   } catch (error) {
-    // Si le fichier n'existe pas, retourner une chaîne vide
     return '';
   }
 }
 
-/**
- * Génère un QR code en base64 pour un ticket
- */
 export async function generateQRCodeBase64(qrCode: string): Promise<string> {
   if (!qrCode || qrCode.trim().length === 0) {
     throw new Error('Le code QR ne peut pas être vide');
@@ -40,16 +34,13 @@ export async function generateQRCodeBase64(qrCode: string): Promise<string> {
   }
 }
 
-/**
- * Formate une date au format français ou anglais
- */
 export function formatDate(dateString: string, language: 'fr' | 'en'): string {
   try {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
-      // Si la date est invalide, retourner la date brute
       return dateString;
     }
+
     const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
       year: 'numeric',
@@ -58,28 +49,21 @@ export function formatDate(dateString: string, language: 'fr' | 'en'): string {
     };
     return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', options);
   } catch (error) {
-    // En cas d'erreur, retourner la date brute
     return dateString;
   }
 }
 
-/**
- * Formate une heure (HH:MM)
- */
 export function formatTime(timeString: string): string {
   try {
     if (!timeString || timeString.length < 5) {
       return timeString || '00:00';
     }
-    return timeString.substring(0, 5); // Prendre seulement HH:MM
+    return timeString.substring(0, 5);
   } catch (error) {
     return timeString || '00:00';
   }
 }
 
-/**
- * Normalise la langue du ticket
- */
 export function normalizeLanguage(ticketLanguage: string | null | undefined): 'fr' | 'en' {
   let language = (ticketLanguage?.split('-')[0]?.toLowerCase() ?? 'fr') as 'fr' | 'en';
   if (language !== 'fr' && language !== 'en') {
@@ -88,32 +72,12 @@ export function normalizeLanguage(ticketLanguage: string | null | undefined): 'f
   return language;
 }
 
-/**
- * Extrait l'info visite guidée depuis les notes du ticket
- */
-function extractGuidedTourInfo(notes: string | null): { hasGuidedTour: boolean; price: number | null } {
-  if (!notes) {
-    return { hasGuidedTour: false, price: null };
-  }
-  try {
-    const parsed = JSON.parse(notes);
-    const hasGuidedTour = parsed.guided_tour === true;
-    const price = parsed.guided_tour_price ?? null;
-    return { hasGuidedTour, price };
-  } catch {
-    return { hasGuidedTour: false, price: null };
-  }
-}
 
-/**
- * Prépare les données du ticket (montants convertis, nom du visiteur, visite guidée)
- */
 export function prepareTicketData(ticket: Ticket) {
   const visitorName = ticket.first_name && ticket.last_name
     ? `${ticket.first_name} ${ticket.last_name}`
     : ticket.email;
 
-  // Convertir les montants en nombres (PostgreSQL retourne les decimal comme strings)
   const ticketPrice = typeof ticket.ticket_price === 'string'
     ? parseFloat(ticket.ticket_price)
     : ticket.ticket_price;
@@ -127,7 +91,6 @@ export function prepareTicketData(ticket: Ticket) {
     ? parseFloat(ticket.total_amount)
     : ticket.total_amount;
 
-  // Vérifier si le ticket a une visite guidée (prix > 0)
   const hasGuidedTour = guidedTourPrice > 0;
 
   return {
@@ -140,39 +103,9 @@ export function prepareTicketData(ticket: Ticket) {
   };
 }
 
-/**
- * Options pour la génération du HTML du ticket
- */
-interface TicketHTMLOptions {
-  ticket: Ticket;
-  language: 'fr' | 'en';
-  qrCodeBase64: string;
-  logoBase64: string;
-  title: string;
-  greeting?: string;
-  intro?: string;
-  footer?: string;
-  statusBadge?: {
-    isValid: boolean;
-    validText: string;
-    invalidText: string;
-    invalidReason?: string;
-  };
-  statusRow?: {
-    label: string;
-    value: string;
-  };
-  viewTicketLink?: {
-    url: string;
-    text: string;
-  };
-  containerMaxWidth?: string;
-  containerPadding?: string;
-}
 
-/**
- * Génère le HTML de base pour un ticket (utilisé pour email et page)
- */
+
+
 function generateTicketHTMLBase(options: TicketHTMLOptions): string {
   const {
     ticket,
@@ -183,7 +116,6 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
     greeting,
     intro,
     footer,
-    statusBadge,
     statusRow,
     viewTicketLink,
     containerMaxWidth = '600px',
@@ -416,9 +348,7 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
   `;
 }
 
-/**
- * Génère le contenu HTML de l'email de confirmation de ticket
- */
+
 async function generateTicketEmailHTML(
   ticket: Ticket,
   ticketViewUrl: string
@@ -426,7 +356,6 @@ async function generateTicketEmailHTML(
   const language = normalizeLanguage(ticket.language);
   const logoBase64 = getLogoBase64();
 
-  // Générer le QR code avec gestion d'erreur
   let qrCodeBase64: string;
   try {
     qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code);
@@ -469,16 +398,13 @@ async function generateTicketEmailHTML(
   });
 }
 
-/**
- * Envoie un email de confirmation pour un ticket
- */
-export async function sendTicketConfirmationEmail(
+async function sendTicketConfirmationEmail(
   app: FastifyInstance,
   ticket: Ticket,
   baseUrl: string = process.env.BASE_URL || 'http://localhost:4000'
 ): Promise<void> {
+
   try {
-    // Ne pas envoyer d'email si le ticket n'est pas payé (non valide)
     if (ticket.status !== 'paid') {
       app.log.info({ ticketId: ticket.id, status: ticket.status }, 'Ticket non payé, email non envoyé');
       return;
@@ -513,13 +439,11 @@ export async function sendTicketConfirmationEmail(
       },
     };
 
-    // Générer le PDF du ticket
     let pdfAttachment = null;
     try {
       const { generateTicketPDF } = await import('./tickets.pdf.ts');
       const pdfBuffer = await generateTicketPDF(ticket, ticket.status === 'paid');
 
-      // Si le PDF n'a pas été généré (ticket non valide), continuer sans PDF
       if (pdfBuffer) {
         const pdfBase64 = pdfBuffer.toString('base64');
         pdfAttachment = {
@@ -534,7 +458,6 @@ export async function sendTicketConfirmationEmail(
         ticketId: ticket.id,
         qrCode: ticket.qr_code,
       }, 'Erreur lors de la génération du PDF du ticket');
-      // Continuer sans PDF si la génération échoue
     }
 
     await emailUtils.sendEmail({
@@ -553,28 +476,22 @@ export async function sendTicketConfirmationEmail(
     }, 'Email de confirmation de ticket envoyé');
   } catch (error) {
     app.log.error({ error, ticketId: ticket.id }, 'Erreur lors de l\'envoi de l\'email de confirmation');
-    // Ne pas faire échouer la création du ticket si l'email échoue
-    // On log juste l'erreur
   }
 }
 
-/**
- * Envoie les emails de confirmation pour plusieurs tickets
- */
 export async function sendTicketsConfirmationEmails(
   app: FastifyInstance,
   tickets: Ticket[],
   baseUrl?: string
 ): Promise<void> {
-  // Envoyer les emails en parallèle (mais ne pas faire échouer si un échoue)
+
+
   await Promise.allSettled(
     tickets.map(ticket => sendTicketConfirmationEmail(app, ticket, baseUrl))
   );
 }
 
-/**
- * Génère le HTML de la page de visualisation du ticket
- */
+
 export async function generateTicketViewHTML(
   ticket: Ticket,
   isValid: boolean
@@ -582,7 +499,6 @@ export async function generateTicketViewHTML(
   const language = normalizeLanguage(ticket.language);
   const logoBase64 = getLogoBase64();
 
-  // Générer le QR code avec gestion d'erreur
   let qrCodeBase64: string;
   try {
     qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code);
@@ -626,9 +542,8 @@ export async function generateTicketViewHTML(
     expired: t.statusExpired,
   };
 
-  // Ne pas générer la page si le ticket n'est pas valide
   if (!isValid) {
-    throw new Error('Ce billet n\'est pas valide');
+    throw new Error(`${t.invalid} - ${t.invalidReason}`);
   }
 
   return generateTicketHTMLBase({

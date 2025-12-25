@@ -8,11 +8,8 @@ import type {
   CalendarDay,
   CalendarResponse,
   GetCalendarQuery,
+  EventStatus,
 } from './events.types.ts';
-
-/**
- * Crée un événement
- */
 export async function createEvent(
   app: FastifyInstance,
   data: CreateEventBody
@@ -21,7 +18,6 @@ export async function createEvent(
     throw new Error('Base de données non disponible');
   }
 
-  // Validation : end_date doit être >= start_date si fourni
   if (data.end_date) {
     const startDate = new Date(data.start_date);
     const endDate = new Date(data.end_date);
@@ -30,12 +26,10 @@ export async function createEvent(
     }
   }
 
-  // Validation : category requis pour les événements museum
   if (data.type === 'museum' && !data.category) {
     throw new Error('La catégorie est requise pour les événements du musée');
   }
 
-  // Créer l'événement
   const result = await app.pg.query<Event>(
     `INSERT INTO events (
       type, category, status, start_date, end_date, start_time, end_time,
@@ -79,7 +73,6 @@ export async function createEvent(
 
   const event = result.rows[0];
 
-  // Gérer les relations si fournies
   if (data.related_event_ids && data.related_event_ids.length > 0) {
     await linkEvents(app, event.id, data.related_event_ids);
   }
@@ -87,9 +80,6 @@ export async function createEvent(
   return event;
 }
 
-/**
- * Lie des événements à un événement parent
- */
 async function linkEvents(
   app: FastifyInstance,
   parentEventId: string,
@@ -99,7 +89,6 @@ async function linkEvents(
     throw new Error('Base de données non disponible');
   }
 
-  // Vérifier que les événements enfants existent
   for (const childId of childEventIds) {
     if (childId === parentEventId) {
       throw new Error('Un événement ne peut pas être lié à lui-même');
@@ -111,7 +100,6 @@ async function linkEvents(
     }
   }
 
-  // Créer les relations
   for (const childId of childEventIds) {
     try {
       await app.pg.query(
@@ -126,9 +114,6 @@ async function linkEvents(
   }
 }
 
-/**
- * Récupère les événements avec pagination et filtres
- */
 export async function getEvents(
   app: FastifyInstance,
   query: GetEventsQuery = {}
@@ -207,14 +192,12 @@ export async function getEvents(
   const countResult = await app.pg.query<{ total: string }>(countSql, params);
   const total = parseInt(countResult.rows[0].total, 10);
 
-  // Récupérer les événements
   sql += ' ORDER BY start_date ASC, start_time ASC NULLS LAST LIMIT $' + paramIndex + ' OFFSET $' + (paramIndex + 1);
   params.push(limit, offset);
 
   const result = await app.pg.query<Event>(sql, params);
   let events = result.rows;
 
-  // Charger les relations si demandé
   if (query.include_relations) {
     events = await enrichEventsWithRelations(app, events);
   }
@@ -228,9 +211,6 @@ export async function getEvents(
   };
 }
 
-/**
- * Enrichit les événements avec leurs relations
- */
 async function enrichEventsWithRelations(
   app: FastifyInstance,
   events: Event[]
@@ -241,7 +221,6 @@ async function enrichEventsWithRelations(
 
   const eventIds = events.map(e => e.id);
 
-  // Récupérer toutes les relations
   const relationsResult = await app.pg.query<{
     parent_event_id: string;
     child_event_id: string;
@@ -253,7 +232,6 @@ async function enrichEventsWithRelations(
     [eventIds]
   );
 
-  // Récupérer les événements liés
   const relatedEventIds = new Set<string>();
   relationsResult.rows.forEach(r => {
     relatedEventIds.add(r.parent_event_id);
@@ -270,7 +248,6 @@ async function enrichEventsWithRelations(
     relatedEvents = relatedResult.rows;
   }
 
-  // Construire un map des événements liés
   const relatedEventsMap = new Map<string, Event[]>();
   const parentEventsMap = new Map<string, Event[]>();
 
@@ -301,9 +278,6 @@ async function enrichEventsWithRelations(
   }));
 }
 
-/**
- * Récupère un événement par son ID
- */
 export async function getEventById(
   app: FastifyInstance,
   id: string,
@@ -332,9 +306,6 @@ export async function getEventById(
   return event;
 }
 
-/**
- * Met à jour un événement
- */
 export async function updateEvent(
   app: FastifyInstance,
   id: string,
@@ -344,13 +315,11 @@ export async function updateEvent(
     throw new Error('Base de données non disponible');
   }
 
-  // Vérifier que l'événement existe
   const existing = await getEventById(app, id);
   if (!existing) {
     throw new Error('Événement non trouvé');
   }
 
-  // Validation des dates si fournies
   const startDate = data.start_date ? new Date(data.start_date) : new Date(existing.start_date);
   const endDate = data.end_date !== undefined
     ? (data.end_date ? new Date(data.end_date) : null)
@@ -538,15 +507,12 @@ export async function updateEvent(
 
   const updatedEvent = result.rows[0];
 
-  // Gérer les relations si fournies (remplace les relations existantes)
   if (data.related_event_ids !== undefined) {
-    // Supprimer les relations existantes
     await app.pg.query(
       'DELETE FROM event_relations WHERE parent_event_id = $1 OR child_event_id = $1',
       [id]
     );
 
-    // Créer les nouvelles relations
     if (data.related_event_ids.length > 0) {
       await linkEvents(app, id, data.related_event_ids);
     }
@@ -590,7 +556,6 @@ export async function getCalendar(
   const endDate = query.end_date ? new Date(query.end_date) : new Date(query.start_date);
   const view = query.view ?? 'month';
 
-  // Calculer la plage de dates selon la vue
   let actualStartDate: Date;
   let actualEndDate: Date;
 
@@ -617,7 +582,6 @@ export async function getCalendar(
       actualEndDate = new Date(endDate);
   }
 
-  // Générer tous les jours de la plage
   const days: CalendarDay[] = [];
   const currentDate = new Date(actualStartDate);
 
@@ -635,7 +599,6 @@ export async function getCalendar(
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Récupérer le nombre de tickets payés par date de réservation
   const ticketsCountResult = await app.pg.query<{
     reservation_date: string;
     count: string;
@@ -655,20 +618,16 @@ export async function getCalendar(
     paidTicketsByDate.set(row.reservation_date, parseInt(row.count, 10));
   }
 
-  // Récupérer les horaires pour cette plage
   const { getPublicSchedules } = await import('../schedules/schedules.service.ts');
   const dateStrings = days.map(d => d.date);
 
-  // Récupérer les périodes spéciales
   const { getSpecialPeriods } = await import('../special-periods/special-periods.service.ts');
   const allPeriods = await getSpecialPeriods(app, { is_active: true });
 
-  // Récupérer les événements pour toute la plage de dates
   const statusFilter = query.include_private
     ? undefined
     : (query.status ? [query.status] : ['public', 'member']);
 
-  // Par défaut, retourner tous les types d'événements
   const eventTypes = query.event_types ?? ['museum', 'association', 'external'];
 
   // Récupérer les événements pour chaque type (car getEvents ne supporte qu'un seul type à la fois)
@@ -678,7 +637,7 @@ export async function getCalendar(
       type: eventType,
       start_date: actualStartDate.toISOString().split('T')[0],
       end_date: actualEndDate.toISOString().split('T')[0],
-      status: statusFilter?.[0],
+      status: statusFilter?.[0] as EventStatus | undefined,
       is_active: true,
     });
     allEvents.push(...eventsResult.events);
@@ -709,11 +668,9 @@ export async function getCalendar(
       include_exceptions: true,
     });
 
-    // Déterminer si le musée est ouvert
     const hasOpenSchedule = schedules.some(s => !s.is_closed);
     day.is_open = hasOpenSchedule;
 
-    // Extraire les horaires d'ouverture
     day.opening_hours = schedules
       .filter(s => !s.is_closed)
       .map(s => ({
@@ -723,7 +680,6 @@ export async function getCalendar(
         description: s.description,
       }));
 
-    // Extraire les périodes spéciales pour ce jour
     day.holiday_periods = allPeriods
       .filter(p => p.type === 'holiday' && p.start_date <= day.date && p.end_date >= day.date)
       .map(p => ({
@@ -744,10 +700,8 @@ export async function getCalendar(
         zone: p.zone,
       }));
 
-    // Nombre de tickets payés pour ce jour
     day.paid_tickets_count = paidTicketsByDate.get(day.date) ?? 0;
 
-    // Filtrer les événements pour ce jour
     day.events = events.filter(e => {
       const eventStart = new Date(e.start_date);
       const eventEnd = e.end_date ? new Date(e.end_date) : new Date(e.start_date);

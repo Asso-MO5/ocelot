@@ -7,9 +7,6 @@ import type {
   ParsedSettingValue,
 } from './settings.types.ts';
 
-/**
- * Parse une valeur selon son type
- */
 function parseValue(value: string, valueType: SettingValueType): ParsedSettingValue {
   switch (valueType) {
     case 'number':
@@ -34,9 +31,6 @@ function parseValue(value: string, valueType: SettingValueType): ParsedSettingVa
   }
 }
 
-/**
- * Convertit une valeur en string pour le stockage
- */
 function stringifyValue(value: string | number | boolean | object): string {
   if (typeof value === 'object') {
     return JSON.stringify(value);
@@ -44,9 +38,6 @@ function stringifyValue(value: string | number | boolean | object): string {
   return String(value);
 }
 
-/**
- * Détecte le type d'une valeur
- */
 function detectValueType(value: string | number | boolean | object): SettingValueType {
   if (typeof value === 'number') return 'number';
   if (typeof value === 'boolean') return 'boolean';
@@ -54,9 +45,6 @@ function detectValueType(value: string | number | boolean | object): SettingValu
   return 'string';
 }
 
-/**
- * Crée ou met à jour un paramètre (UPSERT)
- */
 export async function upsertSetting(
   app: FastifyInstance,
   data: UpsertSettingBody
@@ -89,9 +77,6 @@ export async function upsertSetting(
   return result.rows[0];
 }
 
-/**
- * Récupère tous les paramètres avec filtres optionnels
- */
 export async function getSettings(
   app: FastifyInstance,
   query: GetSettingsQuery = {}
@@ -116,9 +101,6 @@ export async function getSettings(
   return result.rows;
 }
 
-/**
- * Récupère un paramètre par sa clé
- */
 export async function getSettingByKey(
   app: FastifyInstance,
   key: string
@@ -135,9 +117,6 @@ export async function getSettingByKey(
   return result.rows[0] || null;
 }
 
-/**
- * Récupère un paramètre par sa clé et parse la valeur selon son type
- */
 export async function getSettingValue<T extends ParsedSettingValue = ParsedSettingValue>(
   app: FastifyInstance,
   key: string,
@@ -157,9 +136,6 @@ export async function getSettingValue<T extends ParsedSettingValue = ParsedSetti
   }
 }
 
-/**
- * Supprime un paramètre
- */
 export async function deleteSetting(
   app: FastifyInstance,
   key: string
@@ -176,20 +152,10 @@ export async function deleteSetting(
   return result.rowCount !== null && result.rowCount > 0;
 }
 
-/**
- * Fonctions utilitaires pour les paramètres courants
- */
-
-/**
- * Récupère la capacité maximale du musée
- */
 export async function getMaxCapacity(app: FastifyInstance): Promise<number> {
   return (await getSettingValue<number>(app, 'max_capacity', 0)) || 0;
 }
 
-/**
- * Définit la capacité maximale du musée
- */
 export async function setMaxCapacity(app: FastifyInstance, capacity: number): Promise<MuseumSetting> {
   return await upsertSetting(app, {
     key: 'max_capacity',

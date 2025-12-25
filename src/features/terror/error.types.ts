@@ -4,10 +4,3 @@ export interface ErrorContext {
   ip?: string;
   type?: string;
 }
-
-export interface ErrorPayload {
-  error: Error;
-  context: ErrorContext;
-  timestamp: Date;
-}
-

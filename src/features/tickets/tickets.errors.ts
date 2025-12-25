@@ -1,15 +1,9 @@
-/**
- * Type pour les erreurs structurées avec traductions
- */
 export interface StructuredError {
   code: number; // Code HTTP
   fr: string; // Message en français
   en: string; // Message en anglais
 }
 
-/**
- * Crée une erreur structurée avec traductions
- */
 export function createStructuredError(
   code: number,
   fr: string,
@@ -19,10 +13,8 @@ export function createStructuredError(
   return new Error(JSON.stringify(error));
 }
 
-/**
- * Parse une erreur pour vérifier si c'est une erreur structurée
- */
-export function parseStructuredError(error: Error): StructuredError | null {
+
+function parseStructuredError(error: Error): StructuredError | null {
   try {
     const parsed = JSON.parse(error.message);
     if (
@@ -35,15 +27,10 @@ export function parseStructuredError(error: Error): StructuredError | null {
       return parsed as StructuredError;
     }
   } catch {
-    // Ce n'est pas du JSON ou pas au bon format
   }
   return null;
 }
 
-/**
- * Gère une erreur dans un handler Fastify
- * Retourne la réponse appropriée si c'est une erreur structurée, sinon null
- */
 export function handleStructuredError(
   error: Error,
   reply: any

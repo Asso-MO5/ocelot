@@ -19,9 +19,6 @@ import {
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
 
-/**
- * Handler pour créer une période spéciale
- */
 export async function createSpecialPeriodHandler(
   req: FastifyRequest<{ Body: CreateSpecialPeriodBody }>,
   reply: FastifyReply,
@@ -36,10 +33,7 @@ export async function createSpecialPeriodHandler(
   }
 }
 
-/**
- * Handler pour récupérer les périodes spéciales
- */
-export async function getSpecialPeriodsHandler(
+async function getSpecialPeriodsHandler(
   req: FastifyRequest<{ Querystring: GetSpecialPeriodsQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -53,9 +47,6 @@ export async function getSpecialPeriodsHandler(
   }
 }
 
-/**
- * Handler pour récupérer une période spéciale par son ID
- */
 export async function getSpecialPeriodByIdHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
@@ -73,9 +64,6 @@ export async function getSpecialPeriodByIdHandler(
   }
 }
 
-/**
- * Handler pour mettre à jour une période spéciale
- */
 export async function updateSpecialPeriodHandler(
   req: FastifyRequest<{ Params: { id: string }; Body: UpdateSpecialPeriodBody }>,
   reply: FastifyReply,
@@ -93,9 +81,6 @@ export async function updateSpecialPeriodHandler(
   }
 }
 
-/**
- * Handler pour supprimer une période spéciale
- */
 export async function deleteSpecialPeriodHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
@@ -113,11 +98,7 @@ export async function deleteSpecialPeriodHandler(
   }
 }
 
-/**
- * Enregistre les routes pour les périodes spéciales
- */
 export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
-  // Route protégée : création d'une période spéciale
   app.post<{ Body: CreateSpecialPeriodBody }>(
     '/museum/special-periods',
     {
@@ -130,7 +111,6 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
     async (req, reply) => createSpecialPeriodHandler(req, reply, app)
   );
 
-  // Route protégée : récupération des périodes spéciales
   app.get<{ Querystring: GetSpecialPeriodsQuery }>(
     '/museum/special-periods',
     {
@@ -143,7 +123,6 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
     async (req, reply) => getSpecialPeriodsHandler(req, reply, app)
   );
 
-  // Route protégée : récupération d'une période spéciale par ID
   app.get<{ Params: { id: string } }>(
     '/museum/special-periods/:id',
     {
@@ -155,7 +134,6 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
     async (req, reply) => getSpecialPeriodByIdHandler(req, reply, app)
   );
 
-  // Route protégée : mise à jour d'une période spéciale
   app.put<{ Params: { id: string }; Body: UpdateSpecialPeriodBody }>(
     '/museum/special-periods/:id',
     {
@@ -168,7 +146,6 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
     async (req, reply) => updateSpecialPeriodHandler(req, reply, app)
   );
 
-  // Route protégée : suppression d'une période spéciale
   app.delete<{ Params: { id: string } }>(
     '/museum/special-periods/:id',
     {

@@ -1,7 +1,3 @@
-/**
- * Schémas de validation Fastify pour les périodes spéciales
- */
-
 export const createSpecialPeriodSchema = {
   body: {
     type: 'object',

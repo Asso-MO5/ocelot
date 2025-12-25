@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type {
   GiftCode,
-  GiftCodeStatus,
   CreateGiftCodePackBody,
   GiftCodePackResult,
   GetGiftCodesQuery,
@@ -15,9 +14,6 @@ import { createCheckout, getCheckoutStatus } from '../pay/pay.utils.ts';
 import { getSettingValue } from '../settings/settings.service.ts';
 import { emailUtils } from '../email/email.utils.ts';
 
-/**
- * Génère un code cadeau unique (12 caractères alphanumériques majuscules)
- */
 async function generateUniqueGiftCode(app: FastifyInstance): Promise<string> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
@@ -29,13 +25,11 @@ async function generateUniqueGiftCode(app: FastifyInstance): Promise<string> {
   const maxAttempts = 10;
 
   while (attempts < maxAttempts) {
-    // Générer un code aléatoire
     let code = '';
     for (let i = 0; i < length; i++) {
       code += characters.charAt(Math.floor(Math.random() * characters.length));
     }
 
-    // Vérifier l'unicité
     const existing = await app.pg.query<{ code: string }>(
       'SELECT code FROM gift_codes WHERE code = $1',
       [code]
@@ -51,9 +45,6 @@ async function generateUniqueGiftCode(app: FastifyInstance): Promise<string> {
   throw new Error('Impossible de générer un code cadeau unique après plusieurs tentatives');
 }
 
-/**
- * Crée un pack de codes cadeaux
- */
 export async function createGiftCodePack(
   app: FastifyInstance,
   data: CreateGiftCodePackBody
@@ -62,7 +53,6 @@ export async function createGiftCodePack(
     throw new Error('Base de données non disponible');
   }
 
-  // Validation
   if (!data.quantity || data.quantity < 1) {
     throw new Error('La quantité doit être supérieure à 0');
   }
@@ -71,10 +61,7 @@ export async function createGiftCodePack(
     throw new Error('La quantité ne peut pas dépasser 1000 codes par pack');
   }
 
-  // Générer un pack_id unique
   const packId = crypto.randomUUID();
-
-  // Créer les codes dans une transaction
   const codes: GiftCode[] = [];
 
   try {
@@ -114,9 +101,6 @@ export async function createGiftCodePack(
   };
 }
 
-/**
- * Valide un code cadeau (vérifie qu'il existe, n'est pas utilisé et n'est pas expiré)
- */
 export async function validateGiftCode(
   app: FastifyInstance,
   code: string
@@ -125,7 +109,6 @@ export async function validateGiftCode(
     throw new Error('Base de données non disponible');
   }
 
-  // Récupérer le code
   const result = await app.pg.query<GiftCode>(
     'SELECT * FROM gift_codes WHERE code = $1',
     [code.toUpperCase()]
@@ -137,7 +120,6 @@ export async function validateGiftCode(
 
   const giftCode = result.rows[0];
 
-  // Vérifier le statut
   if (giftCode.status === 'used') {
     throw new Error(`Le code cadeau ${code} a déjà été utilisé`);
   }
@@ -146,12 +128,10 @@ export async function validateGiftCode(
     throw new Error(`Le code cadeau ${code} a expiré`);
   }
 
-  // Vérifier l'expiration
   if (giftCode.expires_at) {
     const expiresAt = new Date(giftCode.expires_at);
     const now = new Date();
     if (now > expiresAt) {
-      // Marquer comme expiré
       await app.pg.query(
         'UPDATE gift_codes SET status = $1, updated_at = current_timestamp WHERE id = $2',
         ['expired', giftCode.id]
@@ -163,9 +143,6 @@ export async function validateGiftCode(
   return giftCode;
 }
 
-/**
- * Utilise un code cadeau (l'associe à un ticket)
- */
 export async function useGiftCode(
   app: FastifyInstance,
   code: string,
@@ -175,7 +152,6 @@ export async function useGiftCode(
     throw new Error('Base de données non disponible');
   }
 
-  // Valider le code
   const giftCode = await validateGiftCode(app, code);
 
   // Marquer le code comme utilisé
@@ -193,46 +169,6 @@ export async function useGiftCode(
   return result.rows[0];
 }
 
-/**
- * Utilise plusieurs codes cadeaux (pour une commande)
- */
-export async function useGiftCodes(
-  app: FastifyInstance,
-  codes: string[],
-  ticketIds: string[]
-): Promise<GiftCode[]> {
-  if (!app.pg) {
-    throw new Error('Base de données non disponible');
-  }
-
-  if (codes.length !== ticketIds.length) {
-    throw new Error('Le nombre de codes doit correspondre au nombre de tickets');
-  }
-
-  const usedCodes: GiftCode[] = [];
-
-  try {
-    await app.pg.query('BEGIN');
-
-    for (let i = 0; i < codes.length; i++) {
-      const code = codes[i];
-      const ticketId = ticketIds[i];
-      const usedCode = await useGiftCode(app, code, ticketId);
-      usedCodes.push(usedCode);
-    }
-
-    await app.pg.query('COMMIT');
-  } catch (err) {
-    await app.pg.query('ROLLBACK');
-    throw err;
-  }
-
-  return usedCodes;
-}
-
-/**
- * Récupère tous les codes cadeaux avec filtres optionnels et pagination
- */
 export async function getGiftCodes(
   app: FastifyInstance,
   query: GetGiftCodesQuery = {}
@@ -241,12 +177,10 @@ export async function getGiftCodes(
     throw new Error('Base de données non disponible');
   }
 
-  // Paramètres de pagination (par défaut : page 1, limit 100)
   const page = query.page && query.page > 0 ? query.page : 1;
   const limit = query.limit && query.limit > 0 ? query.limit : 100;
   const offset = (page - 1) * limit;
 
-  // Construction de la clause WHERE
   let whereClause = 'WHERE 1=1';
   const params: any[] = [];
   let paramIndex = 1;
@@ -275,19 +209,16 @@ export async function getGiftCodes(
     paramIndex++;
   }
 
-  // Requête pour compter le total
   const countSql = `SELECT COUNT(*) as total FROM gift_codes ${whereClause}`;
   const countResult = await app.pg.query<{ total: string }>(countSql, params);
   const total = parseInt(countResult.rows[0].total, 10);
 
-  // Requête pour récupérer les codes avec pagination
   const limitParamIndex = paramIndex;
   const offsetParamIndex = paramIndex + 1;
   const dataSql = `SELECT * FROM gift_codes ${whereClause} ORDER BY created_at DESC LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`;
   const dataParams = [...params, limit, offset];
   const result = await app.pg.query<GiftCode>(dataSql, dataParams);
 
-  // Calculer le nombre total de pages
   const totalPages = Math.ceil(total / limit);
 
   return {
@@ -298,30 +229,6 @@ export async function getGiftCodes(
     totalPages,
   };
 }
-
-/**
- * Récupère un code cadeau par son code
- */
-export async function getGiftCodeByCode(
-  app: FastifyInstance,
-  code: string
-): Promise<GiftCode | null> {
-  if (!app.pg) {
-    throw new Error('Base de données non disponible');
-  }
-
-  const result = await app.pg.query<GiftCode>(
-    'SELECT * FROM gift_codes WHERE code = $1',
-    [code.toUpperCase()]
-  );
-
-  return result.rows[0] || null;
-}
-
-/**
- * Récupère les packs de codes cadeaux avec leurs codes associés (paginé)
- * Si un code est fourni dans la recherche, retourne uniquement le pack qui contient ce code
- */
 export async function getGiftCodePacks(
   app: FastifyInstance,
   query: GetGiftCodePacksQuery = {}
@@ -330,14 +237,12 @@ export async function getGiftCodePacks(
     throw new Error('Base de données non disponible');
   }
 
-  // Paramètres de pagination (par défaut : page 1, limit 50)
   const page = query.page && query.page > 0 ? query.page : 1;
   const limit = query.limit && query.limit > 0 ? query.limit : 50;
   const offset = (page - 1) * limit;
 
   let packIds: string[] = [];
 
-  // Si une recherche par code est demandée, trouver le pack_id correspondant
   if (query.code) {
     const codeResult = await app.pg.query<{ pack_id: string | null }>(
       'SELECT pack_id FROM gift_codes WHERE code = $1',
@@ -345,7 +250,6 @@ export async function getGiftCodePacks(
     );
 
     if (codeResult.rows.length === 0 || !codeResult.rows[0].pack_id) {
-      // Aucun pack trouvé pour ce code
       return {
         packs: [],
         total: 0,
@@ -357,7 +261,6 @@ export async function getGiftCodePacks(
 
     packIds = [codeResult.rows[0].pack_id];
   } else {
-    // Récupérer tous les pack_ids distincts
     const packIdsResult = await app.pg.query<{ pack_id: string }>(
       `SELECT DISTINCT pack_id 
        FROM gift_codes 
@@ -370,14 +273,11 @@ export async function getGiftCodePacks(
   const total = packIds.length;
   const totalPages = Math.ceil(total / limit);
 
-  // Paginer les pack_ids
   const paginatedPackIds = packIds.slice(offset, offset + limit);
 
-  // Pour chaque pack, récupérer ses codes et les statistiques
   const packs: GiftCodePackWithCodes[] = [];
 
   for (const packId of paginatedPackIds) {
-    // Récupérer tous les codes du pack
     const codesResult = await app.pg.query<GiftCode>(
       `SELECT * FROM gift_codes 
        WHERE pack_id = $1 
@@ -387,12 +287,10 @@ export async function getGiftCodePacks(
 
     const codes = codesResult.rows;
 
-    // Calculer les statistiques
     const unused_count = codes.filter(c => c.status === 'unused').length;
     const used_count = codes.filter(c => c.status === 'used').length;
     const expired_count = codes.filter(c => c.status === 'expired').length;
 
-    // Récupérer la date de création (date du premier code créé)
     const created_at = codes.length > 0 ? codes[0].created_at : new Date().toISOString();
 
     packs.push({
@@ -415,10 +313,6 @@ export async function getGiftCodePacks(
   };
 }
 
-/**
- * Crée une session de paiement pour l'achat public de codes cadeaux
- * Prix unitaire récupéré depuis le setting "gift_code_price"
- */
 export async function purchaseGiftCodes(
   app: FastifyInstance,
   data: PurchaseGiftCodesBody
@@ -465,11 +359,6 @@ export async function purchaseGiftCodes(
   };
 }
 
-/**
- * Confirme un achat public de codes cadeaux après paiement
- * - Vérifie le statut Stripe (payment_status = paid)
- * - Génère le pack et envoie l'email avec les codes
- */
 export async function confirmPurchaseGiftCodes(
   app: FastifyInstance,
   checkoutId: string
@@ -494,7 +383,6 @@ export async function confirmPurchaseGiftCodes(
     throw new Error('Email de l\'acheteur manquant dans la session de paiement');
   }
 
-  // Créer le pack de codes
   const pack = await createGiftCodePack(app, {
     quantity,
     notes: JSON.stringify({
@@ -504,7 +392,6 @@ export async function confirmPurchaseGiftCodes(
     }),
   });
 
-  // Associer l'email du destinataire aux codes
   await app.pg.query(
     `UPDATE gift_codes 
      SET recipient_email = $1, updated_at = current_timestamp 
@@ -512,7 +399,6 @@ export async function confirmPurchaseGiftCodes(
     [buyerEmail, pack.pack_id]
   );
 
-  // Envoyer l'email avec les codes et les instructions
   const codesList = pack.codes.map(c => c.code).join('<br>');
   const instructionsUrl = 'https://museedujeuvideo.org/fr/ticket';
   const VALID_UNTIL_DATE_FR = '31 janvier 2026';

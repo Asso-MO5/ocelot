@@ -1,65 +1,43 @@
-/**
- * Types pour la gestion des codes cadeaux
- */
-
-/**
- * Statut d'un code cadeau
- */
 export type GiftCodeStatus = 'unused' | 'used' | 'expired';
 
-/**
- * Code cadeau en base de données
- */
 export interface GiftCode {
   id: string;
-  code: string; // Code unique (12 caractères alphanumériques)
+  code: string;
   status: GiftCodeStatus;
-  ticket_id: string | null; // Ticket associé (null si non utilisé)
-  pack_id: string | null; // Pack auquel appartient ce code
-  recipient_email: string | null; // Email du destinataire
-  expires_at: string | null; // Date d'expiration (optionnelle)
-  used_at: string | null; // Date d'utilisation
-  notes: string | null; // Notes optionnelles
+  ticket_id: string | null;
+  pack_id: string | null;
+  recipient_email: string | null;
+  expires_at: string | null;
+  used_at: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
 
-/**
- * Corps de requête pour créer un pack de codes cadeaux
- */
 export interface CreateGiftCodePackBody {
-  quantity: number; // Nombre de codes à créer
-  pack_name?: string; // Nom du pack (optionnel)
-  expires_at?: string; // Date d'expiration (optionnelle, format ISO)
-  notes?: string; // Notes optionnelles
+  quantity: number;
+  pack_name?: string;
+  expires_at?: string;
+  notes?: string;
 }
 
-/**
- * Corps de requête pour distribuer des codes par email
- */
 export interface DistributeGiftCodesBody {
-  code_ids: string[]; // IDs des codes à distribuer
-  recipient_email: string; // Email du destinataire
-  subject?: string; // Sujet de l'email (optionnel)
-  message?: string; // Message personnalisé (optionnel)
-  language?: 'fr' | 'en'; // Langue de l'email
+  code_ids: string[];
+  recipient_email: string;
+  subject?: string;
+  message?: string;
+  language?: 'fr' | 'en';
 }
 
-/**
- * Paramètres de requête pour récupérer les codes cadeaux
- */
 export interface GetGiftCodesQuery {
-  status?: GiftCodeStatus; // Filtrer par statut
-  pack_id?: string; // Filtrer par pack
-  recipient_email?: string; // Filtrer par destinataire
-  ticket_id?: string; // Filtrer par ticket
-  page?: number; // Numéro de page (commence à 1, optionnel, par défaut 1)
-  limit?: number; // Nombre d'éléments par page (optionnel, par défaut 100)
+  status?: GiftCodeStatus;
+  pack_id?: string;
+  recipient_email?: string;
+  ticket_id?: string;
+  page?: number;
+  limit?: number;
 }
 
-/**
- * Réponse paginée pour la récupération des codes cadeaux
- */
 export interface PaginatedGiftCodesResponse {
   codes: GiftCode[];
   total: number;
@@ -68,18 +46,12 @@ export interface PaginatedGiftCodesResponse {
   totalPages: number;
 }
 
-/**
- * Résultat de la création d'un pack de codes
- */
 export interface GiftCodePackResult {
   pack_id: string;
   codes: GiftCode[];
   quantity: number;
 }
 
-/**
- * Pack de codes cadeaux avec ses codes associés
- */
 export interface GiftCodePackWithCodes {
   pack_id: string;
   codes: GiftCode[];
@@ -90,18 +62,12 @@ export interface GiftCodePackWithCodes {
   created_at: string;
 }
 
-/**
- * Paramètres de requête pour récupérer les packs de codes cadeaux
- */
 export interface GetGiftCodePacksQuery {
-  code?: string; // Rechercher un code spécifique (retourne le pack qui le contient)
-  page?: number; // Numéro de page (commence à 1, optionnel, par défaut 1)
-  limit?: number; // Nombre d'éléments par page (optionnel, par défaut 50)
+  code?: string;
+  page?: number;
+  limit?: number;
 }
 
-/**
- * Réponse paginée pour la récupération des packs de codes cadeaux
- */
 export interface PaginatedGiftCodePacksResponse {
   packs: GiftCodePackWithCodes[];
   total: number;
@@ -110,9 +76,6 @@ export interface PaginatedGiftCodePacksResponse {
   totalPages: number;
 }
 
-/**
- * Achat public de codes cadeaux
- */
 export interface PurchaseGiftCodesBody {
   quantity: number;
   email: string;

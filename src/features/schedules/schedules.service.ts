@@ -8,10 +8,7 @@ import type {
   PublicSchedule,
 } from './schedules.types.ts';
 
-/**
- * Crée un nouvel horaire
- */
-export async function createSchedule(
+async function createSchedule(
   app: FastifyInstance,
   data: CreateScheduleBody
 ): Promise<Schedule> {
@@ -19,17 +16,14 @@ export async function createSchedule(
     throw new Error('Base de données non disponible');
   }
 
-  // Validation : si is_exception est false, day_of_week doit être défini
   if (!data.is_exception && data.day_of_week === undefined) {
     throw new Error('day_of_week est requis pour les horaires récurrents');
   }
 
-  // Validation : si is_exception est true, start_date et end_date doivent être définis
   if (data.is_exception && (!data.start_date || !data.end_date)) {
     throw new Error('start_date et end_date sont requis pour les exceptions');
   }
 
-  // Si position n'est pas fournie, on l'assigne automatiquement à la fin
   let position = data.position;
   if (position === undefined) {
     const maxPositionResult = await app.pg.query<{ max_position: number | null }>(
@@ -61,11 +55,6 @@ export async function createSchedule(
   return result.rows[0];
 }
 
-/**
- * Crée ou met à jour un horaire (UPSERT)
- * - Pour les exceptions : cherche par start_date, end_date et audience_type
- * - Pour les horaires récurrents : cherche par day_of_week et audience_type
- */
 export async function upsertSchedule(
   app: FastifyInstance,
   data: CreateScheduleBody
@@ -74,23 +63,19 @@ export async function upsertSchedule(
     throw new Error('Base de données non disponible');
   }
 
-  // Validation : si is_exception est false, day_of_week doit être défini
   if (!data.is_exception && data.day_of_week === undefined) {
     throw new Error('day_of_week est requis pour les horaires récurrents');
   }
 
-  // Validation : si is_exception est true, start_date et end_date doivent être définis
   if (data.is_exception && (!data.start_date || !data.end_date)) {
     throw new Error('start_date et end_date sont requis pour les exceptions');
   }
 
   const isException = data.is_exception ?? false;
 
-  // Chercher un horaire existant
   let existing: Schedule | null = null;
 
   if (isException) {
-    // Pour les exceptions : chercher par start_date, end_date et audience_type
     const result = await app.pg.query<Schedule>(
       `SELECT * FROM schedules 
        WHERE is_exception = true 
@@ -102,7 +87,6 @@ export async function upsertSchedule(
     );
     existing = result.rows[0] || null;
   } else {
-    // Pour les horaires récurrents : chercher par day_of_week et audience_type
     const result = await app.pg.query<Schedule>(
       `SELECT * FROM schedules 
        WHERE is_exception = false 
@@ -115,7 +99,6 @@ export async function upsertSchedule(
   }
 
   if (existing) {
-    // Mettre à jour l'horaire existant
     const updates: string[] = [];
     const params: any[] = [];
     let paramIndex = 1;
@@ -156,15 +139,11 @@ export async function upsertSchedule(
 
     return { schedule: result.rows[0], created: false };
   } else {
-    // Créer un nouvel horaire
     const schedule = await createSchedule(app, data);
     return { schedule, created: true };
   }
 }
 
-/**
- * Récupère tous les horaires avec filtres optionnels
- */
 export async function getSchedules(
   app: FastifyInstance,
   query: GetSchedulesQuery = {}
@@ -192,11 +171,9 @@ export async function getSchedules(
   }
 
   if (query.date) {
-    // Pour une date spécifique, on cherche :
-    // 1. Les horaires récurrents pour le jour de la semaine de cette date
-    // 2. Les exceptions qui couvrent cette date
+
     const dateObj = new Date(query.date);
-    const dayOfWeek = dateObj.getDay(); // 0 = dimanche, 1 = lundi, etc.
+    const dayOfWeek = dateObj.getDay();
 
     sql += ` AND (
       (is_exception = false AND day_of_week = $${paramIndex})
@@ -215,10 +192,6 @@ export async function getSchedules(
   return result.rows;
 }
 
-/**
- * Récupère uniquement les horaires publics (pour le site public)
- * Inclut toujours les horaires 'holiday' avec les informations des périodes de vacances
- */
 export async function getPublicSchedules(
   app: FastifyInstance,
   query: Omit<GetSchedulesQuery, 'audience_type'> = {}
@@ -227,7 +200,6 @@ export async function getPublicSchedules(
     throw new Error('Base de données non disponible');
   }
 
-  // Récupérer toutes les périodes spéciales actives (vacances et fermetures)
   let holidayPeriods: Array<{ id: string; name: string | null; start_date: string; end_date: string; zone: string | null }> = [];
   let closurePeriods: Array<{ id: string; name: string | null; start_date: string; end_date: string; zone: string | null }> = [];
   try {
@@ -257,7 +229,6 @@ export async function getPublicSchedules(
     app.log.warn({ err }, 'Erreur lors de la récupération des périodes spéciales');
   }
 
-  // Vérifier si on est dans une période de vacances (pour la logique de filtrage)
   let isHoliday = false;
   if (query.date) {
     try {
@@ -268,7 +239,6 @@ export async function getPublicSchedules(
     }
   }
 
-  // Vérifier si on est dans une période de fermeture
   let isClosed = false;
   if (query.date) {
     const { isClosurePeriod } = await import('../special-periods/special-periods.service.ts');
@@ -279,7 +249,6 @@ export async function getPublicSchedules(
     }
   }
 
-  // Si on est en fermeture, retourner uniquement les horaires avec is_closed = true
   if (isClosed) {
     let sql = `SELECT * FROM schedules WHERE is_closed = true`;
     const params: any[] = [];
@@ -306,9 +275,7 @@ export async function getPublicSchedules(
     sql += ' ORDER BY position ASC, is_exception ASC, day_of_week ASC, start_time ASC';
     const result = await app.pg.query<Schedule>(sql, params);
 
-    // Enrichir les horaires de fermeture avec les périodes de fermeture
     const enrichedClosureSchedules: PublicSchedule[] = result.rows.map(schedule => {
-      // Trouver toutes les périodes de fermeture qui correspondent
       const matchingClosurePeriods = closurePeriods.filter(period => {
         if (schedule.start_date && schedule.end_date) {
           return period.start_date <= schedule.end_date && period.end_date >= schedule.start_date;
@@ -323,7 +290,6 @@ export async function getPublicSchedules(
       };
     });
 
-    // Si aucun horaire de fermeture n'est défini, retourner un horaire virtuel avec les périodes de fermeture
     if (enrichedClosureSchedules.length === 0) {
       const matchingClosurePeriods = closurePeriods.filter(period => {
         if (query.date) {
@@ -354,8 +320,6 @@ export async function getPublicSchedules(
     return enrichedClosureSchedules;
   }
 
-  // Toujours inclure les horaires 'public' ET 'holiday' pour que le frontend puisse les afficher
-  // Le frontend décidera quand afficher les horaires holiday selon les périodes de vacances
   const audienceTypes = ['public', 'holiday'];
 
   let sql = `SELECT * FROM schedules WHERE audience_type = ANY($1::audience_type[])`;
@@ -369,11 +333,8 @@ export async function getPublicSchedules(
   }
 
   if (query.date) {
-    // Pour une date spécifique, on cherche :
-    // 1. Les horaires récurrents pour le jour de la semaine de cette date
-    // 2. Les exceptions qui couvrent cette date
     const dateObj = new Date(query.date);
-    const dayOfWeek = dateObj.getDay(); // 0 = dimanche, 1 = lundi, etc.
+    const dayOfWeek = dateObj.getDay();
     sql += ` AND (
       (is_exception = false AND day_of_week = $${paramIndex})
       OR
@@ -390,26 +351,18 @@ export async function getPublicSchedules(
   const result = await app.pg.query<Schedule>(sql, params);
   const schedules = result.rows;
 
-  // Enrichir les horaires avec les informations des périodes spéciales
   const enrichedSchedules: PublicSchedule[] = schedules.map(schedule => {
-    // Trouver toutes les périodes de vacances qui correspondent à cet horaire
     const matchingHolidayPeriods = holidayPeriods.filter(period => {
-      // Si l'horaire a des dates spécifiques, vérifier le chevauchement
       if (schedule.start_date && schedule.end_date) {
         return period.start_date <= schedule.end_date && period.end_date >= schedule.start_date;
       }
-      // Si l'horaire est récurrent (pas de dates), on associe toutes les périodes actives
-      // Le frontend décidera quand afficher cet horaire
       return true;
     });
 
-    // Trouver toutes les périodes de fermeture qui correspondent à cet horaire
     const matchingClosurePeriods = closurePeriods.filter(period => {
-      // Si l'horaire a des dates spécifiques, vérifier le chevauchement
       if (schedule.start_date && schedule.end_date) {
         return period.start_date <= schedule.end_date && period.end_date >= schedule.start_date;
       }
-      // Si l'horaire est récurrent, on associe toutes les périodes de fermeture
       return true;
     });
 
@@ -423,9 +376,6 @@ export async function getPublicSchedules(
   return enrichedSchedules;
 }
 
-/**
- * Récupère un horaire par son ID
- */
 export async function getScheduleById(
   app: FastifyInstance,
   id: string
@@ -442,9 +392,6 @@ export async function getScheduleById(
   return result.rows[0] || null;
 }
 
-/**
- * Met à jour un horaire
- */
 export async function updateSchedule(
   app: FastifyInstance,
   id: string,
@@ -454,13 +401,11 @@ export async function updateSchedule(
     throw new Error('Base de données non disponible');
   }
 
-  // Vérifier que l'horaire existe
   const existing = await getScheduleById(app, id);
   if (!existing) {
     throw new Error('Horaire non trouvé');
   }
 
-  // Construire la requête de mise à jour dynamiquement
   const updates: string[] = [];
   const params: any[] = [];
   let paramIndex = 1;
@@ -540,9 +485,6 @@ export async function updateSchedule(
   return result.rows[0];
 }
 
-/**
- * Supprime un horaire
- */
 export async function deleteSchedule(
   app: FastifyInstance,
   id: string
@@ -559,10 +501,6 @@ export async function deleteSchedule(
   return result.rowCount !== null && result.rowCount > 0;
 }
 
-/**
- * Réordonne les horaires selon l'ordre fourni
- * Met à jour les positions de tous les horaires selon l'ordre des IDs fournis
- */
 export async function reorderSchedules(
   app: FastifyInstance,
   data: ReorderSchedulesBody
@@ -575,7 +513,6 @@ export async function reorderSchedules(
     throw new Error('Le tableau schedule_ids ne peut pas être vide');
   }
 
-  // Vérifier que tous les IDs existent
   const placeholders = data.schedule_ids.map((_, i) => `$${i + 1}`).join(', ');
   const existingSchedules = await app.pg.query<Schedule>(
     `SELECT id FROM schedules WHERE id IN (${placeholders})`,
@@ -586,14 +523,12 @@ export async function reorderSchedules(
     throw new Error('Un ou plusieurs IDs d\'horaires sont invalides');
   }
 
-  // Mettre à jour les positions dans une transaction
   try {
     await app.pg.query('BEGIN');
 
-    // Mettre à jour chaque horaire avec sa nouvelle position
     for (let i = 0; i < data.schedule_ids.length; i++) {
       const scheduleId = data.schedule_ids[i];
-      const newPosition = i + 1; // Position commence à 1
+      const newPosition = i + 1;
 
       await app.pg.query(
         'UPDATE schedules SET position = $1, updated_at = current_timestamp WHERE id = $2',
@@ -603,7 +538,6 @@ export async function reorderSchedules(
 
     await app.pg.query('COMMIT');
 
-    // Récupérer tous les horaires mis à jour dans l'ordre
     const result = await app.pg.query<Schedule>(
       `SELECT * FROM schedules WHERE id IN (${placeholders}) ORDER BY position ASC`,
       data.schedule_ids

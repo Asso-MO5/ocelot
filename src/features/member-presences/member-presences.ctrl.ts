@@ -19,9 +19,6 @@ import {
 import { authenticateHook, requireAnyRole, hasAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
 
-/**
- * Handler pour créer ou mettre à jour une présence
- */
 export async function upsertPresenceHandler(
   req: FastifyRequest<{ Body: UpsertPresenceBody }>,
   reply: FastifyReply,
@@ -43,9 +40,6 @@ export async function upsertPresenceHandler(
   }
 }
 
-/**
- * Handler pour récupérer les présences
- */
 export async function getPresencesHandler(
   req: FastifyRequest<{ Querystring: GetPresencesQuery }>,
   reply: FastifyReply,
@@ -56,7 +50,6 @@ export async function getPresencesHandler(
       return reply.code(401).send({ error: 'Non authentifié' });
     }
 
-    // Si l'utilisateur est bureau ou dev, retourner toutes les présences
     const isAdmin = hasAnyRole(req.user, [roles.bureau, roles.dev]);
 
     let presences;
@@ -75,10 +68,6 @@ export async function getPresencesHandler(
     });
   }
 }
-
-/**
- * Handler pour refuser une présence (admin uniquement)
- */
 export async function refusePresenceHandler(
   req: FastifyRequest<{ Params: { id: string }; Body: { refused: boolean } }>,
   reply: FastifyReply,
@@ -99,10 +88,6 @@ export async function refusePresenceHandler(
     });
   }
 }
-
-/**
- * Handler pour supprimer une présence
- */
 export async function deletePresenceHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
@@ -132,25 +117,19 @@ export async function deletePresenceHandler(
   }
 }
 
-/**
- * Enregistre les routes des présences
- */
 export function registerMemberPresencesRoutes(app: FastifyInstance) {
-  // Créer ou mettre à jour une présence (membre connecté)
   app.post<{ Body: UpsertPresenceBody }>('/museum/member-presences', {
     schema: upsertPresenceSchema,
     preHandler: [authenticateHook(app)],
     handler: (req, reply) => upsertPresenceHandler(req, reply, app),
   });
 
-  // Récupérer les présences (membre : ses propres présences, admin : toutes)
   app.get<{ Querystring: GetPresencesQuery }>('/museum/member-presences', {
     schema: getPresencesSchema,
     preHandler: [authenticateHook(app)],
     handler: (req, reply) => getPresencesHandler(req, reply, app),
   });
 
-  // Refuser une présence (bureau et dev uniquement)
   app.put<{ Params: { id: string }; Body: { refused: boolean } }>('/museum/member-presences/:id/refuse', {
     schema: refusePresenceSchema,
     preHandler: [
@@ -160,7 +139,6 @@ export function registerMemberPresencesRoutes(app: FastifyInstance) {
     handler: (req, reply) => refusePresenceHandler(req, reply, app),
   });
 
-  // Supprimer une présence (membre : sa propre présence, admin : n'importe quelle présence)
   app.delete<{ Params: { id: string } }>('/museum/member-presences/:id', {
     schema: deletePresenceSchema,
     preHandler: [authenticateHook(app)],

@@ -1,7 +1,3 @@
-/**
- * Schémas de validation Fastify pour les codes cadeaux
- */
-
 export const createGiftCodePackSchema = {
   body: {
     type: 'object',

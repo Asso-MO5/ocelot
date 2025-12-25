@@ -1,54 +1,24 @@
-/**
- * Types pour la gestion des paramètres du musée
- */
-
-/**
- * Type de valeur pour un paramètre
- */
 export type SettingValueType = 'string' | 'number' | 'boolean' | 'json';
 
-/**
- * Paramètre du musée en base de données
- */
 export interface MuseumSetting {
   id: string;
   key: string;
-  value: string; // Stocké en texte, à parser selon value_type
+  value: string;
   value_type: SettingValueType;
   description: string | null;
   created_at: string;
   updated_at: string;
 }
 
-/**
- * Corps de requête pour créer ou mettre à jour un paramètre
- */
 export interface UpsertSettingBody {
   key: string;
   value: string | number | boolean | object;
-  value_type?: SettingValueType; // Auto-détecté si non fourni
+  value_type?: SettingValueType;
   description?: string;
 }
 
-/**
- * Paramètres de requête pour récupérer les paramètres
- */
 export interface GetSettingsQuery {
-  key?: string; // Filtrer par clé spécifique
+  key?: string;
 }
 
-/**
- * Valeur parsée d'un paramètre selon son type
- */
 export type ParsedSettingValue = string | number | boolean | object;
-
-/**
- * Paramètres de requête pour récupérer les tickets validés d'un créneau
- */
-export interface GetValidatedTicketsBySlotQuery {
-  reservation_date: string; // Format YYYY-MM-DD
-  slot_start_time: string; // Format HH:MM:SS
-  slot_end_time: string; // Format HH:MM:SS
-  include_adjacent_slots?: boolean; // Inclure les créneaux adjacents (par défaut: true)
-}
-

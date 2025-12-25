@@ -1,15 +1,6 @@
-export interface CheckoutSessionRequest {
-  amount: number;
-  currency: string;
-  description?: string;
-  success_url: string;
-  cancel_url: string;
-  metadata?: Record<string, string>;
-}
-
 export interface CheckoutSessionResponse {
-  id: string; // session_id
-  url: string; // checkout_url
+  id: string;
+  url: string;
   amount_total: number;
   currency: string;
   status?: 'open' | 'complete' | 'expired';
@@ -26,18 +17,14 @@ export interface CheckoutStatus {
   metadata?: Record<string, string>;
 }
 
-/**
- * Corps de requête du webhook pour les notifications de paiement
- * Format standard Stripe Event
- */
 export interface WebhookBody {
-  id: string; // ID de l'événement
-  type: string; // Type d'événement (checkout.session.completed, payment_intent.succeeded, etc.)
-  created: number; // Timestamp Unix
+  id: string;
+  type: string;
+  created: number;
   data: {
     object: {
-      id: string; // session_id ou payment_intent_id
-      object: string; // 'checkout.session' ou 'payment_intent'
+      id: string;
+      object: string;
       amount_total?: number;
       currency?: string;
       status?: string;

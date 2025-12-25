@@ -10,7 +10,6 @@ import {
 import type {
   UpsertSettingBody,
   GetSettingsQuery,
-  GetValidatedTicketsBySlotQuery,
 } from './settings.types.ts';
 import {
   upsertSettingSchema,
@@ -19,22 +18,16 @@ import {
   deleteSettingSchema,
   getMaxCapacitySchema,
   setMaxCapacitySchema,
-  getValidatedTicketsBySlotSchema,
 } from './settings.schemas.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
-import { getValidatedTicketsBySlot } from '../tickets/tickets.service.ts';
 
-/**
- * Handler pour créer ou mettre à jour un paramètre
- */
 export async function upsertSettingHandler(
   req: FastifyRequest<{ Body: UpsertSettingBody }>,
   reply: FastifyReply,
   app: FastifyInstance
 ) {
   try {
-    // Vérifier si le paramètre existe déjà
     const existing = await getSettingByKey(app, req.body.key);
     const setting = await upsertSetting(app, req.body);
 
@@ -50,9 +43,6 @@ export async function upsertSettingHandler(
   }
 }
 
-/**
- * Handler pour récupérer tous les paramètres
- */
 export async function getSettingsHandler(
   req: FastifyRequest<{ Querystring: GetSettingsQuery }>,
   reply: FastifyReply,
@@ -67,9 +57,6 @@ export async function getSettingsHandler(
   }
 }
 
-/**
- * Handler pour récupérer un paramètre par sa clé
- */
 export async function getSettingByKeyHandler(
   req: FastifyRequest<{ Params: { key: string } }>,
   reply: FastifyReply,
@@ -89,9 +76,6 @@ export async function getSettingByKeyHandler(
   }
 }
 
-/**
- * Handler pour supprimer un paramètre
- */
 export async function deleteSettingHandler(
   req: FastifyRequest<{ Params: { key: string } }>,
   reply: FastifyReply,
@@ -111,9 +95,6 @@ export async function deleteSettingHandler(
   }
 }
 
-/**
- * Handler pour récupérer la capacité maximale
- */
 export async function getMaxCapacityHandler(
   _req: FastifyRequest,
   reply: FastifyReply,
@@ -127,10 +108,6 @@ export async function getMaxCapacityHandler(
     return reply.code(500).send({ error: 'Erreur lors de la récupération de la capacité maximale' });
   }
 }
-
-/**
- * Handler pour définir la capacité maximale
- */
 export async function setMaxCapacityHandler(
   req: FastifyRequest<{ Body: { max_capacity: number } }>,
   reply: FastifyReply,
@@ -145,7 +122,7 @@ export async function setMaxCapacityHandler(
 
     const setting = await setMaxCapacity(app, max_capacity);
 
-    (app.ws as any).send('capacity', 'refetch')
+    (app.ws as any)?.send('capacity', 'refetch');
     return reply.send(setting);
   } catch (err: any) {
     app.log.error({ err, body: req.body }, 'Erreur lors de la définition de la capacité maximale');
@@ -153,49 +130,9 @@ export async function setMaxCapacityHandler(
   }
 }
 
-/**
- * Handler pour récupérer les tickets validés d'un créneau
- */
-export async function getValidatedTicketsBySlotHandler(
-  req: FastifyRequest<{ Querystring: GetValidatedTicketsBySlotQuery }>,
-  reply: FastifyReply,
-  app: FastifyInstance
-) {
-  try {
-    const { reservation_date, slot_start_time, slot_end_time, include_adjacent_slots = true } = req.query;
 
-    if (!reservation_date || !slot_start_time || !slot_end_time) {
-      return reply.code(400).send({
-        error: 'Les paramètres reservation_date, slot_start_time et slot_end_time sont requis'
-      });
-    }
 
-    const result = await getValidatedTicketsBySlot(
-      app,
-      reservation_date,
-      slot_start_time,
-      slot_end_time,
-      include_adjacent_slots
-    );
-
-    return reply.send({
-      count: result.count,
-      tickets: result.tickets,
-    });
-  } catch (err: any) {
-    app.log.error({ err, query: req.query }, 'Erreur lors de la récupération des tickets validés');
-    return reply.code(500).send({ error: 'Erreur lors de la récupération des tickets validés' });
-  }
-}
-
-/**
- * Enregistre les routes pour les paramètres du musée
- * 
- * Routes publiques : GET (lecture)
- * Routes protégées : POST, PUT, DELETE (écriture) - uniquement pour les rôles "bureau" et "dev"
- */
 export function registerSettingsRoutes(app: FastifyInstance) {
-  // Routes publiques : lecture des paramètres
   app.get<{ Querystring: GetSettingsQuery }>(
     '/museum/settings',
     {
@@ -212,7 +149,6 @@ export function registerSettingsRoutes(app: FastifyInstance) {
     async (req, reply) => getSettingByKeyHandler(req, reply, app)
   );
 
-  // Routes publiques spécifiques pour la capacité
   app.get(
     '/museum/capacity/max',
     {
@@ -221,7 +157,6 @@ export function registerSettingsRoutes(app: FastifyInstance) {
     async (_req, reply) => getMaxCapacityHandler(_req, reply, app)
   );
 
-  // Routes protégées : modification des paramètres (uniquement bureau et dev)
   app.post<{ Body: UpsertSettingBody }>(
     '/museum/settings',
     {
@@ -258,7 +193,6 @@ export function registerSettingsRoutes(app: FastifyInstance) {
     async (req, reply) => deleteSettingHandler(req, reply, app)
   );
 
-  // Routes protégées spécifiques pour la capacité
   app.post<{ Body: { max_capacity: number } }>(
     '/museum/capacity/max',
     {
@@ -269,19 +203,6 @@ export function registerSettingsRoutes(app: FastifyInstance) {
       ],
     },
     async (req, reply) => setMaxCapacityHandler(req, reply, app)
-  );
-
-  // Route protégée : récupération des tickets validés d'un créneau (dev, bureau, museum)
-  app.get<{ Querystring: GetValidatedTicketsBySlotQuery }>(
-    '/museum/capacity/validated-tickets',
-    {
-      schema: getValidatedTicketsBySlotSchema,
-      preHandler: [
-        authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
-      ],
-    },
-    async (req, reply) => getValidatedTicketsBySlotHandler(req, reply, app)
   );
 }
 

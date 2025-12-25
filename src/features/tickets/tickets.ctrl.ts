@@ -37,9 +37,6 @@ import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
 import { handleStructuredError } from './tickets.errors.ts';
 
-/**
- * Handler pour créer un ticket
- */
 export async function createTicketHandler(
   req: FastifyRequest<{ Body: CreateTicketBody }>,
   reply: FastifyReply,
@@ -51,7 +48,6 @@ export async function createTicketHandler(
   } catch (err: any) {
     app.log.error({ err, body: req.body }, 'Erreur lors de la création du ticket');
 
-    // Gérer les erreurs structurées
     const handled = handleStructuredError(err, reply);
     if (handled.sent) return;
 
@@ -59,10 +55,7 @@ export async function createTicketHandler(
   }
 }
 
-/**
- * Handler pour créer plusieurs tickets avec paiement
- */
-export async function createTicketsWithPaymentHandler(
+async function createTicketsWithPaymentHandler(
   req: FastifyRequest<{ Body: CreateTicketsWithPaymentBody }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -85,10 +78,7 @@ export async function createTicketsWithPaymentHandler(
   }
 }
 
-/**
- * Handler pour récupérer tous les tickets
- */
-export async function getTicketsHandler(
+async function getTicketsHandler(
   req: FastifyRequest<{ Querystring: GetTicketsQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -106,9 +96,6 @@ export async function getTicketsHandler(
   }
 }
 
-/**
- * Handler pour récupérer un ticket par son ID
- */
 export async function getTicketByIdHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
@@ -132,10 +119,7 @@ export async function getTicketByIdHandler(
   }
 }
 
-/**
- * Handler admin pour régénérer le PDF d'un ticket et l'afficher
- */
-export async function regenerateTicketPDFHandler(
+async function regenerateTicketPDFHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -173,10 +157,7 @@ export async function regenerateTicketPDFHandler(
   }
 }
 
-/**
- * Handler pour récupérer un ticket par son code QR
- */
-export async function getTicketByQRCodeHandler(
+async function getTicketByQRCodeHandler(
   req: FastifyRequest<{ Params: { qrCode: string } }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -199,10 +180,7 @@ export async function getTicketByQRCodeHandler(
   }
 }
 
-/**
- * Handler pour afficher la page HTML de visualisation du ticket
- */
-export async function viewTicketPageHandler(
+async function viewTicketPageHandler(
   req: FastifyRequest<{ Params: { qrCode: string } }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -233,7 +211,6 @@ export async function viewTicketPageHandler(
       `);
     }
 
-    // Vérifier la validité du ticket
     const isValid = ticket.status === 'paid' && !ticket.used_at;
     const reservationDate = new Date(ticket.reservation_date);
     const today = new Date();
@@ -241,7 +218,6 @@ export async function viewTicketPageHandler(
     reservationDate.setHours(0, 0, 0, 0);
     const isDateValid = reservationDate >= today;
 
-    // Ne pas générer la page si le ticket n'est pas valide
     if (!isValid || !isDateValid) {
       return reply.code(404).type('text/html').send(`
         <!DOCTYPE html>
@@ -287,10 +263,7 @@ export async function viewTicketPageHandler(
   }
 }
 
-/**
- * Handler pour récupérer tous les tickets par checkout_id
- */
-export async function getTicketsByCheckoutIdHandler(
+async function getTicketsByCheckoutIdHandler(
   req: FastifyRequest<{ Params: { checkoutId: string } }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -308,10 +281,7 @@ export async function getTicketsByCheckoutIdHandler(
   }
 }
 
-/**
- * Handler pour récupérer les statistiques des tickets
- */
-export async function getTicketsStatsHandler(
+async function getTicketsStatsHandler(
   _req: FastifyRequest,
   reply: FastifyReply,
   app: FastifyInstance
@@ -329,10 +299,7 @@ export async function getTicketsStatsHandler(
   }
 }
 
-/**
- * Handler pour récupérer les statistiques des créneaux horaires de la semaine courante
- */
-export async function getWeeklySlotsStatsHandler(
+async function getWeeklySlotsStatsHandler(
   _req: FastifyRequest,
   reply: FastifyReply,
   app: FastifyInstance
@@ -346,9 +313,6 @@ export async function getWeeklySlotsStatsHandler(
   }
 }
 
-/**
- * Handler pour mettre à jour un ticket
- */
 export async function updateTicketHandler(
   req: FastifyRequest<{ Params: { id: string }; Body: UpdateTicketBody }>,
   reply: FastifyReply,
@@ -378,9 +342,6 @@ export async function updateTicketHandler(
   }
 }
 
-/**
- * Handler pour valider/utiliser un ticket (scan QR)
- */
 export async function validateTicketHandler(
   req: FastifyRequest<{ Body: ValidateTicketBody }>,
   reply: FastifyReply,
@@ -412,9 +373,6 @@ export async function validateTicketHandler(
   }
 }
 
-/**
- * Handler pour supprimer un ticket
- */
 export async function deleteTicketHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
@@ -438,21 +396,7 @@ export async function deleteTicketHandler(
   }
 }
 
-/**
- * Enregistre les routes pour les tickets
- * 
- * Routes publiques : 
- *   - GET /museum/tickets (lecture avec filtres)
- *   - GET /museum/tickets/qr/:qrCode (récupération par code QR)
- * 
- * Routes protégées membres : 
- *   - GET /museum/tickets/:id (récupération par ID)
- * 
- * Routes protégées : 
- *   - POST, PUT, DELETE, POST /museum/tickets/validate (écriture) - uniquement pour les rôles "bureau", "museum" et "dev"
- */
 export function registerTicketsRoutes(app: FastifyInstance) {
-  // Routes publiques : lecture des tickets
   app.get<{ Querystring: GetTicketsQuery }>(
     '/museum/tickets',
     {
@@ -488,7 +432,6 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => getTicketByQRCodeHandler(req, reply, app)
   );
 
-  // Route protégée : validation/scan QR (uniquement bureau et dev)
   app.post<{ Body: ValidateTicketBody }>(
     '/museum/tickets/validate',
     {
@@ -501,7 +444,6 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => validateTicketHandler(req, reply, app)
   );
 
-  // Route admin : régénérer le PDF d'un ticket et l'afficher
   app.get<{ Params: { id: string } }>(
     '/admin/tickets/:id/pdf',
     {
@@ -522,7 +464,6 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => regenerateTicketPDFHandler(req, reply, app)
   );
 
-  // Route publique : récupération des tickets par checkout_id
   app.get<{ Params: { checkoutId: string } }>(
     '/museum/tickets/checkout/:checkoutId',
     {
@@ -531,7 +472,6 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => getTicketsByCheckoutIdHandler(req, reply, app)
   );
 
-  // Route publique : page HTML de visualisation du ticket
   app.get<{ Params: { qrCode: string } }>(
     '/tickets/:qrCode',
     async (req, reply) => viewTicketPageHandler(req, reply, app)
@@ -550,7 +490,6 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (_req, reply) => getTicketsStatsHandler(_req, reply, app)
   );
 
-  // Route publique : statistiques des créneaux de la semaine courante
   app.get(
     '/museum/tickets/weekly-slots-stats',
     {
@@ -563,7 +502,6 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (_req, reply) => getWeeklySlotsStatsHandler(_req, reply, app)
   );
 
-  // Route protégée membres : récupération par ID
   app.get<{ Params: { id: string } }>(
     '/museum/tickets/:id',
     {
@@ -573,7 +511,6 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => getTicketByIdHandler(req, reply, app)
   );
 
-  // Routes protégées : modification des tickets (uniquement bureau et dev)
   app.post<{ Body: CreateTicketBody }>(
     '/museum/tickets',
     {
@@ -586,7 +523,6 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => createTicketHandler(req, reply, app)
   );
 
-  // Route publique : création de plusieurs tickets avec paiement
   app.post<{ Body: CreateTicketsWithPaymentBody }>(
     '/museum/tickets/payment',
     {

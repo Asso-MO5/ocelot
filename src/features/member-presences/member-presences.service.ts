@@ -7,9 +7,6 @@ import type {
   PresenceDay,
 } from './member-presences.types.ts';
 
-/**
- * Récupère l'ID utilisateur depuis discord_id
- */
 async function getUserIdFromDiscordId(
   app: FastifyInstance,
   discordId: string
@@ -26,9 +23,6 @@ async function getUserIdFromDiscordId(
   return result.rows[0]?.id ?? null;
 }
 
-/**
- * Crée ou met à jour une présence pour un membre
- */
 export async function upsertPresence(
   app: FastifyInstance,
   discordId: string,
@@ -38,19 +32,16 @@ export async function upsertPresence(
     throw new Error('Base de données non disponible');
   }
 
-  // Récupérer l'ID utilisateur depuis discord_id
   const userId = await getUserIdFromDiscordId(app, discordId);
   if (!userId) {
     throw new Error('Utilisateur non trouvé');
   }
 
-  // Vérifier que la date est valide
   const date = new Date(data.date);
   if (isNaN(date.getTime())) {
     throw new Error('Date invalide');
   }
 
-  // Créer ou mettre à jour la présence
   const result = await app.pg.query<MemberPresence & { user_name: string }>(
     `INSERT INTO member_presences (user_id, date, period, refused_by_admin)
      VALUES ($1, $2, $3, false)
@@ -77,9 +68,6 @@ export async function upsertPresence(
   };
 }
 
-/**
- * Récupère les présences pour un membre (ses propres présences)
- */
 export async function getPresencesForMember(
   app: FastifyInstance,
   discordId: string,
@@ -89,7 +77,6 @@ export async function getPresencesForMember(
     throw new Error('Base de données non disponible');
   }
 
-  // Récupérer l'ID utilisateur depuis discord_id
   const userId = await getUserIdFromDiscordId(app, discordId);
   if (!userId) {
     throw new Error('Utilisateur non trouvé');
@@ -98,7 +85,6 @@ export async function getPresencesForMember(
   const startDate = new Date(query.start_date);
   const endDate = query.end_date ? new Date(query.end_date) : new Date(query.start_date);
 
-  // Générer tous les jours de la plage
   const days: PresenceDay[] = [];
   const currentDate = new Date(startDate);
 
@@ -115,7 +101,6 @@ export async function getPresencesForMember(
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Récupérer les présences pour cette plage
   const result = await app.pg.query<MemberPresence & { user_name: string }>(
     `SELECT 
        mp.id,
@@ -134,10 +119,8 @@ export async function getPresencesForMember(
     [userId, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
   );
 
-  // Organiser les présences par jour
   const presencesByDate = new Map<string, MemberPresence[]>();
   for (const row of result.rows) {
-    // La date est déjà formatée en string par TO_CHAR
     const dateStr = String(row.date);
 
     if (!presencesByDate.has(dateStr)) {
@@ -155,7 +138,6 @@ export async function getPresencesForMember(
     });
   }
 
-  // Remplir les jours avec les présences
   for (const day of days) {
     day.presences = presencesByDate.get(day.date) ?? [];
   }
@@ -167,9 +149,6 @@ export async function getPresencesForMember(
   };
 }
 
-/**
- * Récupère toutes les présences (pour bureau et dev)
- */
 export async function getAllPresences(
   app: FastifyInstance,
   query: GetPresencesQuery
@@ -181,7 +160,6 @@ export async function getAllPresences(
   const startDate = new Date(query.start_date);
   const endDate = query.end_date ? new Date(query.end_date) : new Date(query.start_date);
 
-  // Générer tous les jours de la plage
   const days: PresenceDay[] = [];
   const currentDate = new Date(startDate);
 
@@ -198,7 +176,6 @@ export async function getAllPresences(
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Récupérer toutes les présences pour cette plage
   const result = await app.pg.query<MemberPresence & { user_name: string }>(
     `SELECT 
        mp.id,
@@ -216,10 +193,8 @@ export async function getAllPresences(
     [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
   );
 
-  // Organiser les présences par jour
   const presencesByDate = new Map<string, MemberPresence[]>();
   for (const row of result.rows) {
-    // La date est déjà formatée en string par TO_CHAR
     const dateStr = String(row.date);
 
     if (!presencesByDate.has(dateStr)) {
@@ -237,7 +212,6 @@ export async function getAllPresences(
     });
   }
 
-  // Remplir les jours avec les présences
   for (const day of days) {
     day.presences = presencesByDate.get(day.date) ?? [];
   }
@@ -249,9 +223,6 @@ export async function getAllPresences(
   };
 }
 
-/**
- * Refuse ou accepte une présence (admin uniquement)
- */
 export async function refusePresence(
   app: FastifyInstance,
   presenceId: string,
@@ -288,9 +259,6 @@ export async function refusePresence(
   };
 }
 
-/**
- * Supprime une présence
- */
 export async function deletePresence(
   app: FastifyInstance,
   presenceId: string,
@@ -301,13 +269,11 @@ export async function deletePresence(
     throw new Error('Base de données non disponible');
   }
 
-  // Vérifier que la présence existe et que l'utilisateur peut la supprimer
   const userId = await getUserIdFromDiscordId(app, discordId);
   if (!userId) {
     throw new Error('Utilisateur non trouvé');
   }
 
-  // Si ce n'est pas un admin, vérifier que la présence appartient à l'utilisateur
   if (!isAdmin) {
     const checkResult = await app.pg.query<{ user_id: string }>(
       `SELECT user_id FROM member_presences WHERE id = $1`,

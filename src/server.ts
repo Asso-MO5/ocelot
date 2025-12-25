@@ -43,15 +43,14 @@ app.addHook('onRequest', async (_req, reply) => {
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
 });
 
-// Hook pour parser le JSON même si le Content-Type n'est pas correct
-// Stocke aussi le raw body pour la vérification de signature Stripe
+
+/**
+ * Pour Stripe, préserver le Buffer brut pour la vérification de signature
+ */
 app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
-  // Pour la route webhook Stripe, préserver le Buffer brut (nécessaire pour la vérification de signature)
   if (req.url === '/pay/webhook') {
-    // Stocker le Buffer brut pour Stripe (nécessaire pour la vérification de signature)
     (req as any).rawBody = body;
     try {
-      // Parser le JSON pour req.body
       const json = JSON.parse(body.toString('utf-8'));
       done(null, json);
     } catch (err) {
@@ -60,11 +59,9 @@ app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, 
     return;
   }
 
-  // Pour les autres routes, comportement normal
   const bodyString = body.toString('utf-8');
   (req as any).rawBody = bodyString;
 
-  // Si le body est vide, retourner undefined
   if (!bodyString.trim()) {
     done(null, undefined);
     return;
@@ -79,9 +76,7 @@ app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, 
 });
 
 app.addContentTypeParser('*', { parseAs: 'buffer' }, (req, body, done) => {
-  // Pour la route webhook Stripe, préserver le Buffer brut
   if (req.url === '/pay/webhook') {
-    // Si rawBody n'a pas déjà été défini par le parser application/json
     if (!(req as any).rawBody) {
       (req as any).rawBody = body;
     }
@@ -94,7 +89,6 @@ app.addContentTypeParser('*', { parseAs: 'buffer' }, (req, body, done) => {
     return;
   }
 
-  // Pour les autres routes, comportement normal
   const bodyString = body.toString('utf-8');
   if (!(req as any).rawBody) {
     (req as any).rawBody = bodyString;
@@ -116,22 +110,20 @@ app.addContentTypeParser('*', { parseAs: 'buffer' }, (req, body, done) => {
 
 const start = async () => {
   try {
+
     const allowedOrigins = process.env.CORS_ORIGINS?.split(',').map(o => o.trim()) || [
       'http://localhost:3000'
     ];
 
     await app.register(websocket);
 
-    let currentRequestUrl: string | null = null;    // Hook pour capturer l'URL de la requête avant le traitement CORS
+    let currentRequestUrl: string | null = null;
     app.addHook('onRequest', async (request) => {
       currentRequestUrl = request.url;
     });
     await app.register(cors, {
       origin: (origin, callback) => {
-        // Extraire le pathname sans les query parameters
         const pathname = currentRequestUrl ? currentRequestUrl.split('?')[0] : null;
-        // Routes qui peuvent être appelées sans origin même en production
-        // Note: Les WebSockets utilisent un handshake HTTP spécial, donc on les autorise
         const isPublicRoute = pathname && (
           pathname === '/auth/signin' ||
           pathname === '/auth/callback' ||
@@ -140,7 +132,7 @@ const start = async () => {
           pathname === '/pay/webhook' ||
           pathname === '/museum/slots' ||
           pathname.startsWith('/tickets/') ||
-          pathname === '/' // Route WebSocket
+          pathname === '/' // WebSocket
         );
 
         if (!origin) {
@@ -201,9 +193,8 @@ const start = async () => {
       app.log.warn('⚠️  DATABASE_URL non configuré, la base de données ne sera pas disponible');
     }
 
-    // Configurer la tâche périodique pour nettoyer les tickets pending expirés
-    // S'exécute toutes les minutes
     if (app.pg) {
+
 
       const cleanupTask = new AsyncTask(
         'cleanup-expired-pending-tickets',
@@ -227,9 +218,11 @@ const start = async () => {
       const cleanupJob = new SimpleIntervalJob({ minutes: 15 }, cleanupTask);
 
       await app.register(fastifySchedule);
-      // Attendre que l'app soit prête avant d'ajouter le job
       await app.ready();
+
+      // CRON TASKS 
       app.scheduler.addSimpleIntervalJob(cleanupJob);
+
       app.log.info('✅ Tâche de nettoyage des tickets pending expirés configurée (toutes les minutes)');
     }
 

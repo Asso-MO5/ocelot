@@ -1,14 +1,6 @@
 import type { FastifySchema } from 'fastify';
 
-/**
- * Schémas de validation et sérialisation Fastify pour les routes d'authentification
- * Basés sur JSON Schema Draft 7
- */
-
-/**
- * Schéma pour les paramètres de query du callback OAuth2
- */
-export const callbackQuerySchema = {
+const callbackQuerySchema = {
   type: 'object',
   properties: {
     code: {
@@ -26,28 +18,7 @@ export const callbackQuerySchema = {
   },
 } as const;
 
-/**
- * Schéma de réponse pour /auth/session
- */
-export const sessionResponseSchema = {
-  type: 'object',
-  properties: {
-    authenticated: {
-      type: 'boolean',
-      description: 'Indique si l\'utilisateur est authentifié',
-    },
-    hasRefreshToken: {
-      type: 'boolean',
-      description: 'Indique si un refresh token est disponible',
-    },
-  },
-  required: ['authenticated', 'hasRefreshToken'],
-} as const;
-
-/**
- * Schéma de réponse pour /auth/me (succès)
- */
-export const meResponseSchema = {
+const meResponseSchema = {
   type: 'object',
   properties: {
     id: {
@@ -82,10 +53,7 @@ export const meResponseSchema = {
   required: ['id', 'username', 'discriminator', 'avatar', 'roles'],
 } as const;
 
-/**
- * Schéma de réponse d'erreur générique
- */
-export const errorResponseSchema = {
+const errorResponseSchema = {
   type: 'object',
   properties: {
     error: {
@@ -96,18 +64,10 @@ export const errorResponseSchema = {
   required: ['error'],
 } as const;
 
-/**
- * Schéma complet pour la route /auth/callback
- */
 export const callbackSchema: FastifySchema = {
   querystring: callbackQuerySchema,
-  // Pas de réponse car c'est une redirection
 } as const;
 
-
-/**
- * Schéma complet pour la route /auth/me
- */
 export const meSchema: FastifySchema = {
   response: {
     200: meResponseSchema,
@@ -116,10 +76,6 @@ export const meSchema: FastifySchema = {
   },
 } as const;
 
-/**
- * Schéma complet pour les routes /auth/signin et /auth/login
- * Pas de validation nécessaire car ce sont des redirections
- */
 export const signinSchema: FastifySchema = {
   response: {
     302: {

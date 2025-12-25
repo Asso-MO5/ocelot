@@ -1,7 +1,3 @@
-/**
- * Schémas JSON pour le module donation-proof
- */
-
 export const generateDonationProofSchema = {
   querystring: {
     type: 'object',

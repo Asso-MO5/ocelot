@@ -28,9 +28,6 @@ import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
 import { emailUtils } from '../email/email.utils.ts';
 
-/**
- * Handler pour créer un pack de codes cadeaux
- */
 export async function createGiftCodePackHandler(
   req: FastifyRequest<{ Body: CreateGiftCodePackBody }>,
   reply: FastifyReply,
@@ -45,10 +42,7 @@ export async function createGiftCodePackHandler(
   }
 }
 
-/**
- * Handler pour distribuer des codes cadeaux par email
- */
-export async function distributeGiftCodesHandler(
+async function distributeGiftCodesHandler(
   req: FastifyRequest<{ Body: DistributeGiftCodesBody }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -60,7 +54,6 @@ export async function distributeGiftCodesHandler(
       return reply.code(500).send({ error: 'Base de données non disponible' });
     }
 
-    // Récupérer les codes
     const codesResult = await app.pg.query<{ id: string; code: string; status: string }>(
       `SELECT id, code, status FROM gift_codes WHERE id = ANY($1::uuid[])`,
       [code_ids]
@@ -70,7 +63,6 @@ export async function distributeGiftCodesHandler(
       return reply.code(400).send({ error: 'Certains codes n\'existent pas' });
     }
 
-    // Vérifier que les codes ne sont pas déjà utilisés
     const usedCodes = codesResult.rows.filter(c => c.status !== 'unused');
     if (usedCodes.length > 0) {
       return reply.code(400).send({
@@ -78,7 +70,6 @@ export async function distributeGiftCodesHandler(
       });
     }
 
-    // Mettre à jour les codes avec l'email du destinataire
     await app.pg.query(
       `UPDATE gift_codes 
        SET recipient_email = $1, updated_at = current_timestamp 
@@ -86,7 +77,6 @@ export async function distributeGiftCodesHandler(
       [recipient_email, code_ids]
     );
 
-    // Générer le contenu de l'email
     const codesList = codesResult.rows.map(c => c.code).join('<br>');
     const emailSubject = subject || (language === 'en'
       ? 'Your gift codes for the Video Game Museum'
@@ -109,7 +99,6 @@ export async function distributeGiftCodesHandler(
         : 'Cordialement,<br>L\'équipe MO5.com'}</p>
     `;
 
-    // Envoyer l'email
     await emailUtils.sendEmail({
       email: recipient_email,
       name: recipient_email,
@@ -135,10 +124,7 @@ export async function distributeGiftCodesHandler(
   }
 }
 
-/**
- * Handler pour récupérer les codes cadeaux
- */
-export async function getGiftCodesHandler(
+async function getGiftCodesHandler(
   req: FastifyRequest<{ Querystring: GetGiftCodesQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -152,9 +138,6 @@ export async function getGiftCodesHandler(
   }
 }
 
-/**
- * Handler pour valider un code cadeau
- */
 export async function validateGiftCodeHandler(
   req: FastifyRequest<{ Params: { code: string } }>,
   reply: FastifyReply,
@@ -179,10 +162,7 @@ export async function validateGiftCodeHandler(
   }
 }
 
-/**
- * Handler pour récupérer les packs de codes cadeaux
- */
-export async function getGiftCodePacksHandler(
+async function getGiftCodePacksHandler(
   req: FastifyRequest<{ Querystring: GetGiftCodePacksQuery }>,
   reply: FastifyReply,
   app: FastifyInstance
@@ -196,9 +176,6 @@ export async function getGiftCodePacksHandler(
   }
 }
 
-/**
- * Handler public : initier l'achat de codes cadeaux
- */
 export async function purchaseGiftCodesHandler(
   req: FastifyRequest<{ Body: PurchaseGiftCodesBody }>,
   reply: FastifyReply,
@@ -214,9 +191,6 @@ export async function purchaseGiftCodesHandler(
   }
 }
 
-/**
- * Handler public : confirmer l'achat de codes cadeaux après paiement
- */
 export async function confirmPurchaseGiftCodesHandler(
   req: FastifyRequest<{ Body: ConfirmPurchaseGiftCodesBody }>,
   reply: FastifyReply,
@@ -234,11 +208,7 @@ export async function confirmPurchaseGiftCodesHandler(
   }
 }
 
-/**
- * Enregistre les routes pour les codes cadeaux
- */
 export function registerGiftCodesRoutes(app: FastifyInstance) {
-  // Route protégée : création d'un pack de codes cadeaux
   app.post<{ Body: CreateGiftCodePackBody }>(
     '/museum/gift-codes/packs',
     {
@@ -251,7 +221,6 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
     async (req, reply) => createGiftCodePackHandler(req, reply, app)
   );
 
-  // Route protégée : distribution de codes par email
   app.post<{ Body: DistributeGiftCodesBody }>(
     '/museum/gift-codes/distribute',
     {
@@ -264,7 +233,6 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
     async (req, reply) => distributeGiftCodesHandler(req, reply, app)
   );
 
-  // Route protégée : récupération des codes cadeaux
   app.get<{ Querystring: GetGiftCodesQuery }>(
     '/museum/gift-codes',
     {
@@ -277,7 +245,6 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
     async (req, reply) => getGiftCodesHandler(req, reply, app)
   );
 
-  // Route protégée : récupération des packs de codes cadeaux avec leurs codes
   app.get<{ Querystring: GetGiftCodePacksQuery }>(
     '/museum/gift-codes/packs',
     {
@@ -290,7 +257,6 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
     async (req, reply) => getGiftCodePacksHandler(req, reply, app)
   );
 
-  // Route publique : validation d'un code cadeau (pour le frontend)
   app.get<{ Params: { code: string } }>(
     '/museum/gift-codes/validate/:code',
     {
@@ -299,7 +265,6 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
     async (req, reply) => validateGiftCodeHandler(req, reply, app)
   );
 
-  // Route publique : achat de codes cadeaux (checkout Stripe)
   app.post<{ Body: PurchaseGiftCodesBody }>(
     '/museum/gift-codes/purchase',
     {
@@ -308,7 +273,6 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
     async (req, reply) => purchaseGiftCodesHandler(req, reply, app)
   );
 
-  // Route publique : confirmation après paiement réussi
   app.post<{ Body: ConfirmPurchaseGiftCodesBody }>(
     '/museum/gift-codes/purchase/confirm',
     {
