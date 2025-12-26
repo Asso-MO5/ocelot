@@ -123,21 +123,7 @@ paths:
       tags:
         - Authentification
       summary: "Alias de /auth/signin - Redirige vers Discord OAuth2"
-      description: "**Redirection vers Discord via /auth/login** : je devrais être redirigé vers Discord OAuth2 le comportement devrait être identique à \"/auth/signin\"
-
-### Scénarios de test
-
-**Redirection vers Discord via /auth/login**
-
-📋 que je suis un utilisateur non authentifié
-
-⚡ je fais une requête GET vers \"/auth/login\"
-
-✅ je devrais être redirigé vers Discord OAuth2
-
-✅ le comportement devrait être identique à \"/auth/signin\"
-
-"
+      description: ""
       operationId: "get_auth_login"
       parameters:
       responses:
@@ -210,15 +196,17 @@ paths:
       tags:
         - Authentification
       summary: "Récupère les informations de l'utilisateur authentifié (gère automatiquement le refresh du token)"
-      description: "**Récupération des données utilisateur - token valide** : je devrais recevoir mes informations utilisateur la réponse devrait contenir id, username, discriminator, avatar la réponse devrait contenir email si le scope email est accordé
+      description: "**Récupération des données utilisateur - token valide** : je devrais recevoir mes informations utilisateur la réponse devrait contenir id, username, discriminator, avatar la réponse devrait contenir email si le scope email est accordé la réponse devrait contenir roles l'utilisateur devrait être sauvegardé en base de données
 
 **Récupération des données utilisateur - token expiré avec refresh automatique** : que j'ai un refresh_token valide le refresh_token devrait être utilisé pour obtenir un nouveau access_token les nouveaux tokens devraient être stockés dans les cookies je devrais recevoir mes informations utilisateur
 
-**Récupération des données utilisateur - token expiré sans refresh token** : que je n'ai pas de refresh_token je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Token expiré et aucun refresh token disponible\"
+**Récupération des données utilisateur - token expiré sans refresh token** : que je n'ai pas de refresh_token je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"
 
-**Récupération des données utilisateur - refresh token invalide** : que mon refresh_token est invalide je devrais recevoir une erreur 401 les cookies devraient être supprimés le message d'erreur devrait indiquer \"Session expirée, veuillez vous reconnecter\"
+**Récupération des données utilisateur - refresh token invalide** : que mon refresh_token est invalide je devrais recevoir une erreur 401 les cookies devraient être supprimés le message d'erreur devrait indiquer \"Non authentifié\"
 
 **Récupération des données utilisateur - non authentifié** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"
+
+**Récupération des données utilisateur - erreur serveur** : qu'une erreur se produit lors de la récupération des données je devrais recevoir une erreur 500 le message d'erreur devrait indiquer \"Erreur serveur\"
 
 ### Scénarios de test
 
@@ -233,6 +221,10 @@ paths:
 ✅ la réponse devrait contenir id, username, discriminator, avatar
 
 ✅ la réponse devrait contenir email si le scope email est accordé
+
+✅ la réponse devrait contenir roles
+
+✅ l'utilisateur devrait être sauvegardé en base de données
 
 **Récupération des données utilisateur - token expiré avec refresh automatique**
 
@@ -258,7 +250,7 @@ paths:
 
 ✅ je devrais recevoir une erreur 401
 
-✅ le message d'erreur devrait indiquer \"Token expiré et aucun refresh token disponible\"
+✅ le message d'erreur devrait indiquer \"Non authentifié\"
 
 **Récupération des données utilisateur - refresh token invalide**
 
@@ -272,7 +264,7 @@ paths:
 
 ✅ les cookies devraient être supprimés
 
-✅ le message d'erreur devrait indiquer \"Session expirée, veuillez vous reconnecter\"
+✅ le message d'erreur devrait indiquer \"Non authentifié\"
 
 **Récupération des données utilisateur - non authentifié**
 
@@ -283,6 +275,18 @@ paths:
 ✅ je devrais recevoir une erreur 401
 
 ✅ le message d'erreur devrait indiquer \"Non authentifié\"
+
+**Récupération des données utilisateur - erreur serveur**
+
+📋 que j'ai un access_token valide
+
+✅ qu'une erreur se produit lors de la récupération des données
+
+⚡ je fais une requête GET vers \"/auth/me\"
+
+✅ je devrais recevoir une erreur 500
+
+✅ le message d'erreur devrait indiquer \"Erreur serveur\"
 
 "
       operationId: "get_auth_me"
@@ -327,7 +331,7 @@ paths:
               example: null
           headers: null
         401:
-          description: "Non authentifié - que je n'ai pas de refresh_token, je devrais recevoir une erreur 401, le message d'erreur devrait indiquer \"Token expiré et aucun refresh token disponible\""
+          description: "Non authentifié - que je n'ai pas de refresh_token, je devrais recevoir une erreur 401, le message d'erreur devrait indiquer \"Non authentifié\""
           content:
             application/json:
               schema:
@@ -342,7 +346,7 @@ paths:
                 error: "exemple_error"
           headers: null
         500:
-          description: "Erreur serveur"
+          description: "Erreur serveur - qu'une erreur se produit lors de la récupération des données, je devrais recevoir une erreur 500, le message d'erreur devrait indiquer \"Erreur serveur\""
           content:
             application/json:
               schema:
@@ -353,7 +357,8 @@ paths:
                     description: "Message d'erreur"
                 required:
                   - error
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
       security:
         - cookieAuth:
@@ -429,12 +434,142 @@ paths:
       tags:
         - Paiement
       summary: "Endpoint webhook pour recevoir les notifications de paiement. Met à jour automatiquement les tickets associés au session_id selon le statut du paiement (route publique)"
-      description: ""
+      description: "**Réception d'un webhook checkout.session.completed** : je reçois une réponse 200 les tickets associés sont mis à jour avec le statut de paiement les emails de confirmation sont envoyés si le paiement est réussi les certificats de don sont envoyés si des dons sont présents
+
+**Réception d'un webhook payment_intent.succeeded** : je reçois une réponse 200 les tickets associés sont mis à jour avec le statut PAID
+
+**Réception d'un webhook payment_intent.payment_failed** : je reçois une réponse 200 les tickets associés sont mis à jour avec le statut FAILED
+
+**Réception d'un webhook checkout.session.expired** : je reçois une réponse 200 les tickets associés sont mis à jour avec le statut CANCELLED
+
+**Erreur si la signature du webhook est invalide (production)** : qu'un webhook avec une signature invalide est reçu je reçois une erreur 400 le message d'erreur indique \"Signature invalide\"
+
+**Webhook accepté avec signature invalide en développement** : qu'un webhook avec une signature invalide est reçu je reçois une réponse 200 le webhook est traité malgré la signature invalide
+
+**Erreur si la signature est manquante** : je reçois une erreur 400 le message d'erreur indique \"Signature manquante\"
+
+**Erreur si le raw body n'est pas disponible** : je reçois une erreur 500 le message d'erreur indique \"Raw body non disponible\"
+
+**Mise à jour des informations client depuis customer_details** : que la session contient customer_details avec email, first_name, last_name les tickets associés sont mis à jour avec les informations client
+
+**Traitement d'un événement non géré** : je reçois une réponse 200 la réponse indique success: true avec tickets_updated: 0
+
+### Scénarios de test
+
+**Réception d'un webhook checkout.session.completed**
+
+📋 qu'un webhook Stripe est reçu
+
+⚡ je fais une requête POST vers \"/pay/webhook\" avec un événement checkout.session.completed
+
+✅ je reçois une réponse 200
+
+✅ les tickets associés sont mis à jour avec le statut de paiement
+
+✅ les emails de confirmation sont envoyés si le paiement est réussi
+
+✅ les certificats de don sont envoyés si des dons sont présents
+
+**Réception d'un webhook payment_intent.succeeded**
+
+📋 qu'un webhook Stripe est reçu
+
+⚡ je fais une requête POST vers \"/pay/webhook\" avec un événement payment_intent.succeeded
+
+✅ je reçois une réponse 200
+
+✅ les tickets associés sont mis à jour avec le statut PAID
+
+**Réception d'un webhook payment_intent.payment_failed**
+
+📋 qu'un webhook Stripe est reçu
+
+⚡ je fais une requête POST vers \"/pay/webhook\" avec un événement payment_intent.payment_failed
+
+✅ je reçois une réponse 200
+
+✅ les tickets associés sont mis à jour avec le statut FAILED
+
+**Réception d'un webhook checkout.session.expired**
+
+📋 qu'un webhook Stripe est reçu
+
+⚡ je fais une requête POST vers \"/pay/webhook\" avec un événement checkout.session.expired
+
+✅ je reçois une réponse 200
+
+✅ les tickets associés sont mis à jour avec le statut CANCELLED
+
+**Erreur si la signature du webhook est invalide (production)**
+
+📋 que l'environnement est en production
+
+✅ qu'un webhook avec une signature invalide est reçu
+
+⚡ je fais une requête POST vers \"/pay/webhook\"
+
+✅ je reçois une erreur 400
+
+✅ le message d'erreur indique \"Signature invalide\"
+
+**Webhook accepté avec signature invalide en développement**
+
+📋 que l'environnement est en développement
+
+✅ qu'un webhook avec une signature invalide est reçu
+
+⚡ je fais une requête POST vers \"/pay/webhook\"
+
+✅ je reçois une réponse 200
+
+✅ le webhook est traité malgré la signature invalide
+
+**Erreur si la signature est manquante**
+
+📋 qu'un webhook sans signature est reçu
+
+⚡ je fais une requête POST vers \"/pay/webhook\"
+
+✅ je reçois une erreur 400
+
+✅ le message d'erreur indique \"Signature manquante\"
+
+**Erreur si le raw body n'est pas disponible**
+
+📋 qu'un webhook est reçu mais le raw body n'est pas disponible
+
+⚡ je fais une requête POST vers \"/pay/webhook\"
+
+✅ je reçois une erreur 500
+
+✅ le message d'erreur indique \"Raw body non disponible\"
+
+**Mise à jour des informations client depuis customer_details**
+
+📋 qu'un webhook checkout.session.completed est reçu
+
+✅ que la session contient customer_details avec email, first_name, last_name
+
+⚡ je fais une requête POST vers \"/pay/webhook\"
+
+✅ les tickets associés sont mis à jour avec les informations client
+
+**Traitement d'un événement non géré**
+
+📋 qu'un webhook avec un type d'événement non géré est reçu
+
+⚡ je fais une requête POST vers \"/pay/webhook\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse indique success: true avec tickets_updated: 0
+
+"
       operationId: "post_pay_webhook"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - je reçois une réponse 200, les tickets associés sont mis à jour avec le statut de paiement, les emails de confirmation sont envoyés si le paiement est réussi, les certificats de don sont envoyés si des dons sont présents"
           content:
             application/json:
               schema:
@@ -455,10 +590,12 @@ paths:
                   - success
                   - tickets_updated
                   - qr_codes
-              example: null
+              example:
+                success: true
+                tickets_updated: 123
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - qu'un webhook avec une signature invalide est reçu, je reçois une erreur 400, le message d'erreur indique \"Signature invalide\""
           content:
             application/json:
               schema:
@@ -466,10 +603,11 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
-          description: "Erreur serveur"
+          description: "Erreur serveur - je reçois une erreur 500, le message d'erreur indique \"Raw body non disponible\""
           content:
             application/json:
               schema:
@@ -477,7 +615,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
       requestBody:
         required: true
@@ -529,31 +668,33 @@ paths:
       tags:
         - Musée - Horaires
       summary: "Crée ou met à jour un horaire d'ouverture (UPSERT). Pour les exceptions : cherche par start_date, end_date et audience_type. Pour les horaires récurrents : cherche par day_of_week et audience_type. Retourne 201 si créé, 200 si mis à jour."
-      description: "**Créer un horaire récurrent pour le public** : que je fournis un day_of_week (0-6) que je fournis start_time et end_time que je fournis audience_type = \"public\" je reçois une réponse 201 la réponse contient l'horaire créé avec un id la réponse contient day_of_week, start_time, end_time, audience_type
+      description: "**Créer un horaire récurrent pour le public** : que je fournis day_of_week, start_time, end_time et audience_type=\"public\" je reçois une réponse 201 la réponse contient l'horaire créé avec un id la réponse contient day_of_week, start_time, end_time, audience_type
 
-**Créer un horaire récurrent pour les membres** : que je fournis un day_of_week (0-6) que je fournis start_time et end_time que je fournis audience_type = \"member\" je reçois une réponse 201 la réponse contient l'horaire créé avec audience_type = \"member\"
+**Créer un horaire récurrent pour les membres** : que je fournis day_of_week, start_time, end_time et audience_type=\"member\" je reçois une réponse 201 la réponse contient l'horaire créé avec audience_type = \"member\"
 
-**Créer une exception (horaires spécifiques pour une période)** : que je fournis is_exception = true que je fournis start_date et end_date que je fournis start_time et end_time que je fournis audience_type je reçois une réponse 201 la réponse contient is_exception = true la réponse contient start_date et end_date
+**Créer une exception (horaires spécifiques pour une période)** : que je fournis is_exception = true que je fournis start_date et end_date que je fournis start_time, end_time et audience_type je reçois une réponse 201 la réponse contient is_exception = true la réponse contient start_date et end_date
 
 **Créer une fermeture exceptionnelle** : que je fournis is_exception = true que je fournis is_closed = true que je fournis start_date et end_date que je fournis une description je reçois une réponse 201 la réponse contient is_closed = true la réponse contient la description
+
+**Mettre à jour un horaire existant (upsert)** : qu'un horaire existe avec les mêmes critères que je fournis les mêmes critères avec de nouvelles données je reçois une réponse 200 la réponse contient l'horaire mis à jour
 
 **Erreur lors de la création d'un horaire récurrent sans day_of_week** : que je ne fournis pas day_of_week que is_exception = false je reçois une réponse 400 la réponse contient un message d'erreur indiquant que day_of_week est requis
 
 **Erreur lors de la création d'une exception sans dates** : que je fournis is_exception = true que je ne fournis pas start_date ou end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date et end_date sont requis
 
+**Accès non autorisé pour créer un horaire sans authentification** : je reçois une réponse 401 la réponse contient un message d'erreur \"Non authentifié\"
+
+**Accès non autorisé pour créer un horaire sans les rôles requis** : je reçois une réponse 403 la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
 ### Scénarios de test
 
 **Créer un horaire récurrent pour le public**
 
-📋 que je veux créer un horaire récurrent
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/schedules\"
 
-✅ que je fournis un day_of_week (0-6)
-
-✅ que je fournis start_time et end_time
-
-✅ que je fournis audience_type = \"public\"
+✅ que je fournis day_of_week, start_time, end_time et audience_type=\"public\"
 
 ✅ je reçois une réponse 201
 
@@ -563,15 +704,11 @@ paths:
 
 **Créer un horaire récurrent pour les membres**
 
-📋 que je veux créer un horaire récurrent pour les membres
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/schedules\"
 
-✅ que je fournis un day_of_week (0-6)
-
-✅ que je fournis start_time et end_time
-
-✅ que je fournis audience_type = \"member\"
+✅ que je fournis day_of_week, start_time, end_time et audience_type=\"member\"
 
 ✅ je reçois une réponse 201
 
@@ -579,7 +716,7 @@ paths:
 
 **Créer une exception (horaires spécifiques pour une période)**
 
-📋 que je veux créer une exception pour les vacances
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/schedules\"
 
@@ -587,9 +724,7 @@ paths:
 
 ✅ que je fournis start_date et end_date
 
-✅ que je fournis start_time et end_time
-
-✅ que je fournis audience_type
+✅ que je fournis start_time, end_time et audience_type
 
 ✅ je reçois une réponse 201
 
@@ -599,7 +734,7 @@ paths:
 
 **Créer une fermeture exceptionnelle**
 
-📋 que je veux créer une fermeture exceptionnelle
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/schedules\"
 
@@ -617,9 +752,23 @@ paths:
 
 ✅ la réponse contient la description
 
+**Mettre à jour un horaire existant (upsert)**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un horaire existe avec les mêmes critères
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ que je fournis les mêmes critères avec de nouvelles données
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient l'horaire mis à jour
+
 **Erreur lors de la création d'un horaire récurrent sans day_of_week**
 
-📋 que je veux créer un horaire récurrent
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/schedules\"
 
@@ -633,7 +782,7 @@ paths:
 
 **Erreur lors de la création d'une exception sans dates**
 
-📋 que je veux créer une exception
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/schedules\"
 
@@ -645,12 +794,32 @@ paths:
 
 ✅ la réponse contient un message d'erreur indiquant que start_date et end_date sont requis
 
+**Accès non autorisé pour créer un horaire sans authentification**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ je reçois une réponse 401
+
+✅ la réponse contient un message d'erreur \"Non authentifié\"
+
+**Accès non autorisé pour créer un horaire sans les rôles requis**
+
+📋 que je suis authentifié mais sans les rôles bureau, dev ou museum
+
+⚡ je fais une requête POST vers \"/museum/schedules\"
+
+✅ je reçois une réponse 403
+
+✅ la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
 "
       operationId: "post_museum_schedules"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - qu'un horaire existe avec les mêmes critères, que je fournis les mêmes critères avec de nouvelles données, je reçois une réponse 200, la réponse contient l'horaire mis à jour"
           content:
             application/json:
               schema:
@@ -691,10 +860,18 @@ paths:
                   updated_at:
                     type: "string"
                 description: "Horaire mis à jour (upsert)"
-              example: null
+              example:
+                id: "exemple_id"
+                start_time: "exemple_start_time"
+                end_time: "exemple_end_time"
+                audience_type: "exemple_audience_type"
+                is_exception: true
+                is_closed: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         201:
-          description: "Code 201 - que je fournis un day_of_week (0-6), que je fournis start_time et end_time, que je fournis audience_type = \"public\", je reçois une réponse 201, la réponse contient l'horaire créé avec un id, la réponse contient day_of_week, start_time, end_time, audience_type"
+          description: "Code 201 - que je fournis day_of_week, start_time, end_time et audience_type=\"public\", je reçois une réponse 201, la réponse contient l'horaire créé avec un id, la réponse contient day_of_week, start_time, end_time, audience_type"
           content:
             application/json:
               schema:
@@ -828,19 +1005,33 @@ paths:
       tags:
         - Musée - Horaires
       summary: "Récupère tous les horaires avec filtres optionnels (authentification requise)"
-      description: "**Récupérer tous les horaires** : je reçois une réponse 200 la réponse contient un tableau d'horaires
+      description: "**Récupérer tous les horaires (membres authentifiés)** : que des horaires existent en base de données je reçois une réponse 200 la réponse contient un tableau d'horaires
+
+**Accès refusé pour récupérer tous les horaires sans authentification** : je reçois une réponse 401 la réponse contient un message d'erreur \"Non authentifié\"
 
 ### Scénarios de test
 
-**Récupérer tous les horaires**
+**Récupérer tous les horaires (membres authentifiés)**
 
-📋 que des horaires existent en base de données
+📋 que je suis authentifié
+
+✅ que des horaires existent en base de données
 
 ⚡ je fais une requête GET vers \"/museum/schedules\"
 
 ✅ je reçois une réponse 200
 
 ✅ la réponse contient un tableau d'horaires
+
+**Accès refusé pour récupérer tous les horaires sans authentification**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête GET vers \"/museum/schedules\"
+
+✅ je reçois une réponse 401
+
+✅ la réponse contient un message d'erreur \"Non authentifié\"
 
 "
       operationId: "get_museum_schedules"
@@ -883,7 +1074,7 @@ paths:
             description: "Inclure les exceptions dans les résultats"
       responses:
         200:
-          description: "Succès - je reçois une réponse 200, la réponse contient un tableau d'horaires"
+          description: "Succès - que des horaires existent en base de données, je reçois une réponse 200, la réponse contient un tableau d'horaires"
           content:
             application/json:
               schema:
@@ -945,7 +1136,25 @@ paths:
       tags:
         - Musée - Horaires
       summary: "Récupère uniquement les horaires publics (route publique, accessible sans authentification)"
-      description: ""
+      description: "**Récupérer les horaires publics (non authentifié)** : que des horaires existent en base de données je reçois une réponse 200 la réponse contient un tableau d'horaires publics les horaires contiennent holiday_periods et closure_periods
+
+### Scénarios de test
+
+**Récupérer les horaires publics (non authentifié)**
+
+📋 que je ne suis pas authentifié
+
+✅ que des horaires existent en base de données
+
+⚡ je fais une requête GET vers \"/museum/schedules/public\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un tableau d'horaires publics
+
+✅ les horaires contiennent holiday_periods et closure_periods
+
+"
       operationId: "get_museum_schedules_public"
       parameters:
         - name: "day_of_week"
@@ -975,7 +1184,7 @@ paths:
             description: "Inclure les exceptions dans les résultats"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - que des horaires existent en base de données, je reçois une réponse 200, la réponse contient un tableau d'horaires publics, les horaires contiennent holiday_periods et closure_periods"
           content:
             application/json:
               schema:
@@ -1081,8 +1290,6 @@ paths:
       summary: "Récupère un horaire par son ID"
       description: "**Récupérer un horaire par son ID** : je reçois une réponse 200 la réponse contient l'horaire avec l'id demandé
 
-**Erreur lors de la récupération d'un horaire inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Horaire non trouvé\"
-
 ### Scénarios de test
 
 **Récupérer un horaire par son ID**
@@ -1094,16 +1301,6 @@ paths:
 ✅ je reçois une réponse 200
 
 ✅ la réponse contient l'horaire avec l'id demandé
-
-**Erreur lors de la récupération d'un horaire inexistant**
-
-📋 qu'aucun horaire n'existe avec cet id
-
-⚡ je fais une requête GET vers \"/museum/schedules/:id\"
-
-✅ je reçois une réponse 404
-
-✅ la réponse contient un message d'erreur \"Horaire non trouvé\"
 
 "
       operationId: "get_museum_schedules_:id"
@@ -1169,7 +1366,7 @@ paths:
                 updated_at: "exemple_updated_at"
           headers: null
         404:
-          description: "Code 404 - je reçois une réponse 404, la réponse contient un message d'erreur \"Horaire non trouvé\""
+          description: "Code 404"
           content:
             application/json:
               schema:
@@ -1177,8 +1374,7 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example:
-                error: "exemple_error"
+              example: null
           headers: null
         500:
           description: "Erreur serveur"
@@ -1197,13 +1393,15 @@ paths:
       tags:
         - Musée - Horaires
       summary: "Met à jour un horaire"
-      description: "**Mettre à jour un horaire** : que je fournis les champs à mettre à jour je reçois une réponse 200 la réponse contient l'horaire mis à jour
+      description: "**Mettre à jour un horaire** : qu'un horaire existe que je fournis les champs à mettre à jour je reçois une réponse 200 la réponse contient l'horaire mis à jour
 
 ### Scénarios de test
 
 **Mettre à jour un horaire**
 
-📋 qu'un horaire existe
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un horaire existe
 
 ⚡ je fais une requête PUT vers \"/museum/schedules/:id\"
 
@@ -1226,7 +1424,7 @@ paths:
             description: "ID de l'horaire à mettre à jour"
       responses:
         200:
-          description: "Succès - que je fournis les champs à mettre à jour, je reçois une réponse 200, la réponse contient l'horaire mis à jour"
+          description: "Succès - qu'un horaire existe, que je fournis les champs à mettre à jour, je reçois une réponse 200, la réponse contient l'horaire mis à jour"
           content:
             application/json:
               schema:
@@ -1371,31 +1569,21 @@ paths:
       tags:
         - Musée - Horaires
       summary: "Supprime un horaire"
-      description: "**Supprimer un horaire** : je reçois une réponse 204 l'horaire est supprimé de la base de données
-
-**Erreur lors de la suppression d'un horaire inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Horaire non trouvé\"
+      description: "**Supprimer un horaire** : qu'un horaire existe je reçois une réponse 204 l'horaire est supprimé de la base de données
 
 ### Scénarios de test
 
 **Supprimer un horaire**
 
-📋 qu'un horaire existe
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un horaire existe
 
 ⚡ je fais une requête DELETE vers \"/museum/schedules/:id\"
 
 ✅ je reçois une réponse 204
 
 ✅ l'horaire est supprimé de la base de données
-
-**Erreur lors de la suppression d'un horaire inexistant**
-
-📋 qu'aucun horaire n'existe avec cet id
-
-⚡ je fais une requête DELETE vers \"/museum/schedules/:id\"
-
-✅ je reçois une réponse 404
-
-✅ la réponse contient un message d'erreur \"Horaire non trouvé\"
 
 "
       operationId: "delete_museum_schedules_:id"
@@ -1410,7 +1598,7 @@ paths:
             description: "ID de l'horaire à supprimer"
       responses:
         204:
-          description: "Code 204 - je reçois une réponse 204, l'horaire est supprimé de la base de données"
+          description: "Code 204 - qu'un horaire existe, je reçois une réponse 204, l'horaire est supprimé de la base de données"
           content:
             application/json:
               schema:
@@ -1418,7 +1606,7 @@ paths:
               example: null
           headers: null
         404:
-          description: "Code 404 - je reçois une réponse 404, la réponse contient un message d'erreur \"Horaire non trouvé\""
+          description: "Code 404"
           content:
             application/json:
               schema:
@@ -1426,8 +1614,7 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example:
-                error: "exemple_error"
+              example: null
           headers: null
         500:
           description: "Erreur serveur"
@@ -1447,12 +1634,58 @@ paths:
       tags:
         - Musée - Horaires
       summary: "Réordonne les horaires selon l'ordre fourni. Met à jour les positions de tous les horaires selon l'ordre des IDs fournis (premier ID = position 1, deuxième ID = position 2, etc.)"
-      description: ""
+      description: "**Réordonner les horaires** : que plusieurs horaires existent que je fournis un tableau schedule_ids dans l'ordre souhaité je reçois une réponse 200 la réponse contient les horaires dans le nouvel ordre
+
+**Erreur lors du réordonnancement avec un tableau vide** : que je fournis un tableau schedule_ids vide je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le tableau ne peut pas être vide
+
+**Erreur lors du réordonnancement avec des IDs invalides** : que je fournis un tableau schedule_ids contenant des IDs inexistants je reçois une réponse 400 la réponse contient un message d'erreur indiquant que des IDs sont invalides
+
+### Scénarios de test
+
+**Réordonner les horaires**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ que plusieurs horaires existent
+
+⚡ je fais une requête POST vers \"/museum/schedules/reorder\"
+
+✅ que je fournis un tableau schedule_ids dans l'ordre souhaité
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient les horaires dans le nouvel ordre
+
+**Erreur lors du réordonnancement avec un tableau vide**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+⚡ je fais une requête POST vers \"/museum/schedules/reorder\"
+
+✅ que je fournis un tableau schedule_ids vide
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que le tableau ne peut pas être vide
+
+**Erreur lors du réordonnancement avec des IDs invalides**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+⚡ je fais une requête POST vers \"/museum/schedules/reorder\"
+
+✅ que je fournis un tableau schedule_ids contenant des IDs inexistants
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que des IDs sont invalides
+
+"
       operationId: "post_museum_schedules_reorder"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - que plusieurs horaires existent, que je fournis un tableau schedule_ids dans l'ordre souhaité, je reçois une réponse 200, la réponse contient les horaires dans le nouvel ordre"
           content:
             application/json:
               schema:
@@ -1498,7 +1731,7 @@ paths:
               example: null
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - que je fournis un tableau schedule_ids vide, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que le tableau ne peut pas être vide"
           content:
             application/json:
               schema:
@@ -1506,7 +1739,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -1542,21 +1776,25 @@ paths:
       tags:
         - Musée - Tarifs
       summary: "Crée ou met à jour un tarif (upsert). Si un id est fourni et existe, met à jour le tarif (retourne 200). Sinon, crée un nouveau tarif (retourne 201)."
-      description: "**Créer un tarif pour le public** : que je fournis un name que je fournis un amount en euros que je fournis audience_type = \"public\" je reçois une réponse 201 la réponse contient le tarif créé avec un id la réponse contient name, amount, audience_type
+      description: "**Créer un tarif pour le public** : que je fournis amount, audience_type=\"public\" et translations avec au moins un name je reçois une réponse 201 la réponse contient le tarif créé avec un id la réponse contient amount, audience_type et translations
 
-**Créer un tarif pour les membres** : que je fournis un name que je fournis un amount en euros que je fournis audience_type = \"member\" je reçois une réponse 201 la réponse contient le tarif créé avec audience_type = \"member\"
+**Créer un tarif pour les membres** : que je fournis amount, audience_type=\"member\" et translations avec au moins un name je reçois une réponse 201 la réponse contient le tarif créé avec audience_type = \"member\"
 
-**Créer un tarif avec dates de validité** : que je fournis start_date et end_date que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient start_date et end_date
+**Créer un tarif avec dates de validité** : que je fournis start_date et end_date valides que je fournis amount, audience_type et translations avec au moins un name je reçois une réponse 201 la réponse contient start_date et end_date
 
-**Créer un tarif inactif** : que je fournis is_active = false que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient is_active = false
+**Créer un tarif inactif** : que je fournis is_active = false que je fournis amount, audience_type et translations avec au moins un name je reçois une réponse 201 la réponse contient is_active = false
 
-**Créer un tarif nécessitant un justificatif** : que je fournis requires_proof = true que je fournis name, amount, audience_type je reçois une réponse 201 la réponse contient requires_proof = true
+**Créer un tarif nécessitant un justificatif** : que je fournis requires_proof = true que je fournis amount, audience_type et translations avec au moins un name je reçois une réponse 201 la réponse contient requires_proof = true
+
+**Mettre à jour un tarif existant (upsert)** : qu'un tarif existe avec un id spécifique que je fournis cet id avec les nouvelles données je reçois une réponse 200 la réponse contient le tarif mis à jour
 
 **Erreur lors de la création d'un tarif avec montant négatif** : que je fournis un amount négatif je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le montant doit être positif
 
 **Erreur lors de la création d'un tarif avec dates invalides** : que je fournis start_date sans end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date et end_date doivent être définis ensemble
 
 **Erreur lors de la création d'un tarif avec start_date après end_date** : que je fournis start_date après end_date je reçois une réponse 400 la réponse contient un message d'erreur indiquant que start_date doit être antérieure à end_date
+
+**Erreur lors de la création d'un tarif sans traduction name** : que je fournis translations sans aucun champ name je reçois une réponse 400 la réponse contient un message d'erreur indiquant qu'au moins une traduction pour le champ \"name\" est requise
 
 **Accès non autorisé pour créer un tarif sans authentification** : je reçois une réponse 401 la réponse contient un message d'erreur \"Non authentifié\"
 
@@ -1566,33 +1804,25 @@ paths:
 
 **Créer un tarif pour le public**
 
-📋 que je veux créer un tarif pour le public
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
-✅ que je fournis un name
-
-✅ que je fournis un amount en euros
-
-✅ que je fournis audience_type = \"public\"
+✅ que je fournis amount, audience_type=\"public\" et translations avec au moins un name
 
 ✅ je reçois une réponse 201
 
 ✅ la réponse contient le tarif créé avec un id
 
-✅ la réponse contient name, amount, audience_type
+✅ la réponse contient amount, audience_type et translations
 
 **Créer un tarif pour les membres**
 
-📋 que je veux créer un tarif pour les membres
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
-✅ que je fournis un name
-
-✅ que je fournis un amount en euros
-
-✅ que je fournis audience_type = \"member\"
+✅ que je fournis amount, audience_type=\"member\" et translations avec au moins un name
 
 ✅ je reçois une réponse 201
 
@@ -1600,13 +1830,13 @@ paths:
 
 **Créer un tarif avec dates de validité**
 
-📋 que je veux créer un tarif valide pour une période spécifique
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
-✅ que je fournis start_date et end_date
+✅ que je fournis start_date et end_date valides
 
-✅ que je fournis name, amount, audience_type
+✅ que je fournis amount, audience_type et translations avec au moins un name
 
 ✅ je reçois une réponse 201
 
@@ -1614,13 +1844,13 @@ paths:
 
 **Créer un tarif inactif**
 
-📋 que je veux créer un tarif inactif
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
 ✅ que je fournis is_active = false
 
-✅ que je fournis name, amount, audience_type
+✅ que je fournis amount, audience_type et translations avec au moins un name
 
 ✅ je reçois une réponse 201
 
@@ -1628,21 +1858,35 @@ paths:
 
 **Créer un tarif nécessitant un justificatif**
 
-📋 que je veux créer un tarif réduit nécessitant un justificatif
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
 ✅ que je fournis requires_proof = true
 
-✅ que je fournis name, amount, audience_type
+✅ que je fournis amount, audience_type et translations avec au moins un name
 
 ✅ je reçois une réponse 201
 
 ✅ la réponse contient requires_proof = true
 
+**Mettre à jour un tarif existant (upsert)**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un tarif existe avec un id spécifique
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis cet id avec les nouvelles données
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le tarif mis à jour
+
 **Erreur lors de la création d'un tarif avec montant négatif**
 
-📋 que je veux créer un tarif
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
@@ -1654,7 +1898,7 @@ paths:
 
 **Erreur lors de la création d'un tarif avec dates invalides**
 
-📋 que je veux créer un tarif avec dates
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
@@ -1666,7 +1910,7 @@ paths:
 
 **Erreur lors de la création d'un tarif avec start_date après end_date**
 
-📋 que je veux créer un tarif avec dates
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
@@ -1675,6 +1919,18 @@ paths:
 ✅ je reçois une réponse 400
 
 ✅ la réponse contient un message d'erreur indiquant que start_date doit être antérieure à end_date
+
+**Erreur lors de la création d'un tarif sans traduction name**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+⚡ je fais une requête POST vers \"/museum/prices\"
+
+✅ que je fournis translations sans aucun champ name
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant qu'au moins une traduction pour le champ \"name\" est requise
 
 **Accès non autorisé pour créer un tarif sans authentification**
 
@@ -1688,7 +1944,7 @@ paths:
 
 **Accès non autorisé pour créer un tarif sans les rôles requis**
 
-📋 que je suis authentifié mais sans les rôles bureau ou dev
+📋 que je suis authentifié mais sans les rôles bureau, dev ou museum
 
 ⚡ je fais une requête POST vers \"/museum/prices\"
 
@@ -1701,7 +1957,7 @@ paths:
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - qu'un tarif existe avec un id spécifique, que je fournis cet id avec les nouvelles données, je reçois une réponse 200, la réponse contient le tarif mis à jour"
           content:
             application/json:
               schema:
@@ -1745,10 +2001,18 @@ paths:
                     type:
                       - string
                     nullable: true
-              example: null
+              example:
+                id: "exemple_id"
+                amount: 123
+                audience_type: "exemple_audience_type"
+                is_active: true
+                requires_proof: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
+                name: "exemple_name"
           headers: null
         201:
-          description: "Code 201 - que je fournis un name, que je fournis un amount en euros, que je fournis audience_type = \"public\", je reçois une réponse 201, la réponse contient le tarif créé avec un id, la réponse contient name, amount, audience_type"
+          description: "Code 201 - que je fournis amount, audience_type=\"public\" et translations avec au moins un name, je reçois une réponse 201, la réponse contient le tarif créé avec un id, la réponse contient amount, audience_type et translations"
           content:
             application/json:
               schema:
@@ -1903,21 +2167,19 @@ paths:
       tags:
         - Musée - Tarifs
       summary: "Récupère tous les tarifs avec filtres optionnels"
-      description: "**Récupérer tous les tarifs actifs** : je reçois une réponse 200 la réponse contient un tableau de tarifs tous les tarifs retournés ont is_active = true
+      description: "**Accès public pour lire les tarifs** : je reçois une réponse 200 la réponse contient un tableau de tarifs
 
 ### Scénarios de test
 
-**Récupérer tous les tarifs actifs**
+**Accès public pour lire les tarifs**
 
-📋 que des tarifs existent en base de données
+📋 que je ne suis pas authentifié
 
 ⚡ je fais une requête GET vers \"/museum/prices\"
 
 ✅ je reçois une réponse 200
 
 ✅ la réponse contient un tableau de tarifs
-
-✅ tous les tarifs retournés ont is_active = true
 
 "
       operationId: "get_museum_prices"
@@ -1958,7 +2220,7 @@ paths:
             description: "Code de langue pour les traductions (ex: \"fr\", \"en\"). Si non fourni, retourne toutes les traductions"
       responses:
         200:
-          description: "Succès - je reçois une réponse 200, la réponse contient un tableau de tarifs, tous les tarifs retournés ont is_active = true"
+          description: "Succès - je reçois une réponse 200, la réponse contient un tableau de tarifs"
           content:
             application/json:
               schema:
@@ -2035,8 +2297,6 @@ paths:
       summary: "Récupère un tarif par son ID"
       description: "**Récupérer un tarif par son ID** : je reçois une réponse 200 la réponse contient le tarif avec l'id demandé
 
-**Erreur lors de la récupération d'un tarif inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Tarif non trouvé\"
-
 ### Scénarios de test
 
 **Récupérer un tarif par son ID**
@@ -2048,16 +2308,6 @@ paths:
 ✅ je reçois une réponse 200
 
 ✅ la réponse contient le tarif avec l'id demandé
-
-**Erreur lors de la récupération d'un tarif inexistant**
-
-📋 qu'aucun tarif n'existe avec cet id
-
-⚡ je fais une requête GET vers \"/museum/prices/:id\"
-
-✅ je reçois une réponse 404
-
-✅ la réponse contient un message d'erreur \"Tarif non trouvé\"
 
 "
       operationId: "get_museum_prices_:id"
@@ -2135,7 +2385,7 @@ paths:
                 name: "exemple_name"
           headers: null
         404:
-          description: "Code 404 - je reçois une réponse 404, la réponse contient un message d'erreur \"Tarif non trouvé\""
+          description: "Code 404"
           content:
             application/json:
               schema:
@@ -2143,8 +2393,7 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example:
-                error: "exemple_error"
+              example: null
           headers: null
         500:
           description: "Erreur serveur"
@@ -2163,15 +2412,17 @@ paths:
       tags:
         - Musée - Tarifs
       summary: "Met à jour un tarif"
-      description: "**Mettre à jour un tarif** : que je fournis les champs à mettre à jour je reçois une réponse 200 la réponse contient le tarif mis à jour
+      description: "**Mettre à jour un tarif** : qu'un tarif existe que je fournis les champs à mettre à jour je reçois une réponse 200 la réponse contient le tarif mis à jour
 
-**Désactiver un tarif** : que je fournis is_active = false je reçois une réponse 200 la réponse contient is_active = false
+**Désactiver un tarif** : qu'un tarif existe que je fournis is_active = false je reçois une réponse 200 la réponse contient is_active = false
 
 ### Scénarios de test
 
 **Mettre à jour un tarif**
 
-📋 qu'un tarif existe
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un tarif existe
 
 ⚡ je fais une requête PUT vers \"/museum/prices/:id\"
 
@@ -2183,7 +2434,9 @@ paths:
 
 **Désactiver un tarif**
 
-📋 qu'un tarif existe
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un tarif existe
 
 ⚡ je fais une requête PUT vers \"/museum/prices/:id\"
 
@@ -2206,7 +2459,7 @@ paths:
             description: "ID du tarif à mettre à jour"
       responses:
         200:
-          description: "Succès - que je fournis les champs à mettre à jour, je reçois une réponse 200, la réponse contient le tarif mis à jour"
+          description: "Succès - qu'un tarif existe, que je fournis les champs à mettre à jour, je reçois une réponse 200, la réponse contient le tarif mis à jour"
           content:
             application/json:
               schema:
@@ -2363,31 +2616,21 @@ paths:
       tags:
         - Musée - Tarifs
       summary: "Supprime un tarif"
-      description: "**Supprimer un tarif** : je reçois une réponse 204 le tarif est supprimé de la base de données
-
-**Erreur lors de la suppression d'un tarif inexistant** : je reçois une réponse 404 la réponse contient un message d'erreur \"Tarif non trouvé\"
+      description: "**Supprimer un tarif** : qu'un tarif existe je reçois une réponse 204 le tarif est supprimé de la base de données
 
 ### Scénarios de test
 
 **Supprimer un tarif**
 
-📋 qu'un tarif existe
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un tarif existe
 
 ⚡ je fais une requête DELETE vers \"/museum/prices/:id\"
 
 ✅ je reçois une réponse 204
 
 ✅ le tarif est supprimé de la base de données
-
-**Erreur lors de la suppression d'un tarif inexistant**
-
-📋 qu'aucun tarif n'existe avec cet id
-
-⚡ je fais une requête DELETE vers \"/museum/prices/:id\"
-
-✅ je reçois une réponse 404
-
-✅ la réponse contient un message d'erreur \"Tarif non trouvé\"
 
 "
       operationId: "delete_museum_prices_:id"
@@ -2402,7 +2645,7 @@ paths:
             description: "ID du tarif à supprimer"
       responses:
         204:
-          description: "Code 204 - je reçois une réponse 204, le tarif est supprimé de la base de données"
+          description: "Code 204 - qu'un tarif existe, je reçois une réponse 204, le tarif est supprimé de la base de données"
           content:
             application/json:
               schema:
@@ -2410,7 +2653,7 @@ paths:
               example: null
           headers: null
         404:
-          description: "Code 404 - je reçois une réponse 404, la réponse contient un message d'erreur \"Tarif non trouvé\""
+          description: "Code 404"
           content:
             application/json:
               schema:
@@ -2418,8 +2661,7 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example:
-                error: "exemple_error"
+              example: null
           headers: null
         500:
           description: "Erreur serveur"
@@ -2439,12 +2681,58 @@ paths:
       tags:
         - Musée - Tarifs
       summary: "Réordonne les tarifs selon l'ordre fourni. Met à jour les positions de tous les tarifs selon l'ordre des IDs fournis (premier ID = position 1, deuxième ID = position 2, etc.)"
-      description: ""
+      description: "**Réordonner les tarifs** : que plusieurs tarifs existent que je fournis un tableau price_ids dans l'ordre souhaité je reçois une réponse 200 la réponse contient les tarifs dans le nouvel ordre
+
+**Erreur lors du réordonnancement avec un tableau vide** : que je fournis un tableau price_ids vide je reçois une réponse 400 la réponse contient un message d'erreur indiquant que le tableau ne peut pas être vide
+
+**Erreur lors du réordonnancement avec des IDs invalides** : que je fournis un tableau price_ids contenant des IDs inexistants je reçois une réponse 400 la réponse contient un message d'erreur indiquant que des IDs sont invalides
+
+### Scénarios de test
+
+**Réordonner les tarifs**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ que plusieurs tarifs existent
+
+⚡ je fais une requête POST vers \"/museum/prices/reorder\"
+
+✅ que je fournis un tableau price_ids dans l'ordre souhaité
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient les tarifs dans le nouvel ordre
+
+**Erreur lors du réordonnancement avec un tableau vide**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+⚡ je fais une requête POST vers \"/museum/prices/reorder\"
+
+✅ que je fournis un tableau price_ids vide
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que le tableau ne peut pas être vide
+
+**Erreur lors du réordonnancement avec des IDs invalides**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+⚡ je fais une requête POST vers \"/museum/prices/reorder\"
+
+✅ que je fournis un tableau price_ids contenant des IDs inexistants
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que des IDs sont invalides
+
+"
       operationId: "post_museum_prices_reorder"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - que plusieurs tarifs existent, que je fournis un tableau price_ids dans l'ordre souhaité, je reçois une réponse 200, la réponse contient les tarifs dans le nouvel ordre"
           content:
             application/json:
               schema:
@@ -2493,7 +2781,7 @@ paths:
               example: null
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - que je fournis un tableau price_ids vide, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que le tableau ne peut pas être vide"
           content:
             application/json:
               schema:
@@ -2501,7 +2789,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -2537,7 +2826,33 @@ paths:
       tags:
         - Musée - Paramètres
       summary: "Récupère tous les paramètres avec filtres optionnels"
-      description: ""
+      description: "**Récupérer tous les paramètres** : je reçois une réponse 200 la réponse contient un tableau de paramètres
+
+**Accès public pour lire les paramètres** : je reçois une réponse 200 la réponse contient un tableau de paramètres
+
+### Scénarios de test
+
+**Récupérer tous les paramètres**
+
+📋 que des paramètres existent en base de données
+
+⚡ je fais une requête GET vers \"/museum/settings\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un tableau de paramètres
+
+**Accès public pour lire les paramètres**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête GET vers \"/museum/settings\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un tableau de paramètres
+
+"
       operationId: "get_museum_settings"
       parameters:
         - name: "key"
@@ -2549,7 +2864,7 @@ paths:
             description: "Filtrer par clé spécifique"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - je reçois une réponse 200, la réponse contient un tableau de paramètres"
           content:
             application/json:
               schema:
@@ -2592,12 +2907,112 @@ paths:
       tags:
         - Musée - Paramètres
       summary: "Crée ou met à jour un paramètre (upsert) - Retourne 201 si créé, 200 si mis à jour"
-      description: ""
+      description: "**Créer un nouveau paramètre** : que je fournis key et value je reçois une réponse 201 la réponse contient le paramètre créé avec un id la réponse contient key, value et value_type
+
+**Mettre à jour un paramètre existant (upsert)** : qu'un paramètre existe avec une clé spécifique que je fournis la même clé avec une nouvelle valeur je reçois une réponse 200 la réponse contient le paramètre mis à jour
+
+**Créer un paramètre avec un type spécifique** : que je fournis key, value et value_type je reçois une réponse 201 la réponse contient value_type correspondant au type fourni
+
+**Créer un paramètre avec auto-détection du type** : que je fournis key et value (sans value_type) je reçois une réponse 201 la réponse contient value_type auto-détecté selon le type de value
+
+**Erreur lors de la création d'un paramètre avec valeur invalide** : que je fournis value_type=\"number\" avec une value qui n'est pas un nombre je reçois une réponse 400 la réponse contient un message d'erreur indiquant que la valeur ne peut pas être convertie
+
+**Accès non autorisé pour créer un paramètre sans authentification** : je reçois une réponse 401 la réponse contient un message d'erreur \"Non authentifié\"
+
+**Accès non autorisé pour créer un paramètre sans les rôles requis** : je reçois une réponse 403 la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
+### Scénarios de test
+
+**Créer un nouveau paramètre**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/settings\"
+
+✅ que je fournis key et value
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient le paramètre créé avec un id
+
+✅ la réponse contient key, value et value_type
+
+**Mettre à jour un paramètre existant (upsert)**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ qu'un paramètre existe avec une clé spécifique
+
+⚡ je fais une requête POST vers \"/museum/settings\"
+
+✅ que je fournis la même clé avec une nouvelle valeur
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le paramètre mis à jour
+
+**Créer un paramètre avec un type spécifique**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/settings\"
+
+✅ que je fournis key, value et value_type
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient value_type correspondant au type fourni
+
+**Créer un paramètre avec auto-détection du type**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/settings\"
+
+✅ que je fournis key et value (sans value_type)
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient value_type auto-détecté selon le type de value
+
+**Erreur lors de la création d'un paramètre avec valeur invalide**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/settings\"
+
+✅ que je fournis value_type=\"number\" avec une value qui n'est pas un nombre
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que la valeur ne peut pas être convertie
+
+**Accès non autorisé pour créer un paramètre sans authentification**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête POST vers \"/museum/settings\"
+
+✅ je reçois une réponse 401
+
+✅ la réponse contient un message d'erreur \"Non authentifié\"
+
+**Accès non autorisé pour créer un paramètre sans les rôles requis**
+
+📋 que je suis authentifié mais sans les rôles bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/settings\"
+
+✅ je reçois une réponse 403
+
+✅ la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
+"
       operationId: "post_museum_settings"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - qu'un paramètre existe avec une clé spécifique, que je fournis la même clé avec une nouvelle valeur, je reçois une réponse 200, la réponse contient le paramètre mis à jour"
           content:
             application/json:
               schema:
@@ -2621,10 +3036,14 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                key: "exemple_key"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         201:
-          description: "Code 201"
+          description: "Code 201 - que je fournis key et value, je reçois une réponse 201, la réponse contient le paramètre créé avec un id, la réponse contient key, value et value_type"
           content:
             application/json:
               schema:
@@ -2648,10 +3067,14 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                key: "exemple_key"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - que je fournis value_type=\"number\" avec une value qui n'est pas un nombre, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que la valeur ne peut pas être convertie"
           content:
             application/json:
               schema:
@@ -2659,7 +3082,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -2805,7 +3229,21 @@ paths:
       tags:
         - Musée - Paramètres
       summary: "Récupère un paramètre par sa clé"
-      description: ""
+      description: "**Récupérer un paramètre par sa clé** : je reçois une réponse 200 la réponse contient le paramètre avec la clé demandée
+
+### Scénarios de test
+
+**Récupérer un paramètre par sa clé**
+
+📋 qu'un paramètre existe avec une clé spécifique
+
+⚡ je fais une requête GET vers \"/museum/settings/:key\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le paramètre avec la clé demandée
+
+"
       operationId: "get_museum_settings_:key"
       parameters:
         - name: "key"
@@ -2817,7 +3255,7 @@ paths:
             description: "Clé du paramètre"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - je reçois une réponse 200, la réponse contient le paramètre avec la clé demandée"
           content:
             application/json:
               schema:
@@ -2839,7 +3277,13 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                key: "exemple_key"
+                value: "exemple_value"
+                value_type: "exemple_value_type"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         404:
           description: "Code 404"
@@ -2869,7 +3313,23 @@ paths:
       tags:
         - Musée - Paramètres
       summary: "Supprime un paramètre par sa clé"
-      description: ""
+      description: "**Supprimer un paramètre** : qu'un paramètre existe je reçois une réponse 204 le paramètre est supprimé de la base de données
+
+### Scénarios de test
+
+**Supprimer un paramètre**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ qu'un paramètre existe
+
+⚡ je fais une requête DELETE vers \"/museum/settings/:key\"
+
+✅ je reçois une réponse 204
+
+✅ le paramètre est supprimé de la base de données
+
+"
       operationId: "delete_museum_settings_:key"
       parameters:
         - name: "key"
@@ -2881,7 +3341,7 @@ paths:
             description: "Clé du paramètre à supprimer"
       responses:
         204:
-          description: "Code 204"
+          description: "Code 204 - qu'un paramètre existe, je reçois une réponse 204, le paramètre est supprimé de la base de données"
           content:
             application/json:
               schema:
@@ -2917,12 +3377,52 @@ paths:
       tags:
         - Musée - Capacité
       summary: "Récupère la capacité maximale du musée"
-      description: ""
+      description: "**Récupérer la capacité maximale** : je reçois une réponse 200 la réponse contient max_capacity max_capacity est un nombre
+
+**Récupérer la capacité maximale par défaut** : je reçois une réponse 200 la réponse contient max_capacity = 0
+
+**Accès public pour lire la capacité maximale** : je reçois une réponse 200 la réponse contient max_capacity
+
+### Scénarios de test
+
+**Récupérer la capacité maximale**
+
+📋 qu'un paramètre max_capacity existe
+
+⚡ je fais une requête GET vers \"/museum/capacity/max\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient max_capacity
+
+✅ max_capacity est un nombre
+
+**Récupérer la capacité maximale par défaut**
+
+📋 qu'aucun paramètre max_capacity n'existe
+
+⚡ je fais une requête GET vers \"/museum/capacity/max\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient max_capacity = 0
+
+**Accès public pour lire la capacité maximale**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête GET vers \"/museum/capacity/max\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient max_capacity
+
+"
       operationId: "get_museum_capacity_max"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - je reçois une réponse 200, la réponse contient max_capacity, max_capacity est un nombre"
           content:
             application/json:
               schema:
@@ -2931,7 +3431,8 @@ paths:
                   max_capacity:
                     type: "number"
                     description: "Capacité maximale du musée"
-              example: null
+              example:
+                max_capacity: 123
           headers: null
         500:
           description: "Erreur serveur"
@@ -2950,12 +3451,44 @@ paths:
       tags:
         - Musée - Capacité
       summary: "Définit la capacité maximale du musée"
-      description: ""
+      description: "**Définir la capacité maximale** : que je fournis max_capacity = 90 je reçois une réponse 200 la réponse contient le paramètre max_capacity mis à jour un message WebSocket est envoyé pour rafraîchir la capacité
+
+**Erreur lors de la définition d'une capacité maximale négative** : que je fournis max_capacity = -10 je reçois une réponse 400 la réponse contient un message d'erreur indiquant que la capacité doit être positive ou nulle
+
+### Scénarios de test
+
+**Définir la capacité maximale**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/capacity/max\"
+
+✅ que je fournis max_capacity = 90
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le paramètre max_capacity mis à jour
+
+✅ un message WebSocket est envoyé pour rafraîchir la capacité
+
+**Erreur lors de la définition d'une capacité maximale négative**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/capacity/max\"
+
+✅ que je fournis max_capacity = -10
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur indiquant que la capacité doit être positive ou nulle
+
+"
       operationId: "post_museum_capacity_max"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - que je fournis max_capacity = 90, je reçois une réponse 200, la réponse contient le paramètre max_capacity mis à jour, un message WebSocket est envoyé pour rafraîchir la capacité"
           content:
             application/json:
               schema:
@@ -2977,10 +3510,16 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                key: "exemple_key"
+                value: "exemple_value"
+                value_type: "exemple_value_type"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - que je fournis max_capacity = -10, je reçois une réponse 400, la réponse contient un message d'erreur indiquant que la capacité doit être positive ou nulle"
           content:
             application/json:
               schema:
@@ -2988,7 +3527,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -3160,12 +3700,40 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Crée un nouveau ticket avec génération automatique d'un code QR unique"
-      description: ""
+      description: "**Créer un ticket** : que je fournis email, reservation_date, slot_start_time, slot_end_time, ticket_price je reçois une réponse 201 la réponse contient le ticket créé avec un id et un qr_code
+
+**Accès non autorisé pour créer un ticket sans les rôles requis** : je reçois une réponse 403 la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
+### Scénarios de test
+
+**Créer un ticket**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/tickets\"
+
+✅ que je fournis email, reservation_date, slot_start_time, slot_end_time, ticket_price
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient le ticket créé avec un id et un qr_code
+
+**Accès non autorisé pour créer un ticket sans les rôles requis**
+
+📋 que je suis authentifié mais sans les rôles bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/tickets\"
+
+✅ je reçois une réponse 403
+
+✅ la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
+"
       operationId: "post_museum_tickets"
       parameters:
       responses:
         201:
-          description: "Code 201"
+          description: "Code 201 - que je fournis email, reservation_date, slot_start_time, slot_end_time, ticket_price, je reçois une réponse 201, la réponse contient le ticket créé avec un id et un qr_code"
           content:
             application/json:
               schema:
@@ -3229,7 +3797,20 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                qr_code: "exemple_qr_code"
+                email: "exemple_email"
+                reservation_date: "exemple_reservation_date"
+                slot_start_time: "exemple_slot_start_time"
+                slot_end_time: "exemple_slot_end_time"
+                ticket_price: 123
+                donation_amount: 123
+                guided_tour_price: 123
+                total_amount: 123
+                status: "exemple_status"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         400:
           description: "Code 400"
@@ -3385,7 +3966,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2025-12-18T23:33:31.756Z"
+                      default: "2025-12-26T21:43:26.943Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -3549,7 +4130,23 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Récupère un ticket par son ID (authentification requise)"
-      description: ""
+      description: "**Récupérer un ticket par ID** : qu'un ticket existe avec un ID spécifique je reçois une réponse 200 la réponse contient le ticket avec l'ID demandé
+
+### Scénarios de test
+
+**Récupérer un ticket par ID**
+
+📋 que je suis authentifié
+
+✅ qu'un ticket existe avec un ID spécifique
+
+⚡ je fais une requête GET vers \"/museum/tickets/:id\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le ticket avec l'ID demandé
+
+"
       operationId: "get_museum_tickets_:id"
       parameters:
         - name: "id"
@@ -3562,7 +4159,7 @@ paths:
             description: "ID du ticket"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - qu'un ticket existe avec un ID spécifique, je reçois une réponse 200, la réponse contient le ticket avec l'ID demandé"
           content:
             application/json:
               schema:
@@ -3626,7 +4223,20 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                qr_code: "exemple_qr_code"
+                email: "exemple_email"
+                reservation_date: "exemple_reservation_date"
+                slot_start_time: "exemple_slot_start_time"
+                slot_end_time: "exemple_slot_end_time"
+                ticket_price: 123
+                donation_amount: 123
+                guided_tour_price: 123
+                total_amount: 123
+                status: "exemple_status"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         404:
           description: "Code 404"
@@ -3656,7 +4266,25 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Met à jour un ticket"
-      description: ""
+      description: "**Mettre à jour un ticket** : qu'un ticket existe que je fournis de nouvelles valeurs je reçois une réponse 200 la réponse contient le ticket mis à jour
+
+### Scénarios de test
+
+**Mettre à jour un ticket**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un ticket existe
+
+⚡ je fais une requête PUT vers \"/museum/tickets/:id\"
+
+✅ que je fournis de nouvelles valeurs
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le ticket mis à jour
+
+"
       operationId: "put_museum_tickets_:id"
       parameters:
         - name: "id"
@@ -3669,7 +4297,7 @@ paths:
             description: "ID du ticket à mettre à jour"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - qu'un ticket existe, que je fournis de nouvelles valeurs, je reçois une réponse 200, la réponse contient le ticket mis à jour"
           content:
             application/json:
               schema:
@@ -3733,7 +4361,20 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                qr_code: "exemple_qr_code"
+                email: "exemple_email"
+                reservation_date: "exemple_reservation_date"
+                slot_start_time: "exemple_slot_start_time"
+                slot_end_time: "exemple_slot_end_time"
+                ticket_price: 123
+                donation_amount: 123
+                guided_tour_price: 123
+                total_amount: 123
+                status: "exemple_status"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         400:
           description: "Code 400"
@@ -3859,7 +4500,23 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Supprime un ticket"
-      description: ""
+      description: "**Supprimer un ticket** : qu'un ticket existe je reçois une réponse 204 le ticket est supprimé de la base de données
+
+### Scénarios de test
+
+**Supprimer un ticket**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un ticket existe
+
+⚡ je fais une requête DELETE vers \"/museum/tickets/:id\"
+
+✅ je reçois une réponse 204
+
+✅ le ticket est supprimé de la base de données
+
+"
       operationId: "delete_museum_tickets_:id"
       parameters:
         - name: "id"
@@ -3872,7 +4529,7 @@ paths:
             description: "ID du ticket à supprimer"
       responses:
         204:
-          description: "Code 204"
+          description: "Code 204 - qu'un ticket existe, je reçois une réponse 204, le ticket est supprimé de la base de données"
           content:
             application/json:
               schema:
@@ -3908,7 +4565,21 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Récupère un ticket par son code QR (route publique)"
-      description: ""
+      description: "**Récupérer un ticket par code QR** : je reçois une réponse 200 la réponse contient le ticket avec le code QR demandé
+
+### Scénarios de test
+
+**Récupérer un ticket par code QR**
+
+📋 qu'un ticket existe avec un code QR spécifique
+
+⚡ je fais une requête GET vers \"/museum/tickets/qr/:qrCode\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient le ticket avec le code QR demandé
+
+"
       operationId: "get_museum_tickets_qr_:qrCode"
       parameters:
         - name: "id"
@@ -3921,7 +4592,7 @@ paths:
             description: "ID du ticket"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - je reçois une réponse 200, la réponse contient le ticket avec le code QR demandé"
           content:
             application/json:
               schema:
@@ -3985,7 +4656,20 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                qr_code: "exemple_qr_code"
+                email: "exemple_email"
+                reservation_date: "exemple_reservation_date"
+                slot_start_time: "exemple_slot_start_time"
+                slot_end_time: "exemple_slot_end_time"
+                ticket_price: 123
+                donation_amount: 123
+                guided_tour_price: 123
+                total_amount: 123
+                status: "exemple_status"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         404:
           description: "Code 404"
@@ -4014,12 +4698,48 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Valide/utilise un ticket en scannant son code QR (route publique)"
-      description: ""
+      description: "**Valider un ticket (scan QR)** : qu'un ticket existe avec status='paid' et used_at=null que je fournis qr_code je reçois une réponse 200 la réponse indique que le ticket est valide le ticket est marqué comme utilisé (used_at est défini)
+
+**Erreur si le ticket est déjà utilisé** : qu'un ticket existe avec used_at déjà défini que je fournis qr_code je reçois une réponse 400 la réponse indique que le ticket est déjà utilisé
+
+### Scénarios de test
+
+**Valider un ticket (scan QR)**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un ticket existe avec status='paid' et used_at=null
+
+⚡ je fais une requête POST vers \"/museum/tickets/validate\"
+
+✅ que je fournis qr_code
+
+✅ je reçois une réponse 200
+
+✅ la réponse indique que le ticket est valide
+
+✅ le ticket est marqué comme utilisé (used_at est défini)
+
+**Erreur si le ticket est déjà utilisé**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un ticket existe avec used_at déjà défini
+
+⚡ je fais une requête POST vers \"/museum/tickets/validate\"
+
+✅ que je fournis qr_code
+
+✅ je reçois une réponse 400
+
+✅ la réponse indique que le ticket est déjà utilisé
+
+"
       operationId: "post_museum_tickets_validate"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - qu'un ticket existe avec status='paid' et used_at=null, que je fournis qr_code, je reçois une réponse 200, la réponse indique que le ticket est valide, le ticket est marqué comme utilisé (used_at est défini)"
           content:
             application/json:
               schema:
@@ -4083,10 +4803,23 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                qr_code: "exemple_qr_code"
+                email: "exemple_email"
+                reservation_date: "exemple_reservation_date"
+                slot_start_time: "exemple_slot_start_time"
+                slot_end_time: "exemple_slot_end_time"
+                ticket_price: 123
+                donation_amount: 123
+                guided_tour_price: 123
+                total_amount: 123
+                status: "exemple_status"
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - qu'un ticket existe avec used_at déjà défini, que je fournis qr_code, je reçois une réponse 400, la réponse indique que le ticket est déjà utilisé"
           content:
             application/json:
               schema:
@@ -4094,7 +4827,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         404:
           description: "Code 404"
@@ -4140,12 +4874,40 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Crée plusieurs tickets avec paiement. Crée d'abord un checkout avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)"
-      description: ""
+      description: "**Créer plusieurs tickets avec paiement** : que je fournis tickets, success_url, cancel_url je reçois une réponse 201 la réponse contient un checkout_session_id la réponse contient les tickets créés
+
+**Accès public pour créer des tickets avec paiement** : je peux créer des tickets avec paiement
+
+### Scénarios de test
+
+**Créer plusieurs tickets avec paiement**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête POST vers \"/museum/tickets/payment\"
+
+✅ que je fournis tickets, success_url, cancel_url
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient un checkout_session_id
+
+✅ la réponse contient les tickets créés
+
+**Accès public pour créer des tickets avec paiement**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête POST vers \"/museum/tickets/payment\"
+
+✅ je peux créer des tickets avec paiement
+
+"
       operationId: "post_museum_tickets_payment"
       parameters:
       responses:
         201:
-          description: "Code 201"
+          description: "Code 201 - que je fournis tickets, success_url, cancel_url, je reçois une réponse 201, la réponse contient un checkout_session_id, la réponse contient les tickets créés"
           content:
             application/json:
               schema:
@@ -4231,7 +4993,7 @@ paths:
                     description: "Liste des tickets créés"
                 required:
                   - tickets
-              example: null
+              example:
           headers: null
         400:
           description: "Code 400"
@@ -4431,7 +5193,23 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Récupère tous les tickets associés à un checkout_id donné (route publique)"
-      description: ""
+      description: "**Récupérer les tickets par checkout_id** : que des tickets sont associés à ce checkout_id je reçois une réponse 200 la réponse contient un tableau de tickets associés au checkout_id
+
+### Scénarios de test
+
+**Récupérer les tickets par checkout_id**
+
+📋 qu'un checkout_id existe
+
+✅ que des tickets sont associés à ce checkout_id
+
+⚡ je fais une requête GET vers \"/museum/tickets/checkout/:checkoutId\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un tableau de tickets associés au checkout_id
+
+"
       operationId: "get_museum_tickets_checkout_:checkoutId"
       parameters:
         - name: "checkoutId"
@@ -4443,7 +5221,7 @@ paths:
             description: "ID du checkout"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - que des tickets sont associés à ce checkout_id, je reçois une réponse 200, la réponse contient un tableau de tickets associés au checkout_id"
           content:
             application/json:
               schema:
@@ -4524,13 +5302,31 @@ paths:
     get:
       tags:
         - Musée - Tickets
-      summary: "Récupère les statistiques des tickets : nombre total vendus, nombre de la semaine avec répartition par jour (route publique)"
-      description: ""
+      summary: "Récupère les statistiques complètes des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, total des dons, coût moyen, statistiques par horaire (pour identifier les horaires à forte influence), statistiques sur les réservations groupées (même checkout_reference), revenus totaux, taux de conversion et répartition par statut. Réservé aux rôles bureau et dev."
+      description: "**Récupérer les statistiques des tickets** : que des tickets existent je reçois une réponse 200 la réponse contient total_tickets_sold, week_tickets_sold, total_donations la réponse contient average_ticket_price, hourly_stats, grouped_reservations
+
+### Scénarios de test
+
+**Récupérer les statistiques des tickets**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ que des tickets existent
+
+⚡ je fais une requête GET vers \"/museum/tickets/stats\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient total_tickets_sold, week_tickets_sold, total_donations
+
+✅ la réponse contient average_ticket_price, hourly_stats, grouped_reservations
+
+"
       operationId: "get_museum_tickets_stats"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - que des tickets existent, je reçois une réponse 200, la réponse contient total_tickets_sold, week_tickets_sold, total_donations, la réponse contient average_ticket_price, hourly_stats, grouped_reservations"
           content:
             application/json:
               schema:
@@ -4564,13 +5360,110 @@ paths:
                             - day_name
                             - tickets_count
                         description: "Répartition des tickets vendus par jour de la semaine"
+                      total_donations:
+                        type: "number"
+                        description: "Total des dons reçus sur les tickets payés"
+                      average_ticket_price:
+                        type: "number"
+                        description: "Coût moyen d'un ticket (ticket_price)"
+                      hourly_stats:
+                        type: "array"
+                        items:
+                          type: "object"
+                          properties:
+                            start_time:
+                              type: "string"
+                              pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+                              description: "Heure de début (HH:MM:SS)"
+                            tickets_count:
+                              type: "number"
+                              description: "Nombre de tickets vendus à cette heure"
+                            percentage:
+                              type: "number"
+                              description: "Pourcentage par rapport au total"
+                          required:
+                            - start_time
+                            - tickets_count
+                            - percentage
+                        description: "Statistiques par horaire (slot_start_time) pour voir les horaires à forte influence"
+                      grouped_reservations:
+                        type: "object"
+                        properties:
+                          total_checkouts:
+                            type: "number"
+                            description: "Nombre total de checkout_reference uniques (avec checkout_reference non null)"
+                          average_tickets_per_checkout:
+                            type: "number"
+                            description: "Nombre moyen de tickets par checkout"
+                          max_tickets_in_checkout:
+                            type: "number"
+                            description: "Nombre maximum de tickets dans un seul checkout"
+                          checkout_distribution:
+                            type: "array"
+                            items:
+                              type: "object"
+                              properties:
+                                tickets_count:
+                                  type: "number"
+                                  description: "Nombre de tickets dans le checkout"
+                                checkouts_count:
+                                  type: "number"
+                                  description: "Nombre de checkouts avec ce nombre de tickets"
+                              required:
+                                - tickets_count
+                                - checkouts_count
+                            description: "Distribution du nombre de tickets par checkout"
+                        required:
+                          - total_checkouts
+                          - average_tickets_per_checkout
+                          - max_tickets_in_checkout
+                          - checkout_distribution
+                        description: "Statistiques sur les réservations groupées (même checkout_reference)"
+                      total_revenue:
+                        type: "number"
+                        description: "Total des revenus (ticket_price + donation_amount) pour les tickets payés"
+                      conversion_rate:
+                        type: "number"
+                        description: "Taux de conversion (paid / (paid + pending)) en pourcentage"
+                      status_distribution:
+                        type: "object"
+                        properties:
+                          paid:
+                            type: "number"
+                            description: "Nombre de tickets payés"
+                          pending:
+                            type: "number"
+                            description: "Nombre de tickets en attente"
+                          cancelled:
+                            type: "number"
+                            description: "Nombre de tickets annulés"
+                          used:
+                            type: "number"
+                            description: "Nombre de tickets utilisés"
+                          expired:
+                            type: "number"
+                            description: "Nombre de tickets expirés"
+                        required:
+                          - paid
+                          - pending
+                          - cancelled
+                          - used
+                          - expired
+                        description: "Répartition par statut"
                     required:
                       - total_tickets_sold
                       - week_tickets_sold
                       - week_tickets_by_day
+                      - total_donations
+                      - average_ticket_price
+                      - hourly_stats
+                      - grouped_reservations
+                      - total_revenue
+                      - conversion_rate
+                      - status_distribution
                 required:
                   - tickets_stats
-              example: null
+              example:
           headers: null
         500:
           description: "Erreur serveur"
@@ -4590,12 +5483,26 @@ paths:
       tags:
         - Musée - Tickets
       summary: "Récupère les statistiques des créneaux horaires pour la semaine courante : pour chaque jour et start_time, nombre de personnes attendues et pourcentage d’occupation par rapport à la capacité"
-      description: ""
+      description: "**Récupérer les statistiques des créneaux de la semaine** : je reçois une réponse 200 la réponse contient week_start, week_end, slots_stats, daily_totals
+
+### Scénarios de test
+
+**Récupérer les statistiques des créneaux de la semaine**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête GET vers \"/museum/tickets/weekly-slots-stats\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient week_start, week_end, slots_stats, daily_totals
+
+"
       operationId: "get_museum_tickets_weekly-slots-stats"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - je reçois une réponse 200, la réponse contient week_start, week_end, slots_stats, daily_totals"
           content:
             application/json:
               schema:
@@ -4676,7 +5583,9 @@ paths:
                   - week_end
                   - slots_stats
                   - daily_totals
-              example: null
+              example:
+                week_start: "exemple_week_start"
+                week_end: "exemple_week_end"
           headers: null
         500:
           description: "Erreur serveur"
@@ -4696,7 +5605,19 @@ paths:
       tags:
         - Musée - Créneaux
       summary: "Récupère les créneaux horaires disponibles pour une date donnée avec leurs capacités et taux d'occupation (route publique)"
-      description: ""
+      description: "**Erreur si le paramètre date est manquant** : je reçois une réponse 400 la réponse contient un message d'erreur \"Le paramètre date est requis\"
+
+### Scénarios de test
+
+**Erreur si le paramètre date est manquant**
+
+⚡ je fais une requête GET vers \"/museum/slots\"
+
+✅ je reçois une réponse 400
+
+✅ la réponse contient un message d'erreur \"Le paramètre date est requis\"
+
+"
       operationId: "get_museum_slots"
       parameters:
         - name: "date"
@@ -4770,7 +5691,7 @@ paths:
               example: null
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - je reçois une réponse 400, la réponse contient un message d'erreur \"Le paramètre date est requis\""
           content:
             application/json:
               schema:
@@ -4778,7 +5699,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -4796,7 +5718,21 @@ paths:
       tags:
         - Musée - Certificats de don
       summary: "Génère et télécharge un certificat de don CERFA 11580 en PDF pour un ticket donné. Le ticket doit contenir un don (donation_amount > 0). Les paramètres address, postal_code et city sont optionnels et permettent de compléter les informations du donateur."
-      description: ""
+      description: "**Erreur si ticket_id est manquant** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"ticket_id est requis\"
+
+### Scénarios de test
+
+**Erreur si ticket_id est manquant**
+
+📋 que je suis authentifié
+
+⚡ je fais une requête GET vers \"/museum/donation-proof/generate\"
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer \"ticket_id est requis\"
+
+"
       operationId: "get_museum_donation-proof_generate"
       parameters:
         - name: "ticket_id"
@@ -4843,7 +5779,7 @@ paths:
               example: null
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - je devrais recevoir une erreur 400, le message d'erreur devrait indiquer \"ticket_id est requis\""
           content:
             application/json:
               schema:
@@ -4851,7 +5787,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         404:
           description: "Code 404"
@@ -4882,7 +5819,79 @@ paths:
       tags:
         - Musée - Codes cadeaux
       summary: "Crée un pack de codes cadeaux. Chaque code offre une place gratuite. Les codes peuvent être créés en lot pour faciliter la distribution (ex: pour un influenceur)."
-      description: ""
+      description: "**Création d'un pack de codes cadeaux** : je devrais recevoir un pack_id et une liste de codes le nombre de codes devrait correspondre à la quantité demandée
+
+**Création d'un pack avec date d'expiration** : je devrais recevoir un pack avec des codes ayant la date d'expiration spécifiée
+
+**Erreur si la quantité est invalide** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer que la quantité doit être supérieure à 0
+
+**Erreur si la quantité dépasse 1000** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer que la quantité ne peut pas dépasser 1000
+
+**Accès refusé pour la création de pack sans authentification** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"
+
+**Accès refusé pour les rôles non autorisés** : je devrais recevoir une erreur 403 le message d'erreur devrait indiquer \"Accès refusé : rôle insuffisant\"
+
+### Scénarios de test
+
+**Création d'un pack de codes cadeaux**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/packs\" avec une quantité
+
+✅ je devrais recevoir un pack_id et une liste de codes
+
+✅ le nombre de codes devrait correspondre à la quantité demandée
+
+**Création d'un pack avec date d'expiration**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/packs\" avec une quantité et une date d'expiration
+
+✅ je devrais recevoir un pack avec des codes ayant la date d'expiration spécifiée
+
+**Erreur si la quantité est invalide**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/packs\" avec une quantité <= 0
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer que la quantité doit être supérieure à 0
+
+**Erreur si la quantité dépasse 1000**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/packs\" avec une quantité > 1000
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer que la quantité ne peut pas dépasser 1000
+
+**Accès refusé pour la création de pack sans authentification**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/packs\"
+
+✅ je devrais recevoir une erreur 401
+
+✅ le message d'erreur devrait indiquer \"Non authentifié\"
+
+**Accès refusé pour les rôles non autorisés**
+
+📋 que je suis authentifié avec un rôle non autorisé
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/packs\"
+
+✅ je devrais recevoir une erreur 403
+
+✅ le message d'erreur devrait indiquer \"Accès refusé : rôle insuffisant\"
+
+"
       operationId: "post_museum_gift-codes_packs"
       parameters:
       responses:
@@ -4943,7 +5952,7 @@ paths:
               example: null
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - je devrais recevoir une erreur 400, le message d'erreur devrait indiquer que la quantité doit être supérieure à 0"
           content:
             application/json:
               schema:
@@ -4951,7 +5960,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -4995,7 +6005,21 @@ paths:
       tags:
         - Musée - Codes cadeaux
       summary: "Récupère la liste paginée des packs de codes cadeaux avec leurs codes associés. Permet de rechercher un pack par code (paramètre `code`). Retourne les statistiques de chaque pack (nombre de codes, utilisés, non utilisés, expirés)."
-      description: ""
+      description: "**Récupération des packs de codes cadeaux** : je devrais recevoir une liste paginée de packs avec leurs codes associés chaque pack devrait contenir les statistiques (unused_count, used_count, expired_count)
+
+### Scénarios de test
+
+**Récupération des packs de codes cadeaux**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+⚡ je fais une requête GET vers \"/museum/gift-codes/packs\"
+
+✅ je devrais recevoir une liste paginée de packs avec leurs codes associés
+
+✅ chaque pack devrait contenir les statistiques (unused_count, used_count, expired_count)
+
+"
       operationId: "get_museum_gift-codes_packs"
       parameters:
         - name: "code"
@@ -5120,7 +6144,49 @@ paths:
       tags:
         - Musée - Codes cadeaux
       summary: "Distribue des codes cadeaux par email. Permet d'envoyer un lot de codes à un destinataire (ex: influenceur). Les codes sont associés à l'email du destinataire."
-      description: ""
+      description: "**Distribution de codes par email** : qu'un pack de codes existe les codes devraient être associés à l'email du destinataire un email devrait être envoyé au destinataire avec les codes
+
+**Erreur si certains codes n'existent pas lors de la distribution** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer que certains codes n'existent pas
+
+**Erreur si certains codes sont déjà utilisés lors de la distribution** : que certains codes sont déjà utilisés je devrais recevoir une erreur 400 le message d'erreur devrait indiquer quels codes sont déjà utilisés
+
+### Scénarios de test
+
+**Distribution de codes par email**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'un pack de codes existe
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/distribute\" avec des code_ids et un recipient_email
+
+✅ les codes devraient être associés à l'email du destinataire
+
+✅ un email devrait être envoyé au destinataire avec les codes
+
+**Erreur si certains codes n'existent pas lors de la distribution**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/distribute\" avec des code_ids invalides
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer que certains codes n'existent pas
+
+**Erreur si certains codes sont déjà utilisés lors de la distribution**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ que certains codes sont déjà utilisés
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/distribute\" avec ces codes
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer quels codes sont déjà utilisés
+
+"
       operationId: "post_museum_gift-codes_distribute"
       parameters:
       responses:
@@ -5138,7 +6204,7 @@ paths:
               example: null
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - je devrais recevoir une erreur 400, le message d'erreur devrait indiquer que certains codes n'existent pas"
           content:
             application/json:
               schema:
@@ -5146,7 +6212,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -5200,7 +6267,19 @@ paths:
       tags:
         - Musée - Codes cadeaux
       summary: "Récupère la liste des codes cadeaux avec pagination et filtres optionnels (statut, pack, destinataire, ticket associé)."
-      description: ""
+      description: "**Récupération des codes cadeaux avec filtres** : je devrais recevoir une liste paginée de codes correspondant aux filtres
+
+### Scénarios de test
+
+**Récupération des codes cadeaux avec filtres**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+⚡ je fais une requête GET vers \"/museum/gift-codes\" avec des paramètres de filtre
+
+✅ je devrais recevoir une liste paginée de codes correspondant aux filtres
+
+"
       operationId: "get_museum_gift-codes"
       parameters:
         - name: "status"
@@ -5432,7 +6511,45 @@ paths:
       tags:
         - Musée - Codes cadeaux
       summary: "Crée une session de paiement Stripe pour acheter des codes cadeaux (route publique). Utilise le setting gift_code_price comme prix unitaire et retourne checkout_id + checkout_url."
-      description: ""
+      description: "**Achat public de codes cadeaux** : je devrais recevoir un checkout_id et un checkout_url une session Stripe devrait être créée
+
+**Erreur si la quantité d'achat est invalide** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer que la quantité doit être au moins 1
+
+**Erreur si la quantité d'achat dépasse 100** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer que la quantité maximale est 100
+
+### Scénarios de test
+
+**Achat public de codes cadeaux**
+
+📋 que le prix des codes cadeaux est configuré
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/purchase\" avec une quantité et un email
+
+✅ je devrais recevoir un checkout_id et un checkout_url
+
+✅ une session Stripe devrait être créée
+
+**Erreur si la quantité d'achat est invalide**
+
+📋 que le prix des codes cadeaux est configuré
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/purchase\" avec une quantité <= 0
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer que la quantité doit être au moins 1
+
+**Erreur si la quantité d'achat dépasse 100**
+
+📋 que le prix des codes cadeaux est configuré
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/purchase\" avec une quantité > 100
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer que la quantité maximale est 100
+
+"
       operationId: "post_museum_gift-codes_purchase"
       parameters:
       responses:
@@ -5453,7 +6570,7 @@ paths:
               example: null
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - je devrais recevoir une erreur 400, le message d'erreur devrait indiquer que la quantité doit être au moins 1"
           content:
             application/json:
               schema:
@@ -5461,7 +6578,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -5515,7 +6633,35 @@ paths:
       tags:
         - Musée - Codes cadeaux
       summary: "Confirme un achat de codes cadeaux après paiement Stripe (route publique). Vérifie la session, génère un pack de codes et les envoie par email à l'acheteur."
-      description: ""
+      description: "**Confirmation d'un achat après paiement** : un pack de codes devrait être créé un email devrait être envoyé à l'acheteur avec les codes les codes devraient être associés à l'email de l'acheteur
+
+**Erreur si le paiement n'est pas confirmé** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer que le paiement n'est pas confirmé
+
+### Scénarios de test
+
+**Confirmation d'un achat après paiement**
+
+📋 qu'une session de paiement existe avec payment_status = paid
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/purchase/confirm\" avec le checkout_id
+
+✅ un pack de codes devrait être créé
+
+✅ un email devrait être envoyé à l'acheteur avec les codes
+
+✅ les codes devraient être associés à l'email de l'acheteur
+
+**Erreur si le paiement n'est pas confirmé**
+
+📋 qu'une session de paiement existe avec payment_status != paid
+
+⚡ je fais une requête POST vers \"/museum/gift-codes/purchase/confirm\" avec le checkout_id
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer que le paiement n'est pas confirmé
+
+"
       operationId: "post_museum_gift-codes_purchase_confirm"
       parameters:
       responses:
@@ -5538,7 +6684,7 @@ paths:
               example: null
           headers: null
         400:
-          description: "Code 400"
+          description: "Code 400 - je devrais recevoir une erreur 400, le message d'erreur devrait indiquer que le paiement n'est pas confirmé"
           content:
             application/json:
               schema:
@@ -5546,7 +6692,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
         500:
           description: "Erreur serveur"
@@ -5576,12 +6723,82 @@ paths:
       tags:
         - Musée - Périodes spéciales
       summary: "Crée une période spéciale (vacances scolaires ou fermeture). Les périodes de vacances permettent d'afficher automatiquement les horaires avec audience_type=\"holiday\" en plus des horaires publics. Les périodes de fermeture masquent les horaires normaux."
-      description: ""
+      description: "**Créer une période de vacances** : que je fournis type=\"holiday\", start_date, end_date, name, zone je reçois une réponse 201 la réponse contient la période créée avec un id la réponse contient type, start_date, end_date, name, zone, is_active
+
+**Créer une période de fermeture** : que je fournis type=\"closure\", start_date, end_date, name je reçois une réponse 201 la réponse contient la période créée avec type=\"closure\"
+
+**Erreur si la date de fin est antérieure à la date de début** : que je fournis start_date=\"2024-12-25\" et end_date=\"2024-12-24\" je reçois une réponse 500 la réponse contient un message d'erreur indiquant que la date de fin doit être supérieure ou égale à la date de début
+
+**Accès non autorisé pour créer une période sans authentification** : je reçois une réponse 401 la réponse contient un message d'erreur \"Non authentifié\"
+
+**Accès non autorisé pour créer une période sans les rôles requis** : je reçois une réponse 403 la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
+### Scénarios de test
+
+**Créer une période de vacances**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/special-periods\"
+
+✅ que je fournis type=\"holiday\", start_date, end_date, name, zone
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient la période créée avec un id
+
+✅ la réponse contient type, start_date, end_date, name, zone, is_active
+
+**Créer une période de fermeture**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/special-periods\"
+
+✅ que je fournis type=\"closure\", start_date, end_date, name
+
+✅ je reçois une réponse 201
+
+✅ la réponse contient la période créée avec type=\"closure\"
+
+**Erreur si la date de fin est antérieure à la date de début**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/special-periods\"
+
+✅ que je fournis start_date=\"2024-12-25\" et end_date=\"2024-12-24\"
+
+✅ je reçois une réponse 500
+
+✅ la réponse contient un message d'erreur indiquant que la date de fin doit être supérieure ou égale à la date de début
+
+**Accès non autorisé pour créer une période sans authentification**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête POST vers \"/museum/special-periods\"
+
+✅ je reçois une réponse 401
+
+✅ la réponse contient un message d'erreur \"Non authentifié\"
+
+**Accès non autorisé pour créer une période sans les rôles requis**
+
+📋 que je suis authentifié mais sans les rôles bureau ou dev
+
+⚡ je fais une requête POST vers \"/museum/special-periods\"
+
+✅ je reçois une réponse 403
+
+✅ la réponse contient un message d'erreur \"Accès refusé : rôle insuffisant\"
+
+"
       operationId: "post_museum_special-periods"
       parameters:
       responses:
         201:
-          description: "Code 201"
+          description: "Code 201 - que je fournis type=\"holiday\", start_date, end_date, name, zone, je reçois une réponse 201, la réponse contient la période créée avec un id, la réponse contient type, start_date, end_date, name, zone, is_active"
           content:
             application/json:
               schema:
@@ -5616,7 +6833,14 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                type: "exemple_type"
+                start_date: "exemple_start_date"
+                end_date: "exemple_end_date"
+                is_active: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         400:
           description: "Code 400"
@@ -5630,7 +6854,7 @@ paths:
               example: null
           headers: null
         500:
-          description: "Erreur serveur"
+          description: "Erreur serveur - que je fournis start_date=\"2024-12-25\" et end_date=\"2024-12-24\", je reçois une réponse 500, la réponse contient un message d'erreur indiquant que la date de fin doit être supérieure ou égale à la date de début"
           content:
             application/json:
               schema:
@@ -5638,7 +6862,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
       requestBody:
         required: true
@@ -5686,7 +6911,23 @@ paths:
       tags:
         - Musée - Périodes spéciales
       summary: "Récupère la liste des périodes spéciales (vacances et fermetures) avec filtres optionnels (type, date, zone). Permet de vérifier si une date est dans une période spéciale."
-      description: ""
+      description: "**Récupérer toutes les périodes spéciales** : que des périodes spéciales existent je reçois une réponse 200 la réponse contient un tableau de périodes spéciales
+
+### Scénarios de test
+
+**Récupérer toutes les périodes spéciales**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ que des périodes spéciales existent
+
+⚡ je fais une requête GET vers \"/museum/special-periods\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient un tableau de périodes spéciales
+
+"
       operationId: "get_museum_special-periods"
       parameters:
         - name: "type"
@@ -5723,7 +6964,7 @@ paths:
             description: "Filtrer par statut actif"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - que des périodes spéciales existent, je reçois une réponse 200, la réponse contient un tableau de périodes spéciales"
           content:
             application/json:
               schema:
@@ -5780,7 +7021,23 @@ paths:
       tags:
         - Musée - Périodes spéciales
       summary: "Récupère une période spéciale par son ID."
-      description: ""
+      description: "**Récupérer une période spéciale par ID** : qu'une période spéciale existe avec un ID spécifique je reçois une réponse 200 la réponse contient la période avec l'ID demandé
+
+### Scénarios de test
+
+**Récupérer une période spéciale par ID**
+
+📋 que je suis authentifié avec un rôle bureau, dev ou museum
+
+✅ qu'une période spéciale existe avec un ID spécifique
+
+⚡ je fais une requête GET vers \"/museum/special-periods/:id\"
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient la période avec l'ID demandé
+
+"
       operationId: "get_museum_special-periods_:id"
       parameters:
         - name: "id"
@@ -5793,7 +7050,7 @@ paths:
             description: "ID de la période spéciale"
       responses:
         200:
-          description: "Succès"
+          description: "Succès - qu'une période spéciale existe avec un ID spécifique, je reçois une réponse 200, la réponse contient la période avec l'ID demandé"
           content:
             application/json:
               schema:
@@ -5828,7 +7085,14 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                type: "exemple_type"
+                start_date: "exemple_start_date"
+                end_date: "exemple_end_date"
+                is_active: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         404:
           description: "Code 404"
@@ -5858,12 +7122,46 @@ paths:
       tags:
         - Musée - Périodes spéciales
       summary: "Met à jour une période spéciale (vacances ou fermeture)."
-      description: ""
+      description: "**Mettre à jour une période spéciale** : qu'une période spéciale existe que je fournis de nouvelles valeurs pour name et description je reçois une réponse 200 la réponse contient la période mise à jour
+
+**Erreur si la date de fin est antérieure à la date de début lors de la mise à jour** : qu'une période spéciale existe que je fournis start_date=\"2024-12-25\" et end_date=\"2024-12-24\" je reçois une réponse 500 la réponse contient un message d'erreur indiquant que la date de fin doit être supérieure ou égale à la date de début
+
+### Scénarios de test
+
+**Mettre à jour une période spéciale**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ qu'une période spéciale existe
+
+⚡ je fais une requête PUT vers \"/museum/special-periods/:id\"
+
+✅ que je fournis de nouvelles valeurs pour name et description
+
+✅ je reçois une réponse 200
+
+✅ la réponse contient la période mise à jour
+
+**Erreur si la date de fin est antérieure à la date de début lors de la mise à jour**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ qu'une période spéciale existe
+
+⚡ je fais une requête PUT vers \"/museum/special-periods/:id\"
+
+✅ que je fournis start_date=\"2024-12-25\" et end_date=\"2024-12-24\"
+
+✅ je reçois une réponse 500
+
+✅ la réponse contient un message d'erreur indiquant que la date de fin doit être supérieure ou égale à la date de début
+
+"
       operationId: "put_museum_special-periods_:id"
       parameters:
       responses:
         200:
-          description: "Succès"
+          description: "Succès - qu'une période spéciale existe, que je fournis de nouvelles valeurs pour name et description, je reçois une réponse 200, la réponse contient la période mise à jour"
           content:
             application/json:
               schema:
@@ -5898,7 +7196,14 @@ paths:
                     type: "string"
                   updated_at:
                     type: "string"
-              example: null
+              example:
+                id: "exemple_id"
+                type: "exemple_type"
+                start_date: "exemple_start_date"
+                end_date: "exemple_end_date"
+                is_active: true
+                created_at: "exemple_created_at"
+                updated_at: "exemple_updated_at"
           headers: null
         404:
           description: "Code 404"
@@ -5912,7 +7217,7 @@ paths:
               example: null
           headers: null
         500:
-          description: "Erreur serveur"
+          description: "Erreur serveur - qu'une période spéciale existe, que je fournis start_date=\"2024-12-25\" et end_date=\"2024-12-24\", je reçois une réponse 500, la réponse contient un message d'erreur indiquant que la date de fin doit être supérieure ou égale à la date de début"
           content:
             application/json:
               schema:
@@ -5920,7 +7225,8 @@ paths:
                 properties:
                   error:
                     type: "string"
-              example: null
+              example:
+                error: "exemple_error"
           headers: null
       requestBody:
         required: true
@@ -5969,7 +7275,23 @@ paths:
       tags:
         - Musée - Périodes spéciales
       summary: "Supprime une période spéciale."
-      description: ""
+      description: "**Supprimer une période spéciale** : qu'une période spéciale existe je reçois une réponse 204 la période est supprimée de la base de données
+
+### Scénarios de test
+
+**Supprimer une période spéciale**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ qu'une période spéciale existe
+
+⚡ je fais une requête DELETE vers \"/museum/special-periods/:id\"
+
+✅ je reçois une réponse 204
+
+✅ la période est supprimée de la base de données
+
+"
       operationId: "delete_museum_special-periods_:id"
       parameters:
         - name: "id"
@@ -5982,7 +7304,7 @@ paths:
             description: "ID de la période spéciale"
       responses:
         204:
-          description: "Code 204"
+          description: "Code 204 - qu'une période spéciale existe, je reçois une réponse 204, la période est supprimée de la base de données"
           content:
             application/json:
               schema:
@@ -7124,7 +8446,69 @@ paths:
       tags:
         - Présences membres
       summary: "Créer ou mettre à jour la présence du membre connecté pour une date. Le membre peut indiquer s'il vient le matin, l'après-midi, ou les deux."
-      description: ""
+      description: "**Création d'une présence** : je devrais recevoir la présence créée la présence devrait contenir mon user_id et mon user_name
+
+**Mise à jour d'une présence existante** : la présence devrait être mise à jour la période devrait être la nouvelle valeur
+
+**Erreur si la date est invalide** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Date invalide\"
+
+**Erreur si l'utilisateur n'existe pas** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Utilisateur non trouvé\"
+
+**Accès refusé sans authentification** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"
+
+### Scénarios de test
+
+**Création d'une présence**
+
+📋 que je suis authentifié
+
+⚡ je fais une requête POST vers \"/museum/member-presences\" avec une date et une période
+
+✅ je devrais recevoir la présence créée
+
+✅ la présence devrait contenir mon user_id et mon user_name
+
+**Mise à jour d'une présence existante**
+
+📋 qu'une présence existe déjà pour cette date
+
+⚡ je fais une requête POST vers \"/museum/member-presences\" avec la même date et une nouvelle période
+
+✅ la présence devrait être mise à jour
+
+✅ la période devrait être la nouvelle valeur
+
+**Erreur si la date est invalide**
+
+📋 que je suis authentifié
+
+⚡ je fais une requête POST vers \"/museum/member-presences\" avec une date invalide
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer \"Date invalide\"
+
+**Erreur si l'utilisateur n'existe pas**
+
+📋 que mon discord_id n'existe pas dans la base de données
+
+⚡ je fais une requête POST vers \"/museum/member-presences\"
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer \"Utilisateur non trouvé\"
+
+**Accès refusé sans authentification**
+
+📋 que je ne suis pas authentifié
+
+⚡ je fais une requête POST vers \"/museum/member-presences\"
+
+✅ je devrais recevoir une erreur 401
+
+✅ le message d'erreur devrait indiquer \"Non authentifié\"
+
+"
       operationId: "post_museum_member-presences"
       parameters:
       responses:
@@ -7189,7 +8573,47 @@ paths:
       tags:
         - Présences membres
       summary: "Récupère les présences. Pour un membre : ses propres présences. Pour bureau/dev : toutes les présences de tous les membres. Retourne les jours avec leurs tableaux de présences."
-      description: ""
+      description: "**Récupération de mes propres présences** : que j'ai des présences enregistrées je devrais recevoir mes présences organisées par jour chaque jour devrait contenir la date, le nom du jour et les présences
+
+**Récupération de toutes les présences (admin)** : je devrais recevoir toutes les présences de tous les membres les présences devraient être organisées par jour
+
+**Récupération avec une seule date** : je devrais recevoir les présences pour cette date uniquement end_date devrait être égal à start_date
+
+### Scénarios de test
+
+**Récupération de mes propres présences**
+
+📋 que je suis authentifié
+
+✅ que j'ai des présences enregistrées
+
+⚡ je fais une requête GET vers \"/museum/member-presences\" avec start_date et end_date
+
+✅ je devrais recevoir mes présences organisées par jour
+
+✅ chaque jour devrait contenir la date, le nom du jour et les présences
+
+**Récupération de toutes les présences (admin)**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+⚡ je fais une requête GET vers \"/museum/member-presences\" avec start_date et end_date
+
+✅ je devrais recevoir toutes les présences de tous les membres
+
+✅ les présences devraient être organisées par jour
+
+**Récupération avec une seule date**
+
+📋 que je suis authentifié
+
+⚡ je fais une requête GET vers \"/museum/member-presences\" avec seulement start_date
+
+✅ je devrais recevoir les présences pour cette date uniquement
+
+✅ end_date devrait être égal à start_date
+
+"
       operationId: "get_museum_member-presences"
       parameters:
         - name: "start_date"
@@ -7269,7 +8693,49 @@ paths:
       tags:
         - Présences membres
       summary: "Refuser ou accepter une présence (bureau et dev uniquement). Permet aux admins de refuser certaines présences."
-      description: ""
+      description: "**Refus d'une présence (admin uniquement)** : qu'une présence existe la présence devrait être marquée comme refusée refused_by_admin devrait être true
+
+**Acceptation d'une présence refusée (admin uniquement)** : qu'une présence est refusée la présence devrait être acceptée refused_by_admin devrait être false
+
+**Accès refusé pour refuser une présence sans rôle admin** : je devrais recevoir une erreur 403 le message d'erreur devrait indiquer \"Accès refusé : rôle insuffisant\"
+
+### Scénarios de test
+
+**Refus d'une présence (admin uniquement)**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ qu'une présence existe
+
+⚡ je fais une requête PUT vers \"/museum/member-presences/:id/refuse\" avec refused=true
+
+✅ la présence devrait être marquée comme refusée
+
+✅ refused_by_admin devrait être true
+
+**Acceptation d'une présence refusée (admin uniquement)**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ qu'une présence est refusée
+
+⚡ je fais une requête PUT vers \"/museum/member-presences/:id/refuse\" avec refused=false
+
+✅ la présence devrait être acceptée
+
+✅ refused_by_admin devrait être false
+
+**Accès refusé pour refuser une présence sans rôle admin**
+
+📋 que je suis authentifié sans rôle bureau ou dev
+
+⚡ je fais une requête PUT vers \"/museum/member-presences/:id/refuse\"
+
+✅ je devrais recevoir une erreur 403
+
+✅ le message d'erreur devrait indiquer \"Accès refusé : rôle insuffisant\"
+
+"
       operationId: "put_museum_member-presences_:id_refuse"
       parameters:
         - name: "id"
@@ -7334,7 +8800,51 @@ paths:
       tags:
         - Présences membres
       summary: "Supprimer une présence. Un membre peut supprimer sa propre présence. Les admins peuvent supprimer n'importe quelle présence."
-      description: ""
+      description: "**Suppression de ma propre présence** : qu'une de mes présences existe la présence devrait être supprimée je devrais recevoir { success: true }
+
+**Suppression d'une présence par un admin** : qu'une présence existe la présence devrait être supprimée je devrais recevoir { success: true }
+
+**Erreur si je tente de supprimer une présence qui ne m'appartient pas** : qu'une présence d'un autre membre existe je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Vous ne pouvez supprimer que vos propres présences\"
+
+### Scénarios de test
+
+**Suppression de ma propre présence**
+
+📋 que je suis authentifié
+
+✅ qu'une de mes présences existe
+
+⚡ je fais une requête DELETE vers \"/museum/member-presences/:id\"
+
+✅ la présence devrait être supprimée
+
+✅ je devrais recevoir { success: true }
+
+**Suppression d'une présence par un admin**
+
+📋 que je suis authentifié avec un rôle bureau ou dev
+
+✅ qu'une présence existe
+
+⚡ je fais une requête DELETE vers \"/museum/member-presences/:id\"
+
+✅ la présence devrait être supprimée
+
+✅ je devrais recevoir { success: true }
+
+**Erreur si je tente de supprimer une présence qui ne m'appartient pas**
+
+📋 que je suis authentifié
+
+✅ qu'une présence d'un autre membre existe
+
+⚡ je fais une requête DELETE vers \"/museum/member-presences/:id\"
+
+✅ je devrais recevoir une erreur 400
+
+✅ le message d'erreur devrait indiquer \"Vous ne pouvez supprimer que vos propres présences\"
+
+"
       operationId: "delete_museum_member-presences_:id"
       parameters:
         - name: "id"

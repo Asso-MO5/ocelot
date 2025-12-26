@@ -95,6 +95,28 @@ Feature: Gestion des tickets du musée
     Alors je reçois une réponse 200
     Et la réponse contient un tableau de tickets associés au checkout_id
 
+  Scenario: Renvoyer les tickets d'une commande par email
+    Étant donné que je suis authentifié avec un rôle bureau ou dev
+    Et qu'un checkout_id existe avec des tickets associés
+    Quand je fais une requête POST vers "/museum/tickets/checkout/:checkoutId/resend"
+    Alors je reçois une réponse 200
+    Et la réponse contient success: true
+    Et la réponse contient le nombre de tickets renvoyés
+    Et les emails de confirmation sont envoyés pour tous les tickets
+
+  Scenario: Erreur si aucun ticket trouvé pour le renvoi
+    Étant donné que je suis authentifié avec un rôle bureau ou dev
+    Et qu'aucun ticket n'existe pour ce checkout_id
+    Quand je fais une requête POST vers "/museum/tickets/checkout/:checkoutId/resend"
+    Alors je reçois une réponse 404
+    Et la réponse contient un message d'erreur "Aucun ticket trouvé pour ce checkout"
+
+  Scenario: Accès non autorisé pour renvoyer des tickets sans les rôles requis
+    Étant donné que je suis authentifié mais sans les rôles bureau ou dev
+    Quand je fais une requête POST vers "/museum/tickets/checkout/:checkoutId/resend"
+    Alors je reçois une réponse 403
+    Et la réponse contient un message d'erreur "Accès refusé : rôle insuffisant"
+
   Scenario: Visualiser un ticket en HTML
     Étant donné qu'un ticket existe avec status='paid' et used_at=null
     Et que la date de réservation est valide
