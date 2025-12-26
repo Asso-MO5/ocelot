@@ -91,7 +91,7 @@ async function countTicketsForSlot(
     `SELECT COUNT(*) as count
      FROM tickets 
      WHERE reservation_date = $1 
-     AND status IN ('pending', 'paid')
+     AND status IN ('pending', 'paid', 'used')
      AND slot_start_time = $2`,
     [date, slotStart]
   );
@@ -172,7 +172,7 @@ export async function getSlotsForDate(
     `SELECT COUNT(DISTINCT id) as count
      FROM tickets 
      WHERE reservation_date = $1 
-     AND status IN ('pending', 'paid')`,
+     AND status IN ('pending', 'paid', 'used')`,
     [date]
   );
   const totalUniqueBooked = parseInt(uniqueTicketsResult.rows[0].count, 10);
