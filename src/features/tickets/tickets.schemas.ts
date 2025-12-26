@@ -761,6 +761,35 @@ export const createTicketsWithPaymentSchema = {
   },
 };
 
+export const resendTicketsByCheckoutIdSchema = {
+  params: {
+    type: 'object',
+    required: ['checkoutId'],
+    properties: {
+      checkoutId: {
+        type: 'string',
+        description: 'ID du checkout',
+      },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        ticketsCount: { type: 'number' },
+      },
+    },
+    404: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+  },
+};
+
 export const getTicketsByCheckoutIdSchema = {
   params: {
     type: 'object',

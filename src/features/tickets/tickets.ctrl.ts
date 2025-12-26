@@ -32,6 +32,7 @@ import {
   validateTicketSchema,
   deleteTicketSchema,
   getWeeklySlotsStatsSchema,
+  resendTicketsByCheckoutIdSchema,
 } from './tickets.schemas.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
@@ -396,6 +397,39 @@ export async function deleteTicketHandler(
   }
 }
 
+export async function resendTicketsByCheckoutIdHandler(
+  req: FastifyRequest<{ Params: { checkoutId: string } }>,
+  reply: FastifyReply,
+  app: FastifyInstance
+) {
+  try {
+    const { checkoutId } = req.params;
+    const tickets = await getTicketsByCheckoutId(app, checkoutId);
+
+    if (tickets.length === 0) {
+      return reply.code(404).send({ error: 'Aucun ticket trouvé pour ce checkout' });
+    }
+
+    const { sendTicketsConfirmationEmails } = await import('./tickets.email.ts');
+    await sendTicketsConfirmationEmails(app, tickets);
+
+    app.log.info({ checkoutId, ticketsCount: tickets.length }, 'Emails de tickets renvoyés');
+
+    return reply.send({
+      success: true,
+      message: `${tickets.length} ticket(s) renvoyé(s) par email`,
+      ticketsCount: tickets.length,
+    });
+  } catch (err: any) {
+    app.log.error({ err, checkoutId: req.params.checkoutId }, 'Erreur lors du renvoi des tickets');
+
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+
+    return reply.code(500).send({ error: 'Erreur lors du renvoi des tickets' });
+  }
+}
+
 export function registerTicketsRoutes(app: FastifyInstance) {
   app.get<{ Querystring: GetTicketsQuery }>(
     '/museum/tickets',
@@ -470,6 +504,18 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: getTicketsByCheckoutIdSchema,
     },
     async (req, reply) => getTicketsByCheckoutIdHandler(req, reply, app)
+  );
+
+  app.post<{ Params: { checkoutId: string } }>(
+    '/museum/tickets/checkout/:checkoutId/resend',
+    {
+      schema: resendTicketsByCheckoutIdSchema,
+      preHandler: [
+        authenticateHook(app),
+        requireAnyRole([roles.bureau, roles.dev]),
+      ],
+    },
+    async (req, reply) => resendTicketsByCheckoutIdHandler(req, reply, app)
   );
 
   app.get<{ Params: { qrCode: string } }>(
