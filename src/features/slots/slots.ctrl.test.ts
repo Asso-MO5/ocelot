@@ -63,6 +63,7 @@ function createMockReply(): FastifyReply & {
   };
 }
 
+
 describe('Slots Controller', () => {
   describe('getSlotsHandler', () => {
     test('devrait retourner une erreur 400 si le paramètre date est manquant', async () => {
