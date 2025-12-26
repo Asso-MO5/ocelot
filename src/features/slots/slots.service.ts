@@ -81,7 +81,6 @@ async function countTicketsForSlot(
   app: FastifyInstance,
   date: string,
   slotStart: string,
-  slotEnd: string
 ): Promise<number> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
@@ -182,7 +181,6 @@ export async function getSlotsForDate(
       app,
       date,
       slotRange.start_time,
-      slotRange.end_time
     );
 
     const available = Math.max(0, dailyCapacity - booked);

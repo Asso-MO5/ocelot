@@ -201,6 +201,7 @@ export async function webhookHandlerWithRawBody(
           const { getTicketsByCheckoutId } = await import('../tickets/tickets.service.ts');
           const { sendTicketsConfirmationEmails } = await import('../tickets/tickets.email.ts');
           const tickets = await getTicketsByCheckoutId(app, sessionId);
+
           if (tickets.length > 0) {
             await sendTicketsConfirmationEmails(app, tickets);
 

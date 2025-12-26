@@ -479,16 +479,255 @@ async function sendTicketConfirmationEmail(
   }
 }
 
+async function generateMultipleTicketsEmailHTML(
+  tickets: Ticket[],
+  baseUrl: string
+): Promise<string> {
+  if (tickets.length === 0) {
+    throw new Error('Aucun ticket fourni');
+  }
+
+  const firstTicket = tickets[0];
+  const language = normalizeLanguage(firstTicket.language);
+  const logoBase64 = getLogoBase64();
+
+  const translations = {
+    fr: {
+      subject: 'Vos billets pour le Musée du Jeu Vidéo',
+      greeting: 'Bonjour',
+      intro: 'Votre réservation a été confirmée ! Vous trouverez ci-dessous tous vos billets.',
+      viewTicket: 'Voir mon billet en ligne',
+      footer: 'Merci de votre visite !',
+      ticketNumber: 'Billet',
+      museumName: 'Musée du Jeu Vidéo',
+    },
+    en: {
+      subject: 'Your tickets for the Video Game Museum',
+      greeting: 'Hello',
+      intro: 'Your reservation has been confirmed! You will find all your tickets below.',
+      viewTicket: 'View my ticket online',
+      footer: 'Thank you for your visit!',
+      ticketNumber: 'Ticket',
+      museumName: 'Video Game Museum',
+    },
+  };
+
+  const t = translations[language];
+
+  const ticketSections = await Promise.all(
+    tickets.map(async (ticket, index) => {
+      let qrCodeBase64: string;
+      try {
+        qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code);
+      } catch (error) {
+        throw new Error(`Erreur lors de la génération du QR code pour le ticket ${ticket.id}: ${error}`);
+      }
+
+      const ticketViewUrl = `${baseUrl}/tickets/${ticket.qr_code}`;
+
+      return `
+        <div style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 2px solid #e0e0e0;">
+          <h2 style="color: #e73b21; margin-bottom: 20px;">${t.ticketNumber} ${index + 1}</h2>
+          ${generateTicketHTMLBase({
+        ticket,
+        language,
+        qrCodeBase64,
+        logoBase64: index === 0 ? logoBase64 : '',
+        title: '',
+        greeting: '',
+        intro: '',
+        footer: '',
+        viewTicketLink: {
+          url: ticketViewUrl,
+          text: t.viewTicket,
+        },
+        containerMaxWidth: '100%',
+        containerPadding: '0',
+      })}
+        </div>
+      `;
+    })
+  );
+
+  const baseStyles = `
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 30px;
+      background-color: black;
+    }
+    .logo img {
+      max-width: 200px;
+      height: auto;
+    }
+    h1 {
+      color: #e73b21;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .greeting {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+      color: #666;
+      font-size: 14px;
+    }
+  `;
+
+  const visitorName = firstTicket.first_name && firstTicket.last_name
+    ? `${firstTicket.first_name} ${firstTicket.last_name}`
+    : firstTicket.email;
+
+  return `
+<!DOCTYPE html>
+<html lang="${language}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${t.subject}</title>
+  <style>${baseStyles}</style>
+</head>
+<body>
+  <div class="container">
+    ${logoBase64 ? `<div class="logo"><img src="${logoBase64}" alt="${t.museumName}" /></div>` : ''}
+    <h1>${t.subject}</h1>
+    <div class="greeting">${t.greeting} ${visitorName},</div>
+    <p>${t.intro}</p>
+    
+    ${ticketSections.join('')}
+
+    <div class="footer">
+      <p>${t.footer}</p>
+      <p><strong>${t.museumName}</strong></p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+async function sendMultipleTicketsConfirmationEmail(
+  app: FastifyInstance,
+  tickets: Ticket[],
+  baseUrl: string = process.env.BASE_URL || 'http://localhost:4000'
+): Promise<void> {
+  try {
+    const paidTickets = tickets.filter(t => t.status === 'paid');
+    if (paidTickets.length === 0) {
+      app.log.info({ ticketIds: tickets.map(t => t.id) }, 'Aucun ticket payé, email non envoyé');
+      return;
+    }
+
+    const firstTicket = paidTickets[0];
+    const language = normalizeLanguage(firstTicket.language);
+
+    let htmlContent = '';
+    try {
+      htmlContent = await generateMultipleTicketsEmailHTML(paidTickets, baseUrl);
+    } catch (error: any) {
+      app.log.error({
+        error: error?.message || error,
+        errorStack: error?.stack,
+        ticketIds: paidTickets.map(t => t.id),
+      }, 'Erreur lors de la génération du HTML de l\'email');
+      return;
+    }
+
+    const visitorName = firstTicket.first_name && firstTicket.last_name
+      ? `${firstTicket.first_name} ${firstTicket.last_name}`
+      : firstTicket.email;
+
+    const translations = {
+      fr: {
+        subject: 'Vos billets pour le Musée du Jeu Vidéo',
+      },
+      en: {
+        subject: 'Your tickets for the Video Game Museum',
+      },
+    };
+
+    const pdfAttachments = [];
+    try {
+      const { generateTicketPDF } = await import('./tickets.pdf.ts');
+      for (const ticket of paidTickets) {
+        try {
+          const pdfBuffer = await generateTicketPDF(ticket, ticket.status === 'paid');
+          if (pdfBuffer) {
+            const pdfBase64 = pdfBuffer.toString('base64');
+            pdfAttachments.push({
+              name: `billet-${ticket.qr_code}.pdf`,
+              content: pdfBase64,
+              contentType: 'application/pdf',
+            });
+          }
+        } catch (pdfError: any) {
+          app.log.error({
+            error: pdfError?.message || pdfError,
+            ticketId: ticket.id,
+            qrCode: ticket.qr_code,
+          }, 'Erreur lors de la génération du PDF du ticket');
+        }
+      }
+    } catch (pdfError: any) {
+      app.log.error({
+        error: pdfError?.message || pdfError,
+        ticketIds: paidTickets.map(t => t.id),
+      }, 'Erreur lors de la génération des PDFs des tickets');
+    }
+
+    await emailUtils.sendEmail({
+      email: firstTicket.email,
+      name: visitorName,
+      subject: translations[language].subject,
+      body: htmlContent,
+      language,
+      attachments: pdfAttachments.length > 0 ? pdfAttachments : undefined,
+    });
+
+    app.log.info({
+      ticketIds: paidTickets.map(t => t.id),
+      email: firstTicket.email,
+      pdfAttached: pdfAttachments.length,
+    }, 'Email de confirmation de tickets envoyé');
+  } catch (error) {
+    app.log.error({ error, ticketIds: tickets.map(t => t.id) }, 'Erreur lors de l\'envoi de l\'email de confirmation');
+  }
+}
+
 export async function sendTicketsConfirmationEmails(
   app: FastifyInstance,
   tickets: Ticket[],
   baseUrl?: string
 ): Promise<void> {
-
-
-  await Promise.allSettled(
-    tickets.map(ticket => sendTicketConfirmationEmail(app, ticket, baseUrl))
-  );
+  if (tickets.length === 0) {
+    return;
+  }
+  app.log.info({ ticketsLength: tickets.length }, 'Envoi des emails de confirmation');
+  if (tickets.length === 1) {
+    await sendTicketConfirmationEmail(app, tickets[0], baseUrl);
+  } else {
+    await sendMultipleTicketsConfirmationEmail(app, tickets, baseUrl);
+  }
 }
 
 
