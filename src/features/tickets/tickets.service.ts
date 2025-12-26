@@ -747,6 +747,7 @@ export async function createTicketsWithPayment(
         'The guided tour price is not configured or is invalid'
       );
     }
+
     if (data.guided_tour_price !== undefined) {
       const tolerance = 0.01;
       if (Math.abs(data.guided_tour_price - guidedTourPriceSetting) > tolerance) {
@@ -763,6 +764,7 @@ export async function createTicketsWithPayment(
   }
 
   let totalAmount = 0;
+
   for (const ticket of data.tickets) {
     let ticketPrice = ticket.ticket_price;
 
@@ -981,6 +983,7 @@ export async function createTicketsWithPayment(
         'The ticket price must be positive or null'
       );
     }
+
     const donationAmount = ticket.donation_amount ?? 0;
     if (donationAmount < 0) {
       throw createStructuredError(
@@ -1063,7 +1066,7 @@ export async function createTicketsWithPayment(
       id: session.id,
       checkout_reference: session.id,
       status: session.status || 'open',
-      url: session.url, // URL de redirection
+      url: session.url, // URL de redirection (Stripe)
     };
   }
 
@@ -1134,6 +1137,7 @@ export async function createTicketsWithPayment(
     await app.pg.query('ROLLBACK');
     throw err;
   }
+
 
   if (isFreeOrder) {
     try {

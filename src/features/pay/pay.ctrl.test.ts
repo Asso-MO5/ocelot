@@ -142,6 +142,168 @@ describe('Pay Controller', () => {
       const response = reply.send.mock.calls[0][0];
       assert.equal(response.error, 'Erreur lors du traitement du webhook');
     });
+
+    test('devrait envoyer les emails de confirmation si les tickets n\'étaient pas déjà payés', async () => {
+      const req = createMockRequest({}, { 'stripe-signature': 'test-signature' });
+      const reply = createMockReply();
+      const app: any = createMockApp();
+
+      let queryCallCount = 0;
+      let sendTicketsConfirmationEmailsCalled = false;
+
+      app.pg = {
+        query: async (sql: string, params?: any[]) => {
+          queryCallCount++;
+          if (sql.includes('SELECT * FROM tickets WHERE checkout_id')) {
+            if (queryCallCount === 1) {
+              return {
+                rows: [
+                  { id: 'ticket1', status: 'pending', email: 'test@example.com', qr_code: 'ABC123', checkout_id: 'session_123' },
+                  { id: 'ticket2', status: 'pending', email: 'test@example.com', qr_code: 'DEF456', checkout_id: 'session_123' }
+                ]
+              };
+            }
+            return {
+              rows: [
+                { id: 'ticket1', status: 'paid', email: 'test@example.com', qr_code: 'ABC123', checkout_id: 'session_123' },
+                { id: 'ticket2', status: 'paid', email: 'test@example.com', qr_code: 'DEF456', checkout_id: 'session_123' }
+              ]
+            };
+          }
+          if (sql.includes('UPDATE tickets')) {
+            return { rows: [{ id: 'ticket1' }, { id: 'ticket2' }] };
+          }
+          return { rows: [] };
+        }
+      };
+
+      const originalImport = (globalThis as any).import;
+      (globalThis as any).import = async (path: string) => {
+        if (path.includes('tickets.email.ts')) {
+          return {
+            sendTicketsConfirmationEmails: async () => {
+              sendTicketsConfirmationEmailsCalled = true;
+            }
+          };
+        }
+        if (path.includes('tickets.service.ts')) {
+          return {
+            getTicketsByCheckoutId: async () => {
+              return app.pg.query('SELECT * FROM tickets WHERE checkout_id', ['session_123']).then((r: any) => r.rows);
+            }
+          };
+        }
+        if (path.includes('donation-proof.service.ts')) {
+          return { generateDonationProofFromTicket: async () => null };
+        }
+        if (path.includes('email.utils.ts')) {
+          return { emailUtils: { sendEmail: async () => { } } };
+        }
+        return originalImport ? originalImport(path) : {};
+      };
+
+      const rawBody = Buffer.from('{}');
+      const body = {
+        id: 'evt_123',
+        type: 'checkout.session.completed',
+        created: 1234567890,
+        data: {
+          object: {
+            id: 'session_123',
+            object: 'checkout.session',
+            payment_status: 'paid',
+            status: 'complete'
+          }
+        }
+      };
+
+      process.env.NODE_ENV = 'development';
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
+
+      await webhookHandlerWithRawBody(req as any, reply, app, rawBody, body);
+
+      (globalThis as any).import = originalImport;
+
+      assert.equal(reply.send.mock.callCount(), 1);
+      assert.equal(sendTicketsConfirmationEmailsCalled, true);
+    });
+
+    test('ne devrait pas envoyer les emails si les tickets étaient déjà payés', async () => {
+      const req = createMockRequest({}, { 'stripe-signature': 'test-signature' });
+      const reply = createMockReply();
+      const app: any = createMockApp();
+
+      let queryCallCount = 0;
+      let sendTicketsConfirmationEmailsCalled = false;
+
+      app.pg = {
+        query: async (sql: string, params?: any[]) => {
+          queryCallCount++;
+          if (sql.includes('SELECT * FROM tickets WHERE checkout_id')) {
+            return {
+              rows: [
+                { id: 'ticket1', status: 'paid', email: 'test@example.com', qr_code: 'ABC123', checkout_id: 'session_123' },
+                { id: 'ticket2', status: 'paid', email: 'test@example.com', qr_code: 'DEF456', checkout_id: 'session_123' }
+              ]
+            };
+          }
+          if (sql.includes('UPDATE tickets')) {
+            return { rows: [{ id: 'ticket1' }, { id: 'ticket2' }] };
+          }
+          return { rows: [] };
+        }
+      };
+
+      const originalImport = (globalThis as any).import;
+      (globalThis as any).import = async (path: string) => {
+        if (path.includes('tickets.email.ts')) {
+          return {
+            sendTicketsConfirmationEmails: async () => {
+              sendTicketsConfirmationEmailsCalled = true;
+            }
+          };
+        }
+        if (path.includes('tickets.service.ts')) {
+          return {
+            getTicketsByCheckoutId: async () => {
+              return app.pg.query('SELECT * FROM tickets WHERE checkout_id', ['session_123']).then((r: any) => r.rows);
+            }
+          };
+        }
+        if (path.includes('donation-proof.service.ts')) {
+          return { generateDonationProofFromTicket: async () => null };
+        }
+        if (path.includes('email.utils.ts')) {
+          return { emailUtils: { sendEmail: async () => { } } };
+        }
+        return originalImport ? originalImport(path) : {};
+      };
+
+      const rawBody = Buffer.from('{}');
+      const body = {
+        id: 'evt_123',
+        type: 'checkout.session.completed',
+        created: 1234567890,
+        data: {
+          object: {
+            id: 'session_123',
+            object: 'checkout.session',
+            payment_status: 'paid',
+            status: 'complete'
+          }
+        }
+      };
+
+      process.env.NODE_ENV = 'development';
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
+
+      await webhookHandlerWithRawBody(req as any, reply, app, rawBody, body);
+
+      (globalThis as any).import = originalImport;
+
+      assert.equal(reply.send.mock.callCount(), 1);
+      assert.equal(sendTicketsConfirmationEmailsCalled, false, 'Les emails ne devraient pas être envoyés si les tickets étaient déjà payés');
+    });
   });
 });
 
