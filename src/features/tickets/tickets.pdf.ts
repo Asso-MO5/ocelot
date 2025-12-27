@@ -199,21 +199,24 @@ export async function generateTicketPDF(
       // Position pour le QR code
       doc.y = detailsY + 220;
 
-      // QR Code
-      doc.moveDown(1)
-        .fontSize(16)
-        .fillColor('#333')
-        .text(t.qrCodeTitle, {
-          align: 'center',
-        })
-        .moveDown(0.5);
-
       // Centrer le QR code (en tenant compte des marges de 50 points de chaque côté)
       const qrSize = 200;
       const pageWidth = 595; // A4 width = 595 points
       const leftMargin = 50;
       const rightMargin = 50;
       const usableWidth = pageWidth - leftMargin - rightMargin; // 495 points
+
+      // QR Code Title
+      doc.x = leftMargin;
+      doc.moveDown(1)
+        .fontSize(16)
+        .fillColor('#333')
+        .text(t.qrCodeTitle, {
+          align: 'center',
+          width: usableWidth,
+        })
+        .moveDown(0.5);
+
       const qrX = leftMargin + (usableWidth - qrSize) / 2; // Centré dans la zone utilisable
       doc.image(qrCodeBuffer, qrX, doc.y, {
         width: qrSize,
@@ -223,29 +226,35 @@ export async function generateTicketPDF(
       doc.y += qrSize + 10;
 
       // Code QR en texte
+      doc.x = leftMargin;
       doc.fontSize(16)
         .font('Courier')
         .fillColor('#333')
         .text(ticket.qr_code, {
           align: 'center',
+          width: usableWidth,
           letterSpacing: 2,
         })
         .moveDown(0.5);
 
       // Description
+      doc.x = leftMargin;
       doc.fontSize(12)
         .font('Helvetica')
         .fillColor(secondaryColor)
         .text(t.qrCodeDescription, {
           align: 'center',
+          width: usableWidth,
         })
         .moveDown(2);
 
       // Footer
+      doc.x = leftMargin;
       doc.fontSize(12)
         .fillColor(secondaryColor)
         .text(t.museumName, {
           align: 'center',
+          width: usableWidth,
         });
 
       // Finaliser le PDF
