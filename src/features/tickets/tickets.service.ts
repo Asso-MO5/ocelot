@@ -886,7 +886,7 @@ export async function createTicketsWithPayment(
         `SELECT reservation_date
          FROM tickets
          WHERE email = $1
-         AND checkout_id = '0'
+         AND checkout_reference = '0'
          AND ticket_price = 0
          AND status = 'paid'
          AND reservation_date >= $2
@@ -1075,6 +1075,8 @@ export async function createTicketsWithPayment(
   try {
     await app.pg.query('BEGIN');
 
+    const checkout_id = String(Date.now()) + '_' + String(Math.random().toString(36).substring(2, 15))
+
     for (const [index, ticketData] of data.tickets.entries()) {
       const ticketPrice = ticketData.ticket_price;
       const donationAmount = ticketData.donation_amount ?? 0;
@@ -1085,8 +1087,9 @@ export async function createTicketsWithPayment(
       const notesContent = buildNotesContent(ticketData.notes, ticketData.pricing_info, wantsGuidedTour, guidedTourPrice);
 
       const ticketStatus = isFreeOrder ? 'paid' : 'pending';
-      const checkoutId = checkout?.id ?? String(index);
-      const checkoutReference = checkout?.checkout_reference ?? null;
+      const checkoutId = checkout?.id ?? checkout_id
+
+      const checkoutReference = checkout?.checkout_reference ?? String(index);
       const transactionStatus = checkout?.status ?? null;
 
       const result = await app.pg.query<Ticket>(
