@@ -330,10 +330,10 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
     </div>
 
     <div class="qr-code">
-      <h3>${t.qrCodeTitle}</h3>
+      <h3 style="text-align: center; margin-bottom: 20px;">${t.qrCodeTitle}</h3>
       <img src="${qrCodeBase64}" alt="QR Code" />
-      <p class="qr-code-text">${ticket.qr_code}</p>
-      <p class="qr-description">${t.qrCodeDescription}</p>
+      <p class="qr-code-text" style="text-align: center; margin-bottom: 20px;">${ticket.qr_code}</p>
+      <p class="qr-description" style="text-align: center; margin-bottom: 20px;">${t.qrCodeDescription}</p>
     </div>
 
     ${viewTicketLink ? `<a href="${viewTicketLink.url}" class="view-ticket-link">${viewTicketLink.text}</a>` : ''}
