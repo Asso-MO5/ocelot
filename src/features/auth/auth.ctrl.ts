@@ -43,10 +43,11 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply, app: F
       return reply.status(401).send({ error: 'Non authentifié' });
     }
 
-    await saveUserIfNotExists(app, user.id, user.username);
+    const savedUser = await saveUserIfNotExists(app, user.id, user.username);
+
 
     const publicUserData: DiscordUserPublic = {
-      id: user.id,
+      id: savedUser?.id || user.id,
       username: user.username,
       discriminator: user.discriminator,
       avatar: user.avatar,
