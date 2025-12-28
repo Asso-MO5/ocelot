@@ -56,7 +56,9 @@ export async function getPresencesHandler(
     if (isAdmin) {
       presences = await getAllPresences(app, req.query);
     } else {
-      presences = await getPresencesForMember(app, req.user.id, req.query);
+      presences = await getAllPresences(app, req.query);
+      //WARNING: pour le moment, les membres sont autorisés à voir comme les admins
+      //presences = await getPresencesForMember(app, req.user.id, req.query);
     }
 
     return reply.send(presences);
