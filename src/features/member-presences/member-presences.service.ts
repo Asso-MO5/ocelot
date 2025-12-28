@@ -153,17 +153,23 @@ export async function getPresencesForMember(
       include_exceptions: true,
     });
 
-    // Si c'est une période de vacances, prioriser les horaires 'holiday'
+    // Filtrer les horaires selon la période : 'holiday' uniquement en période de vacances, 'public' sinon
     try {
       const isHoliday = await isHolidayPeriod(app, day.date);
       if (isHoliday) {
+        // En période de vacances : utiliser uniquement les horaires 'holiday'
         const holidaySchedules = schedules.filter(s => s.audience_type === 'holiday');
         if (holidaySchedules.length > 0) {
           schedules = holidaySchedules;
         }
+      } else {
+        // Hors période de vacances : utiliser uniquement les horaires 'public' (exclure 'holiday')
+        schedules = schedules.filter(s => s.audience_type === 'public');
       }
     } catch (err) {
       app.log.warn({ err, date: day.date }, 'Erreur lors de la vérification des vacances');
+      // En cas d'erreur, utiliser uniquement les horaires 'public' par défaut
+      schedules = schedules.filter(s => s.audience_type === 'public');
     }
 
     day.is_open = schedules.some(s => !s.is_closed);
@@ -252,17 +258,23 @@ export async function getAllPresences(
       include_exceptions: true,
     });
 
-    // Si c'est une période de vacances, prioriser les horaires 'holiday'
+    // Filtrer les horaires selon la période : 'holiday' uniquement en période de vacances, 'public' sinon
     try {
       const isHoliday = await isHolidayPeriod(app, day.date);
       if (isHoliday) {
+        // En période de vacances : utiliser uniquement les horaires 'holiday'
         const holidaySchedules = schedules.filter(s => s.audience_type === 'holiday');
         if (holidaySchedules.length > 0) {
           schedules = holidaySchedules;
         }
+      } else {
+        // Hors période de vacances : utiliser uniquement les horaires 'public' (exclure 'holiday')
+        schedules = schedules.filter(s => s.audience_type === 'public');
       }
     } catch (err) {
       app.log.warn({ err, date: day.date }, 'Erreur lors de la vérification des vacances');
+      // En cas d'erreur, utiliser uniquement les horaires 'public' par défaut
+      schedules = schedules.filter(s => s.audience_type === 'public');
     }
 
     day.is_open = schedules.some(s => !s.is_closed);
