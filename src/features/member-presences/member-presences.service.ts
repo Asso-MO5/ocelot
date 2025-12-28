@@ -7,6 +7,7 @@ import type {
   PresenceDay,
 } from './member-presences.types.ts';
 import { getPublicSchedules } from '../schedules/schedules.service.ts';
+import { isHolidayPeriod } from '../special-periods/special-periods.service.ts';
 
 async function getUserIdFromDiscordId(
   app: FastifyInstance,
@@ -146,11 +147,25 @@ export async function getPresencesForMember(
     // Récupérer les horaires pour déterminer si le jour est ouvert
     const dateObj = new Date(day.date);
     const dayOfWeek = dateObj.getDay();
-    const schedules = await getPublicSchedules(app, {
+    let schedules = await getPublicSchedules(app, {
       day_of_week: dayOfWeek,
       date: day.date,
       include_exceptions: true,
     });
+
+    // Si c'est une période de vacances, prioriser les horaires 'holiday'
+    try {
+      const isHoliday = await isHolidayPeriod(app, day.date);
+      if (isHoliday) {
+        const holidaySchedules = schedules.filter(s => s.audience_type === 'holiday');
+        if (holidaySchedules.length > 0) {
+          schedules = holidaySchedules;
+        }
+      }
+    } catch (err) {
+      app.log.warn({ err, date: day.date }, 'Erreur lors de la vérification des vacances');
+    }
+
     day.is_open = schedules.some(s => !s.is_closed);
   }
 
@@ -231,11 +246,25 @@ export async function getAllPresences(
     // Récupérer les horaires pour déterminer si le jour est ouvert
     const dateObj = new Date(day.date);
     const dayOfWeek = dateObj.getDay();
-    const schedules = await getPublicSchedules(app, {
+    let schedules = await getPublicSchedules(app, {
       day_of_week: dayOfWeek,
       date: day.date,
       include_exceptions: true,
     });
+
+    // Si c'est une période de vacances, prioriser les horaires 'holiday'
+    try {
+      const isHoliday = await isHolidayPeriod(app, day.date);
+      if (isHoliday) {
+        const holidaySchedules = schedules.filter(s => s.audience_type === 'holiday');
+        if (holidaySchedules.length > 0) {
+          schedules = holidaySchedules;
+        }
+      }
+    } catch (err) {
+      app.log.warn({ err, date: day.date }, 'Erreur lors de la vérification des vacances');
+    }
+
     day.is_open = schedules.some(s => !s.is_closed);
   }
 
