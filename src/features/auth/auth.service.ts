@@ -4,10 +4,10 @@ export async function saveUserIfNotExists(
   app: FastifyInstance,
   discordId: string,
   name: string
-): Promise<void> {
+): Promise<{ id: string } | null> {
   if (!app.pg) {
     app.log.debug('Base de données non disponible, utilisateur non sauvegardé');
-    return;
+    return null;
   }
 
   try {
@@ -20,6 +20,17 @@ export async function saveUserIfNotExists(
     );
   } catch (err) {
     app.log.error({ err, discordId, name }, 'Erreur lors de la sauvegarde de l\'utilisateur');
+  }
+
+  try {
+    const user = await app.pg.query(
+      `SELECT * FROM users WHERE discord_id = $1`,
+      [discordId]
+    );
+    return user.rows[0];
+  } catch (err) {
+    app.log.error({ err, discordId }, 'Erreur lors de la récupération de l\'utilisateur');
+    return null;
   }
 }
 
