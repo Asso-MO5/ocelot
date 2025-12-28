@@ -24,6 +24,7 @@ export interface GetPresencesQuery {
 export interface PresenceDay {
   date: string;
   day_name: string;
+  is_open: boolean;
   presences: MemberPresence[];
 }
 

@@ -60,6 +60,7 @@ export const getPresencesSchema = {
             properties: {
               date: { type: 'string', format: 'date' },
               day_name: { type: 'string' },
+              is_open: { type: 'boolean' },
               presences: {
                 type: 'array',
                 items: {
