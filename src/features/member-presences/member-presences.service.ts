@@ -6,6 +6,7 @@ import type {
   PresencesResponse,
   PresenceDay,
 } from './member-presences.types.ts';
+import { getPublicSchedules } from '../schedules/schedules.service.ts';
 
 async function getUserIdFromDiscordId(
   app: FastifyInstance,
@@ -96,6 +97,7 @@ export async function getPresencesForMember(
     days.push({
       date: dateStr,
       day_name: dayName,
+      is_open: false,
       presences: [],
     });
     currentDate.setDate(currentDate.getDate() + 1);
@@ -140,6 +142,16 @@ export async function getPresencesForMember(
 
   for (const day of days) {
     day.presences = presencesByDate.get(day.date) ?? [];
+
+    // Récupérer les horaires pour déterminer si le jour est ouvert
+    const dateObj = new Date(day.date);
+    const dayOfWeek = dateObj.getDay();
+    const schedules = await getPublicSchedules(app, {
+      day_of_week: dayOfWeek,
+      date: day.date,
+      include_exceptions: true,
+    });
+    day.is_open = schedules.some(s => !s.is_closed);
   }
 
   return {
@@ -171,6 +183,7 @@ export async function getAllPresences(
     days.push({
       date: dateStr,
       day_name: dayName,
+      is_open: false,
       presences: [],
     });
     currentDate.setDate(currentDate.getDate() + 1);
@@ -214,6 +227,16 @@ export async function getAllPresences(
 
   for (const day of days) {
     day.presences = presencesByDate.get(day.date) ?? [];
+
+    // Récupérer les horaires pour déterminer si le jour est ouvert
+    const dateObj = new Date(day.date);
+    const dayOfWeek = dateObj.getDay();
+    const schedules = await getPublicSchedules(app, {
+      day_of_week: dayOfWeek,
+      date: day.date,
+      include_exceptions: true,
+    });
+    day.is_open = schedules.some(s => !s.is_closed);
   }
 
   return {
