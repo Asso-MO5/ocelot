@@ -119,3 +119,10 @@ Feature: Authentification Discord OAuth2
     Quand je suis redirigé après l'authentification
     Alors je devrais quand même être redirigé vers le frontend avec success=true
     Et l'erreur devrait être loggée
+
+  Scenario: Déconnexion de l'utilisateur
+    Étant donné que je suis authentifié
+    Et que j'ai des cookies de session (discord_access_token et discord_refresh_token)
+    Quand je fais une requête GET vers "/auth/signout"
+    Alors les cookies discord_access_token et discord_refresh_token devraient être supprimés
+    Et je devrais recevoir une réponse avec success=true

@@ -5,6 +5,7 @@ import {
   signinHandler,
   meHandler,
   callbackHandler,
+  signoutHandler,
 } from './auth.ctrl.ts';
 import type { DiscordUser, DiscordTokenResponse, DiscordErrorResponse, DiscordOAuthCallbackQuery } from './auth.types.ts';
 
@@ -594,7 +595,8 @@ describe('Auth Controller', () => {
 
       assert.equal(reply.setCookie.mock.callCount(), 2);
 
-      assert.equal((app.pg.query as MockWithTracking).mock.callCount(), 1);
+      // saveUserIfNotExists fait 2 requêtes : INSERT/UPDATE puis SELECT
+      assert.equal((app.pg.query as MockWithTracking).mock.callCount(), 2);
 
       assert.equal(reply.redirect.mock.callCount(), 1);
       const redirectUrl = reply.redirect.mock.calls[0][0] as string;
@@ -664,6 +666,33 @@ describe('Auth Controller', () => {
       assert.equal(reply.setCookie.mock.callCount(), 2);
       assert.equal(reply.redirect.mock.callCount(), 1);
       assert.equal((app.log.error as MockWithTracking).mock.callCount(), 1);
+    });
+  });
+
+  describe('signoutHandler', () => {
+    test('devrait supprimer les cookies de session et retourner success=true', async () => {
+      const req = createMockRequest();
+      const reply = createMockReply();
+
+      await signoutHandler(req, reply);
+
+      assert.equal(reply.clearCookie.mock.callCount(), 2);
+
+      // Vérifier que les deux cookies sont supprimés
+      const clearCookieCalls = reply.clearCookie.mock.calls;
+      const cookieNames = clearCookieCalls.map(call => call[0]);
+      assert.ok(cookieNames.includes('discord_access_token'));
+      assert.ok(cookieNames.includes('discord_refresh_token'));
+
+      // Vérifier que les options de cookie sont correctes (maxAge: 0)
+      for (const call of clearCookieCalls) {
+        const options = call[1];
+        assert.equal(options.maxAge, 0);
+      }
+
+      assert.equal(reply.send.mock.callCount(), 1);
+      const response = reply.send.mock.calls[0][0];
+      assert.equal(response.success, true);
     });
   });
 });

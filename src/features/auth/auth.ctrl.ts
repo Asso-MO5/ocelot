@@ -10,6 +10,7 @@ import {
   callbackSchema,
   meSchema,
   signinSchema,
+  signoutSchema,
 } from './auth.schemas.ts';
 import { saveUserIfNotExists } from './auth.service.ts';
 import { authUtils } from './auth.utils.ts';
@@ -146,8 +147,25 @@ export async function callbackHandler(
   return reply.redirect(`${frontendUrl}?success=true`);
 }
 
+export async function signoutHandler(_req: FastifyRequest, reply: FastifyReply) {
+  const cookieOptions = authUtils.getCookieOptions();
+
+  reply.clearCookie('discord_access_token', {
+    ...cookieOptions,
+    maxAge: 0,
+  });
+
+  reply.clearCookie('discord_refresh_token', {
+    ...cookieOptions,
+    maxAge: 0,
+  });
+
+  return reply.send({ success: true });
+}
+
 export function registerAuthRoutes(app: FastifyInstance) {
   app.get('/auth/signin', { schema: signinSchema }, signinHandler);
+  app.get('/auth/signout', { schema: signoutSchema }, signoutHandler);
   app.get('/auth/me', { schema: meSchema }, (req, reply) => meHandler(req, reply, app));
   app.get<{ Querystring: DiscordOAuthCallbackQuery }>(
     '/auth/callback',

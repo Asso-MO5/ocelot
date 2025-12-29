@@ -59,10 +59,14 @@ describe('Auth Service', () => {
 
       await saveUserIfNotExists(app, '123456789', 'testuser');
 
-      assert.equal((app.pg.query as MockWithTracking).mock.callCount(), 1);
-      const queryCall = (app.pg.query as MockWithTracking).mock.calls[0];
-      assert.ok(queryCall[0].includes('INSERT INTO users'));
-      assert.deepEqual(queryCall[1], ['123456789', 'testuser']);
+      // saveUserIfNotExists fait 2 requêtes : INSERT/UPDATE puis SELECT
+      assert.equal((app.pg.query as MockWithTracking).mock.callCount(), 2);
+      const insertQueryCall = (app.pg.query as MockWithTracking).mock.calls[0];
+      assert.ok(insertQueryCall[0].includes('INSERT INTO users'));
+      assert.deepEqual(insertQueryCall[1], ['123456789', 'testuser']);
+      const selectQueryCall = (app.pg.query as MockWithTracking).mock.calls[1];
+      assert.ok(selectQueryCall[0].includes('SELECT * FROM users'));
+      assert.deepEqual(selectQueryCall[1], ['123456789']);
     });
 
     test('devrait mettre à jour un utilisateur existant', async () => {
@@ -71,10 +75,12 @@ describe('Auth Service', () => {
       await saveUserIfNotExists(app, '123456789', 'testuser');
       await saveUserIfNotExists(app, '123456789', 'updateduser');
 
-      assert.equal((app.pg.query as MockWithTracking).mock.callCount(), 2);
-      const secondQueryCall = (app.pg.query as MockWithTracking).mock.calls[1];
-      assert.ok(secondQueryCall[0].includes('ON CONFLICT'));
-      assert.deepEqual(secondQueryCall[1], ['123456789', 'updateduser']);
+      // Chaque appel fait 2 requêtes : INSERT/UPDATE puis SELECT
+      // Donc 2 appels = 4 requêtes au total
+      assert.equal((app.pg.query as MockWithTracking).mock.callCount(), 4);
+      const secondInsertQueryCall = (app.pg.query as MockWithTracking).mock.calls[2];
+      assert.ok(secondInsertQueryCall[0].includes('ON CONFLICT'));
+      assert.deepEqual(secondInsertQueryCall[1], ['123456789', 'updateduser']);
     });
 
     test('devrait logger une erreur si la requête échoue', async () => {
@@ -93,11 +99,14 @@ describe('Auth Service', () => {
 
       await saveUserIfNotExists(app, '123456789', 'testuser');
 
-      assert.equal((app.log.error as MockWithTracking).mock.callCount(), 1);
-      const errorCall = (app.log.error as MockWithTracking).mock.calls[0];
-      assert.equal(errorCall[0].err, error);
-      assert.equal(errorCall[0].discordId, '123456789');
-      assert.equal(errorCall[0].name, 'testuser');
+      // La fonction fait 2 requêtes : la première (INSERT) échoue et est loggée,
+      // la deuxième (SELECT) échoue aussi et est loggée
+      assert.equal((app.pg.query as MockWithTracking).mock.callCount(), 2);
+      assert.equal((app.log.error as MockWithTracking).mock.callCount(), 2);
+      const firstErrorCall = (app.log.error as MockWithTracking).mock.calls[0];
+      assert.equal(firstErrorCall[0].err, error);
+      assert.equal(firstErrorCall[0].discordId, '123456789');
+      assert.equal(firstErrorCall[0].name, 'testuser');
     });
   });
 });

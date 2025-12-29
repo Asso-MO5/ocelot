@@ -189,7 +189,8 @@ async function generateOpenAPIDoc(): Promise<void> {
   const {
     callbackSchema,
     meSchema,
-    signinSchema
+    signinSchema,
+    signoutSchema
   } = await import('../features/auth/auth.schemas.ts');
 
   const {
@@ -307,6 +308,13 @@ async function generateOpenAPIDoc(): Promise<void> {
       path: '/auth/me',
       schema: meSchema,
       description: 'Récupère les informations de l\'utilisateur authentifié (gère automatiquement le refresh du token)',
+      tag: 'Authentification',
+    },
+    {
+      method: 'GET',
+      path: '/auth/signout',
+      schema: signoutSchema,
+      description: 'Déconnecte l\'utilisateur en supprimant les cookies de session (discord_access_token et discord_refresh_token)',
       tag: 'Authentification',
     },
     {
