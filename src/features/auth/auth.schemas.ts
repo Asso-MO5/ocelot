@@ -86,3 +86,20 @@ export const signinSchema: FastifySchema = {
   },
 } as const;
 
+const signoutResponseSchema = {
+  type: 'object',
+  properties: {
+    success: {
+      type: 'boolean',
+      description: 'Indique si la déconnexion a réussi',
+    },
+  },
+  required: ['success'],
+} as const;
+
+export const signoutSchema: FastifySchema = {
+  response: {
+    200: signoutResponseSchema,
+  },
+} as const;
+

@@ -309,6 +309,38 @@
         ]
       }
     },
+    "/auth/signout": {
+      "get": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Déconnecte l'utilisateur en supprimant les cookies de session (discord_access_token et discord_refresh_token)",
+        "description": "**Déconnexion de l'utilisateur** : que j'ai des cookies de session (discord_access_token et discord_refresh_token) les cookies discord_access_token et discord_refresh_token devraient être supprimés je devrais recevoir une réponse avec success=true\n\n### Scénarios de test\n\n**Déconnexion de l'utilisateur**\n\n📋 que je suis authentifié\n\n✅ que j'ai des cookies de session (discord_access_token et discord_refresh_token)\n\n⚡ je fais une requête GET vers \"/auth/signout\"\n\n✅ les cookies discord_access_token et discord_refresh_token devraient être supprimés\n\n✅ je devrais recevoir une réponse avec success=true\n\n",
+        "operationId": "get_auth_signout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indique si la déconnexion a réussi"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pay/checkout/:sessionId": {
       "get": {
         "tags": [
@@ -4060,7 +4092,7 @@
                       "applied_at": {
                         "type": "string",
                         "format": "date-time",
-                        "default": "2025-12-26T21:43:26.943Z",
+                        "default": "2025-12-29T10:50:34.745Z",
                         "description": "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                       }
                     },
@@ -9803,6 +9835,9 @@
                           },
                           "day_name": {
                             "type": "string"
+                          },
+                          "is_open": {
+                            "type": "boolean"
                           },
                           "presences": {
                             "type": "array",
