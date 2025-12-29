@@ -124,16 +124,17 @@ const start = async () => {
     await app.register(cors, {
       origin: (origin, callback) => {
         const pathname = currentRequestUrl ? currentRequestUrl.split('?')[0] : null;
-        const isPublicRoute = pathname && (
-          pathname === '/auth/signin' ||
-          pathname === '/auth/callback' ||
-          pathname.startsWith('/docs') ||
-          pathname === '/museum/schedules/public' ||
-          pathname === '/pay/webhook' ||
-          pathname === '/museum/slots' ||
-          pathname.startsWith('/tickets/') ||
-          pathname === '/' // WebSocket
-        );
+
+        const publicRoutes = [
+          '/auth/signin',
+          '/auth/signout',
+          '/auth/callback',
+          '/docs',
+          '/museum/schedules/public',
+          '/pay/webhook',
+          '/museum/slots',
+        ];
+        const isPublicRoute = pathname && publicRoutes.includes(pathname);
 
         if (!origin) {
           if (process.env.NODE_ENV === 'production' && !isPublicRoute) {
