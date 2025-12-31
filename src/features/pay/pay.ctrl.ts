@@ -122,7 +122,6 @@ export async function webhookHandlerWithRawBody(
           try {
             const { updateTicketsCustomerInfo } = await import('../tickets/tickets.service.ts');
             await updateTicketsCustomerInfo(app, sessionId, {
-              email: customerEmail || undefined,
               first_name: firstName || undefined,
               last_name: lastName || undefined,
             });
