@@ -45,7 +45,7 @@ export function registerErrorHandlers(app: FastifyInstance) {
     });
   });
 
-  app.addHook('onError', async (request, reply, error) => {
+  app.addHook('onError', async (request, _reply, error) => {
     app.log.error({
       err: error,
       url: request.url,
