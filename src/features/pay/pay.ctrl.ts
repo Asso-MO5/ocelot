@@ -6,6 +6,7 @@ import { updateTicketsByCheckoutStatus } from '../tickets/tickets.service.ts';
 import Stripe from 'stripe';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
+import { sendToRoom } from '../websocket/websocket.manager.ts';
 
 
 export async function getCheckoutStatusHandler(
@@ -191,7 +192,7 @@ export async function webhookHandlerWithRawBody(
 
       if (checkoutStatus === 'PAID' && ticketsUpdated > 0) {
         try {
-          (app.ws as any)?.send('tickets_stats', 'refetch');
+          sendToRoom('tickets_stats', 'refetch');
         } catch (wsError) {
           app.log.warn({ wsError }, 'Erreur lors de l\'envoi du message WebSocket');
         }
@@ -267,6 +268,9 @@ export async function webhookHandlerWithRawBody(
     } catch (error) {
       app.log.warn({ error, sessionId }, 'Erreur lors de la récupération des QR codes des tickets');
     }
+
+
+    sendToRoom('tickets_stats', 'refetch');
 
 
     return reply.send({

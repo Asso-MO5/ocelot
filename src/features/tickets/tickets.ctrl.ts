@@ -37,6 +37,7 @@ import {
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
 import { handleStructuredError } from './tickets.errors.ts';
+import { sendToRoom } from '../websocket/websocket.manager.ts';
 
 export async function createTicketHandler(
   req: FastifyRequest<{ Body: CreateTicketBody }>,
@@ -350,7 +351,7 @@ export async function validateTicketHandler(
 ) {
   try {
     const ticket = await validateTicket(app, req.body.qr_code);
-    (app.ws as any).send('capacity', 'refetch')
+    sendToRoom('tickets_stats', 'refetch')
     return reply.send(ticket);
   } catch (err: any) {
     app.log.error({ err, qr_code: req.body.qr_code }, 'Erreur lors de la validation du ticket');

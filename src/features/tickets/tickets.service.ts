@@ -17,6 +17,7 @@ import { createCheckout } from '../pay/pay.utils.ts';
 import { getPriceById } from '../prices/prices.service.ts';
 import { createStructuredError } from './tickets.errors.ts';
 import { getSlotsForDate } from '../slots/slots.service.ts';
+import { sendToRoom } from '../websocket/websocket.manager.ts';
 
 /**
  * Génère un code QR unique (8 caractères alphanumériques majuscules)
@@ -676,7 +677,7 @@ export async function validateTicket(
      RETURNING *`,
     [ticket.id]
   );
-  (app.ws as any).send('capacity', 'refetch')
+  sendToRoom('tickets_stats', 'refetch')
 
   return result.rows[0];
 }
