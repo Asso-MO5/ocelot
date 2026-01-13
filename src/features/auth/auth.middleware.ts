@@ -73,6 +73,8 @@ async function getUserWithRoles(
       .filter((role: any) => guildMember.roles.includes(role.id))
       .map((role: any) => role.name.toLowerCase());
 
+    if (process.env.IS_DEV === 'true' && roles.includes('tester')) roles.push('dev')
+
     return {
       id: userData.id,
       username: userData.username,

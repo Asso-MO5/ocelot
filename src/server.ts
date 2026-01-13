@@ -2,7 +2,6 @@ import fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import postgres from '@fastify/postgres';
-import websocket from '@fastify/websocket';
 import fastifySchedule from '@fastify/schedule';
 import { SimpleIntervalJob, AsyncTask } from 'toad-scheduler';
 
@@ -14,7 +13,6 @@ import { registerPricesRoutes } from './features/prices/prices.ctrl.ts';
 import { registerTicketsRoutes } from './features/tickets/tickets.ctrl.ts';
 import { registerSettingsRoutes } from './features/settings/settings.ctrl.ts';
 import { registerSlotsRoutes } from './features/slots/slots.ctrl.ts';
-import { registerWebSocketRoutes } from './features/websocket/websocket.ctrl.ts';
 import { registerDonationProofRoutes } from './features/donation-proof/donation-proof.ctrl.ts';
 import { registerGiftCodesRoutes } from './features/gift-codes/gift-codes.ctrl.ts';
 import { registerSpecialPeriodsRoutes } from './features/special-periods/special-periods.ctrl.ts';
@@ -115,7 +113,6 @@ const start = async () => {
       'http://localhost:3000'
     ];
 
-    await app.register(websocket);
 
     let currentRequestUrl: string | null = null;
     app.addHook('onRequest', async (request) => {
@@ -160,9 +157,7 @@ const start = async () => {
     });
 
     registerErrorHandlers(app);
-    registerWebSocketRoutes(app);
 
-    (app as any).ws = { send: sendToRoom };
     registerAuthRoutes(app);
     registerDocsRoutes(app);
     registerPayRoutes(app);
@@ -182,7 +177,6 @@ const start = async () => {
       parseOptions: {}
     });
 
-    app.log.info('✅ Plugin WebSocket enregistré');
 
     const databaseUrl = process.env.DATABASE_URL;
     if (databaseUrl) {
@@ -203,9 +197,8 @@ const start = async () => {
           try {
             const cancelledCount = await cancelExpiredPendingTickets(app);
             if (cancelledCount > 0) {
-              // Notifier via WebSocket que les statistiques ont changé
-              (app.ws as any).send('tickets_stats', 'refetch');
-              (app.ws as any).send('slots', 'refetch');
+              sendToRoom('tickets_stats', 'refetch');
+              sendToRoom('slots', 'refetch');
             }
           } catch (err) {
             app.log.error({ err }, 'Erreur lors du nettoyage des tickets expirés');

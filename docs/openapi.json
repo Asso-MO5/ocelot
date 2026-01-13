@@ -4092,7 +4092,7 @@
                       "applied_at": {
                         "type": "string",
                         "format": "date-time",
-                        "default": "2025-12-29T10:50:34.745Z",
+                        "default": "2026-01-13T18:59:11.142Z",
                         "description": "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                       }
                     },

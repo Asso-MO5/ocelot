@@ -21,6 +21,7 @@ import {
 } from './settings.schemas.ts';
 import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
 import { roles } from '../auth/auth.const.ts';
+import { sendToRoom } from '../websocket/websocket.manager.ts';
 
 export async function upsertSettingHandler(
   req: FastifyRequest<{ Body: UpsertSettingBody }>,
@@ -122,7 +123,7 @@ export async function setMaxCapacityHandler(
 
     const setting = await setMaxCapacity(app, max_capacity);
 
-    (app.ws as any)?.send('capacity', 'refetch');
+    sendToRoom('capacity', 'refetch');
     return reply.send(setting);
   } catch (err: any) {
     app.log.error({ err, body: req.body }, 'Erreur lors de la définition de la capacité maximale');
