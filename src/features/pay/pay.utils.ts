@@ -54,7 +54,7 @@ export async function getPaymentStats(app: FastifyInstance): Promise<PaymentStat
 
     while (hasMore) {
       const page: Stripe.ApiList<Stripe.PaymentIntent> = await stripe.paymentIntents.list({
-        limit: 100,
+        limit: 30000,
         starting_after: startingAfter,
       });
 
