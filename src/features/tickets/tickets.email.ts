@@ -117,7 +117,6 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
     intro,
     footer,
     statusRow,
-    viewTicketLink,
     containerMaxWidth = '600px',
     containerPadding = '30px',
   } = options;
@@ -336,8 +335,6 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       <p class="qr-description" style="text-align: center; margin-bottom: 20px;">${t.qrCodeDescription}</p>
     </div>
 
-    ${viewTicketLink ? `<a href="${viewTicketLink.url}" class="view-ticket-link">${viewTicketLink.text}</a>` : ''}
-
     <div class="footer">
       ${footer ? `<p>${footer}</p>` : ''}
       <p><strong>${t.museumName}</strong></p>
@@ -391,10 +388,6 @@ async function generateTicketEmailHTML(
     greeting: t.greeting,
     intro: t.intro,
     footer: t.footer,
-    viewTicketLink: {
-      url: ticketViewUrl,
-      text: t.viewTicket,
-    },
   });
 }
 
@@ -537,10 +530,6 @@ async function generateMultipleTicketsEmailHTML(
         greeting: '',
         intro: '',
         footer: '',
-        viewTicketLink: {
-          url: ticketViewUrl,
-          text: t.viewTicket,
-        },
         containerMaxWidth: '100%',
         containerPadding: '0',
       })}
