@@ -204,10 +204,6 @@ export interface TicketHTMLOptions {
     label: string;
     value: string;
   };
-  viewTicketLink?: {
-    url: string;
-    text: string;
-  };
   containerMaxWidth?: string;
   containerPadding?: string;
 }
