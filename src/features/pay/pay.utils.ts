@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify';
 import type {
   CheckoutSessionResponse,
   CheckoutStatus,
-  PaymentStats,
 } from './pay.types.ts';
 import Stripe from 'stripe';
 
@@ -20,92 +19,6 @@ function getStripeInstance(): Stripe {
 
 function convertToCents(amount: number): number {
   return Math.round(amount * 100);
-}
-
-export async function getPaymentStats(app: FastifyInstance): Promise<PaymentStats> {
-  const stripe = getStripeInstance();
-
-  const now = Math.floor(Date.now() / 1000);
-  const nowDate = new Date();
-
-  const dayStart = Math.floor(new Date(
-    nowDate.getFullYear(),
-    nowDate.getMonth(),
-    nowDate.getDate()
-  ).getTime() / 1000);
-
-  const monthStart = Math.floor(new Date(
-    nowDate.getFullYear(),
-    nowDate.getMonth(),
-    1
-  ).getTime() / 1000);
-
-  const weekStart = now - 7 * 24 * 60 * 60; // 7 derniers jours
-
-  let totalAllTimeCents = 0;
-  let totalMonthCents = 0;
-  let totalWeekCents = 0;
-  let totalDayCents = 0;
-  let currency: string | null = null;
-
-  try {
-    let hasMore = true;
-    let startingAfter: string | undefined = undefined;
-
-    while (hasMore) {
-      const page: Stripe.ApiList<Stripe.PaymentIntent> = await stripe.paymentIntents.list({
-        limit: 30000,
-        starting_after: startingAfter,
-      });
-
-      for (const pi of page.data) {
-        if (pi.status !== 'succeeded') {
-          continue;
-        }
-
-        if (!currency && pi.currency) {
-          currency = pi.currency.toUpperCase();
-        }
-
-        const created = pi.created;
-        const amountCents = typeof pi.amount_received === 'number'
-          ? pi.amount_received
-          : pi.amount;
-
-        totalAllTimeCents += amountCents;
-
-        if (created >= monthStart) {
-          totalMonthCents += amountCents;
-        }
-        if (created >= weekStart) {
-          totalWeekCents += amountCents;
-        }
-        if (created >= dayStart) {
-          totalDayCents += amountCents;
-        }
-      }
-
-      hasMore = page.has_more;
-      if (page.data.length > 0) {
-        startingAfter = page.data[page.data.length - 1].id;
-      } else {
-        startingAfter = undefined;
-      }
-    }
-  } catch (err) {
-    app.log.error({ err }, 'Erreur lors du calcul des statistiques Stripe');
-    throw err;
-  }
-
-  const divisor = 100;
-
-  return {
-    total_all_time: totalAllTimeCents / divisor,
-    total_month: totalMonthCents / divisor,
-    total_week: totalWeekCents / divisor,
-    total_day: totalDayCents / divisor,
-    currency: (currency || 'EUR').toUpperCase(),
-  };
 }
 
 export async function createCheckout(

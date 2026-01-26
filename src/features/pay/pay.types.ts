@@ -36,11 +36,4 @@ export interface WebhookBody {
   };
 }
 
-export interface PaymentStats {
-  total_all_time: number;
-  total_month: number;
-  total_week: number;
-  total_day: number;
-  currency: string;
-}
 

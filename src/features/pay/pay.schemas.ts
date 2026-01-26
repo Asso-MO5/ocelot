@@ -130,25 +130,4 @@ export const getCheckoutStatusSchema = {
   },
 };
 
-export const getPaymentStatsSchema = {
-  response: {
-    200: {
-      type: 'object',
-      properties: {
-        total_all_time: { type: 'number' },
-        total_month: { type: 'number' },
-        total_week: { type: 'number' },
-        total_day: { type: 'number' },
-        currency: { type: 'string' },
-      },
-      required: ['total_all_time', 'total_month', 'total_week', 'total_day', 'currency'],
-    },
-    500: {
-      type: 'object',
-      properties: {
-        error: { type: 'string' },
-      },
-    },
-  },
-};
 

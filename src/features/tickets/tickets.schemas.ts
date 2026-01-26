@@ -965,6 +965,18 @@ export const getTicketsStatsSchema = {
               required: ['paid', 'pending', 'cancelled', 'used', 'expired'],
               description: 'Répartition par statut',
             },
+            payment_stats: {
+              type: 'object',
+              properties: {
+                total_year: { type: 'number', description: 'Total des revenus de l\'année courante' },
+                total_month: { type: 'number', description: 'Total des revenus du mois courant' },
+                total_week: { type: 'number', description: 'Total des revenus de la semaine courante' },
+                total_day: { type: 'number', description: 'Total des revenus du jour courant' },
+                currency: { type: 'string', description: 'Devise (EUR)' },
+              },
+              required: ['total_year', 'total_month', 'total_week', 'total_day', 'currency'],
+              description: 'Statistiques de paiement par période',
+            },
           },
           required: [
             'total_tickets_sold',
@@ -977,6 +989,7 @@ export const getTicketsStatsSchema = {
             'total_revenue',
             'conversion_rate',
             'status_distribution',
+            'payment_stats',
           ],
         },
       },

@@ -1476,6 +1476,60 @@ export async function getTicketsStats(
     }
   });
 
+  const nowDate = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const yearStartStr = yearStart.toISOString().split('T')[0];
+
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStartStr = monthStart.toISOString().split('T')[0];
+
+  const dayStartStr = nowDate.toISOString().split('T')[0];
+
+  const [yearPaymentResult, monthPaymentResult, weekPaymentResult, dayPaymentResult] = await Promise.all([
+    app.pg.query<{ total: string }>(
+      `SELECT 
+        COALESCE(SUM(total_amount), 0) as total
+       FROM tickets 
+       WHERE status IN ('paid', 'used')
+       AND created_at >= $1`,
+      [yearStartStr]
+    ),
+    app.pg.query<{ total: string }>(
+      `SELECT 
+        COALESCE(SUM(total_amount), 0) as total
+       FROM tickets 
+       WHERE status IN ('paid', 'used')
+       AND created_at >= $1`,
+      [monthStartStr]
+    ),
+    app.pg.query<{ total: string }>(
+      `SELECT 
+        COALESCE(SUM(total_amount), 0) as total
+       FROM tickets 
+       WHERE status IN ('paid', 'used')
+       AND created_at >= $1`,
+      [weekStartStr]
+    ),
+    app.pg.query<{ total: string }>(
+      `SELECT 
+        COALESCE(SUM(total_amount), 0) as total
+       FROM tickets 
+       WHERE status IN ('paid', 'used')
+       AND created_at >= $1`,
+      [dayStartStr]
+    ),
+  ]);
+
+  const totalYear = parseFloat(yearPaymentResult.rows[0].total || '0');
+  const totalMonth = parseFloat(monthPaymentResult.rows[0].total || '0');
+  const totalWeek = parseFloat(weekPaymentResult.rows[0].total || '0');
+  const totalDay = parseFloat(dayPaymentResult.rows[0].total || '0');
+
   return {
     total_tickets_sold: totalTicketsSold,
     week_tickets_sold: weekTicketsSold,
@@ -1492,6 +1546,13 @@ export async function getTicketsStats(
     total_revenue: Math.round(totalRevenue * 100) / 100,
     conversion_rate: conversionRate,
     status_distribution: statusDistribution,
+    payment_stats: {
+      total_year: Math.round(totalYear * 100) / 100,
+      total_month: Math.round(totalMonth * 100) / 100,
+      total_week: Math.round(totalWeek * 100) / 100,
+      total_day: Math.round(totalDay * 100) / 100,
+      currency: 'EUR',
+    },
   };
 }
 
