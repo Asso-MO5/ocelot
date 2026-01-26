@@ -401,8 +401,6 @@ export async function confirmPurchaseGiftCodes(
 
   const codesList = pack.codes.map(c => c.code).join('<br>');
   const instructionsUrl = 'https://museedujeuvideo.org/fr/ticket';
-  const VALID_UNTIL_DATE_FR = '31 janvier 2026';
-  const VALID_UNTIL_DATE_EN = 'January 31, 2026';
 
   const subject = language === 'en'
     ? 'Your gift codes - Musée du Jeu Vidéo'
@@ -416,9 +414,6 @@ export async function confirmPurchaseGiftCodes(
     <p style="font-family: monospace; font-size: 16px; font-weight: bold;">
       ${codesList}
     </p>
-    <p>${language === 'en'
-      ? `These codes are valid until ${VALID_UNTIL_DATE_EN}.`
-      : `Ces codes sont valables jusqu'au ${VALID_UNTIL_DATE_FR}.`}</p>
     <p>${language === 'en'
       ? 'To use them: go to the booking page, select a date and a slot, choose a ticket and enter your code via \"Add a gift code\" in the personal information section.'
       : 'Pour les utiliser : rendez-vous sur la page de réservation, sélectionnez une date et un horaire, choisissez une place et saisissez votre code via \"Ajouter un code cadeau\" dans la section informations personnelles.'}</p>
