@@ -130,6 +130,7 @@ const start = async () => {
           '/museum/schedules/public',
           '/pay/webhook',
           '/museum/slots',
+          '/docs/openapi.json'
         ];
         const isPublicRoute = pathname && publicRoutes.includes(pathname);
 
