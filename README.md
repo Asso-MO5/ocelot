@@ -30,13 +30,28 @@ yarn install
 - `GET /auth/session` - Vérifie l'état de la session (authentifié, refresh token disponible)
 - `GET /auth/me` - Récupère les informations de l'utilisateur authentifié (gère automatiquement le refresh du token)
 
-### Paiement (SumUp)
+### Paiement (Stripe)
 
-- `POST /pay/checkout` - Crée un nouveau checkout SumUp
-  - Body: `{ amount: number, currency?: string, description?: string, checkout_reference?: string }`
-  - Retourne: `{ checkout_id, checkout_reference, amount, currency, status }`
-- `GET /pay/checkout/:checkoutId` - Vérifie le statut d'un checkout SumUp
-  - Retourne: `{ id, checkout_reference, amount, currency, status, payment_type?, transaction_code? }`
+- `POST /pay/checkout` - Crée un nouveau checkout Stripe
+  - Body: `{ amount: number, currency?: string, description?: string, success_url: string, cancel_url: string, metadata?: Record<string, string> }`
+  - Retourne: `{ id, url, amount_total, currency, status, payment_status, payment_intent? }`
+- `GET /pay/checkout/:sessionId` - Vérifie le statut d'un checkout Stripe
+  - Retourne: `{ id, amount_total, currency, status, payment_status, payment_intent?, metadata? }`
+- `POST /pay/webhook` - Endpoint webhook pour recevoir les notifications de paiement Stripe
+  - Met à jour automatiquement les tickets associés selon le statut du paiement
+
+#### Tests des webhooks Stripe
+
+Pour tester les webhooks Stripe en local, utilisez la Stripe CLI :
+
+```bash
+stripe listen --forward-to localhost:3500/pay/webhook
+```
+
+Cette commande :
+- Écoute les événements Stripe depuis votre compte de test
+- Les transfère automatiquement vers votre endpoint webhook local
+- Affiche la signature du webhook dans la console (à copier dans `STRIPE_WEBHOOK_SECRET` pour les tests)
 
 ## ⚙️ Configuration
 
@@ -79,10 +94,12 @@ Le serveur utilise les variables d'environnement suivantes (définies dans `.env
   - Les erreurs dupliquées (dans la fenêtre configurée) ne seront pas envoyées pour éviter le spam
   - Les réponses HTTP aux clients restent génériques (sans détails de l'erreur)
 
-### SumUp (Paiement)
+### Stripe (Paiement)
 
-- `SUMUP_API_KEY` - Clé API SumUp (requis pour les paiements)
-- `SUMUP_MERCHANT_CODE` - Code marchand SumUp (requis pour les paiements)
+- `STRIPE_SECRET_KEY` - Clé secrète Stripe (requis pour les paiements)
+- `STRIPE_WEBHOOK_SECRET` - Secret du webhook Stripe (requis pour valider les signatures des webhooks en production)
+  - En développement, les webhooks sont acceptés même sans signature valide
+  - Pour les tests locaux, utilisez la signature affichée par `stripe listen`
 
 ### Frontend
 
