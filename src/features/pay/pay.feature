@@ -48,27 +48,6 @@ Feature: Gestion des paiements Stripe
     Alors je reçois une erreur 400
     Et le message d'erreur indique "sessionId est requis"
 
-  Scenario: Récupération des statistiques de paiements (admin uniquement)
-    Étant donné que je suis authentifié avec un rôle bureau ou dev
-    Quand je fais une requête GET vers "/pay/stats"
-    Alors je reçois une réponse 200
-    Et la réponse contient total_all_time
-    Et la réponse contient total_month
-    Et la réponse contient total_week
-    Et la réponse contient total_day
-    Et la réponse contient la devise
-
-  Scenario: Accès refusé pour les statistiques sans authentification
-    Étant donné que je ne suis pas authentifié
-    Quand je fais une requête GET vers "/pay/stats"
-    Alors je reçois une erreur 401
-    Et le message d'erreur indique "Non authentifié"
-
-  Scenario: Accès refusé pour les statistiques sans rôle admin
-    Étant donné que je suis authentifié sans rôle bureau ou dev
-    Quand je fais une requête GET vers "/pay/stats"
-    Alors je reçois une erreur 403
-    Et le message d'erreur indique "Accès refusé : rôle insuffisant"
 
   Scenario: Réception d'un webhook checkout.session.completed
     Étant donné qu'un webhook Stripe est reçu

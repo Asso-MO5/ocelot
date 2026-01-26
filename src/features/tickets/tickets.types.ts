@@ -158,6 +158,13 @@ export interface TicketsStats {
     used: number;
     expired: number;
   };
+  payment_stats: {
+    total_year: number;
+    total_month: number;
+    total_week: number;
+    total_day: number;
+    currency: string;
+  };
 }
 
 export interface WeeklySlotStat {

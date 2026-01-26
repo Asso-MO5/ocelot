@@ -1,11 +1,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { getCheckoutStatus, constructWebhookEvent, getPaymentStats } from './pay.utils.ts';
-import { webhookSchema, getCheckoutStatusSchema, getPaymentStatsSchema } from './pay.schemas.ts';
+import { getCheckoutStatus, constructWebhookEvent } from './pay.utils.ts';
+import { webhookSchema, getCheckoutStatusSchema } from './pay.schemas.ts';
 import type { WebhookBody } from './pay.types.ts';
 import { updateTicketsByCheckoutStatus } from '../tickets/tickets.service.ts';
 import Stripe from 'stripe';
-import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
-import { roles } from '../auth/auth.const.ts';
 import { sendToRoom } from '../websocket/websocket.manager.ts';
 
 
@@ -290,26 +288,6 @@ export async function webhookHandlerWithRawBody(
 }
 
 export function registerPayRoutes(app: FastifyInstance) {
-  app.get(
-    '/pay/stats',
-    {
-      schema: getPaymentStatsSchema,
-      preHandler: [
-        authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
-      ],
-    },
-    async (_req, reply) => {
-      try {
-        const stats = await getPaymentStats(app);
-        return reply.send(stats);
-      } catch (err: any) {
-        app.log.error({ err }, 'Erreur lors de la récupération des statistiques de paiements');
-        return reply.code(500).send({ error: 'Erreur lors de la récupération des statistiques de paiements' });
-      }
-    }
-  );
-
   app.get<{ Params: { sessionId: string } }>(
     '/pay/checkout/:sessionId',
     {
