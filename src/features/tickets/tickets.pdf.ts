@@ -7,8 +7,8 @@ import {
   formatTime,
   normalizeLanguage,
   prepareTicketData,
-  getLogoBase64,
 } from './tickets.email.ts';
+import { getLogoBase64 } from '../../utils/get-logo-base64.ts';
 export async function generateTicketPDF(
   ticket: Ticket,
   isValid: boolean = true
@@ -24,7 +24,7 @@ export async function generateTicketPDF(
 
   const doc = new PDFDocument({
     size: 'A4',
-    margins: { top: 50, bottom: 50, left: 50, right: 50 },
+    margins: { top: 30, bottom: 30, left: 50, right: 50 },
   });
 
   const buffers: Buffer[] = [];
@@ -44,15 +44,26 @@ export async function generateTicketPDF(
       const backgroundColor = '#f9f9f9';
 
       const logoBase64 = getLogoBase64();
+
       if (logoBase64) {
         try {
           const logoBuffer = Buffer.from(logoBase64.split(',')[1] || logoBase64, 'base64');
-          doc.image(logoBuffer, {
-            fit: [200, 100],
-            align: 'center',
+
+          const pageWidth = doc.page.width;
+          const maxLogoWidth = 140;
+          const logoWidth = Math.min(
+            maxLogoWidth,
+            pageWidth - doc.page.margins.left - doc.page.margins.right
+          );
+          const logoX = (pageWidth - logoWidth) / 2;
+          const logoY = doc.page.margins.top;
+
+          doc.image(logoBuffer, logoX, logoY, {
+            width: logoWidth,
           });
-          doc.moveDown(1);
-        } catch (error) {
+
+          doc.y = logoY + logoWidth * (73 / 120) + 20;
+        } catch {
           // No catch error
         }
       }
@@ -197,7 +208,7 @@ export async function generateTicketPDF(
         );
 
       // Position pour le QR code
-      doc.y = detailsY + 220;
+      doc.y = detailsY + 200;
 
       // Centrer le QR code (en tenant compte des marges de 50 points de chaque côté)
       const qrSize = 200;

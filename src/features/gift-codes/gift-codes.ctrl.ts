@@ -77,7 +77,6 @@ async function distributeGiftCodesHandler(
       [recipient_email, code_ids]
     );
 
-    const codesList = codesResult.rows.map(c => c.code).join('<br>');
     const emailSubject = subject || (language === 'en'
       ? 'Your gift codes for the Video Game Museum'
       : 'Vos codes cadeaux pour le Musée du Jeu Vidéo');
@@ -86,11 +85,11 @@ async function distributeGiftCodesHandler(
       <p>${language === 'en' ? 'Hello,' : 'Bonjour,'}</p>
       ${message ? `<p>${message}</p>` : ''}
       <p>${language === 'en'
-        ? 'Here are your gift codes:'
-        : 'Voici vos codes cadeaux :'}</p>
-      <p style="font-family: monospace; font-size: 16px; font-weight: bold;">
-        ${codesList}
-      </p>
+        ? 'You will find attached one PDF per gift code.'
+        : 'Vous trouverez en pièces jointes un PDF par code cadeau.'}</p>
+      <p>${language === 'en'
+        ? 'Each PDF contains your gift code and the information needed to use it.'
+        : 'Chaque PDF contient votre code cadeau et les informations nécessaires pour l\'utiliser.'}</p>
       <p>${language === 'en'
         ? 'You can use these codes when booking your tickets on our website.'
         : 'Vous pouvez utiliser ces codes lors de la réservation de vos billets sur notre site web.'}</p>
@@ -99,12 +98,45 @@ async function distributeGiftCodesHandler(
         : 'Cordialement,<br>L\'équipe MO5.com'}</p>
     `;
 
+    const attachments: {
+      name: string;
+      content: string;
+      contentType: string;
+    }[] = [];
+
+    try {
+      const { generateGiftCodePDF } = await import('./gift-codes.pdf.ts');
+
+      for (const giftCode of codesResult.rows) {
+        try {
+          const pdfBuffer = await generateGiftCodePDF(giftCode.code, language as 'fr' | 'en');
+          const pdfBase64 = pdfBuffer.toString('base64');
+          attachments.push({
+            name: `code-cadeau-${giftCode.code}.pdf`,
+            content: pdfBase64,
+            contentType: 'application/pdf',
+          });
+        } catch (pdfError: any) {
+          app.log.error({
+            error: pdfError?.message || pdfError,
+            code: giftCode.code,
+          }, 'Erreur lors de la génération du PDF du code cadeau (distribution manuelle)');
+        }
+      }
+    } catch (importError: any) {
+      app.log.error({
+        error: importError?.message || importError,
+        code_ids,
+      }, 'Erreur lors de l\'import de gift-codes.pdf.ts pour la distribution des codes');
+    }
+
     await emailUtils.sendEmail({
       email: recipient_email,
       name: recipient_email,
       subject: emailSubject,
       body: emailBody,
       language: language as 'fr' | 'en',
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
     app.log.info({

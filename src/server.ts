@@ -126,19 +126,21 @@ const start = async () => {
           '/auth/signin',
           '/auth/signout',
           '/auth/callback',
-          '/docs',
           '/museum/schedules/public',
           '/pay/webhook',
           '/museum/slots',
-          '/docs/openapi.json'
         ];
-        const isPublicRoute = pathname && publicRoutes.includes(pathname);
+
+        // Routes de documentation : toutes les routes commençant par /docs
+        const isDocsRoute = pathname && pathname.startsWith('/docs');
+        const isPublicRoute = pathname && (publicRoutes.includes(pathname) || isDocsRoute);
 
         if (!origin) {
           if (process.env.NODE_ENV === 'production' && !isPublicRoute) {
             callback(new Error('Origin required in production'), false);
             return;
           }
+
           callback(null, true);
           return;
         }

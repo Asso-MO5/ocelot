@@ -3,18 +3,7 @@ import type { Ticket, TicketHTMLOptions } from './tickets.types.ts';
 import { emailUtils } from '../email/email.utils.ts';
 // @ts-ignore
 import QRCode from 'qrcode';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-
-
-export function getLogoBase64(): string {
-  try {
-    const logoPath = join(process.cwd(), 'src', 'templates', 'logo-base64.txt');
-    return readFileSync(logoPath, 'utf-8').trim();
-  } catch (error) {
-    return '';
-  }
-}
+import { getLogoBase64 } from '../../utils/get-logo-base64.ts';
 
 export async function generateQRCodeBase64(qrCode: string): Promise<string> {
   if (!qrCode || qrCode.trim().length === 0) {
@@ -515,8 +504,6 @@ async function generateMultipleTicketsEmailHTML(
       } catch (error) {
         throw new Error(`Erreur lors de la génération du QR code pour le ticket ${ticket.id}: ${error}`);
       }
-
-      const ticketViewUrl = `${baseUrl}/tickets/${ticket.qr_code}`;
 
       return `
         <div style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 2px solid #e0e0e0;">
