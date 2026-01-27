@@ -399,7 +399,6 @@ export async function confirmPurchaseGiftCodes(
     [buyerEmail, pack.pack_id]
   );
 
-  const codesList = pack.codes.map(c => c.code).join('<br>');
   const instructionsUrl = 'https://museedujeuvideo.org/fr/ticket';
 
   const subject = language === 'en'
@@ -409,11 +408,11 @@ export async function confirmPurchaseGiftCodes(
   const body = `
     <p>${language === 'en' ? 'Hello,' : 'Bonjour,'}</p>
     <p>${language === 'en'
-      ? 'Here are your gift codes:'
-      : 'Voici vos codes cadeaux :'}</p>
-    <p style="font-family: monospace; font-size: 16px; font-weight: bold;">
-      ${codesList}
-    </p>
+      ? 'You will find attached one PDF per gift code.'
+      : 'Vous trouverez en pièces jointes un PDF par code cadeau.'}</p>
+    <p>${language === 'en'
+      ? 'Each PDF contains your gift code and the information needed to use it.'
+      : 'Chaque PDF contient votre code cadeau et les informations nécessaires pour l\'utiliser.'}</p>
     <p>${language === 'en'
       ? 'To use them: go to the booking page, select a date and a slot, choose a ticket and enter your code via \"Add a gift code\" in the personal information section.'
       : 'Pour les utiliser : rendez-vous sur la page de réservation, sélectionnez une date et un horaire, choisissez une place et saisissez votre code via \"Ajouter un code cadeau\" dans la section informations personnelles.'}</p>
@@ -425,12 +424,46 @@ export async function confirmPurchaseGiftCodes(
       : 'Cordialement,<br>L\'équipe MO5.com'}</p>
   `;
 
+  // Génération d'un PDF par code cadeau
+  const attachments: {
+    name: string;
+    content: string;
+    contentType: string;
+  }[] = [];
+
+  try {
+    const { generateGiftCodePDF } = await import('./gift-codes.pdf.ts');
+
+    for (const giftCode of pack.codes) {
+      try {
+        const pdfBuffer = await generateGiftCodePDF(giftCode.code, language);
+        const pdfBase64 = pdfBuffer.toString('base64');
+        attachments.push({
+          name: `code-cadeau-${giftCode.code}.pdf`,
+          content: pdfBase64,
+          contentType: 'application/pdf',
+        });
+      } catch (pdfError: any) {
+        app.log.error({
+          error: pdfError?.message || pdfError,
+          code: giftCode.code,
+        }, 'Erreur lors de la génération du PDF du code cadeau');
+      }
+    }
+  } catch (importError: any) {
+    app.log.error({
+      error: importError?.message || importError,
+      checkoutId,
+    }, 'Erreur lors de l\'import de gift-codes.pdf.ts');
+  }
+
   await emailUtils.sendEmail({
     email: buyerEmail,
     name: buyerEmail,
     subject,
     body,
     language,
+    attachments: attachments.length > 0 ? attachments : undefined,
   });
 
   return {
