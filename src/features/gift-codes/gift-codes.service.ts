@@ -265,7 +265,7 @@ export async function getGiftCodePacks(
       `SELECT DISTINCT pack_id 
        FROM gift_codes 
        WHERE pack_id IS NOT NULL
-       ORDER BY pack_id DESC`
+       ORDER BY created_at DESC, pack_id DESC`
     );
     packIds = packIdsResult.rows.map(row => row.pack_id);
   }
@@ -281,7 +281,7 @@ export async function getGiftCodePacks(
     const codesResult = await app.pg.query<GiftCode>(
       `SELECT * FROM gift_codes 
        WHERE pack_id = $1 
-       ORDER BY created_at ASC`,
+       ORDER BY created_at DESC`,
       [packId]
     );
 
