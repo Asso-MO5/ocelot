@@ -262,10 +262,11 @@ export async function getGiftCodePacks(
     packIds = [codeResult.rows[0].pack_id];
   } else {
     const packIdsResult = await app.pg.query<{ pack_id: string }>(
-      `SELECT DISTINCT pack_id 
+      `SELECT pack_id 
        FROM gift_codes 
        WHERE pack_id IS NOT NULL
-       ORDER BY created_at DESC`
+       GROUP BY pack_id
+       ORDER BY MAX(created_at) DESC`
     );
     packIds = packIdsResult.rows.map(row => row.pack_id);
   }
