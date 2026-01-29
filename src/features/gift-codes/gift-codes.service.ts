@@ -265,7 +265,7 @@ export async function getGiftCodePacks(
       `SELECT DISTINCT pack_id 
        FROM gift_codes 
        WHERE pack_id IS NOT NULL
-       ORDER BY created_at DESC, pack_id DESC`
+       ORDER BY created_at DESC`
     );
     packIds = packIdsResult.rows.map(row => row.pack_id);
   }
