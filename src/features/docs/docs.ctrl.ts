@@ -11,17 +11,17 @@ const __dirname = dirname(__filename);
 // src/features/docs/docs.ctrl.ts -> docs/ (à la racine du projet)
 const docsDir = join(__dirname, '../../..', 'docs');
 
-export function registerDocsRoutes(app: FastifyInstance) {
+export function registerDocsRoutes(app: FastifyInstance, documentationDirectory: string = docsDir) {
   app.get('/docs/openapi.json', async (_req, reply) => {
     try {
-      const docsPath = join(docsDir, 'openapi.json');
+      const docsPath = join(documentationDirectory, 'openapi.json');
       const content = readFileSync(docsPath, 'utf-8');
       const openapi = JSON.parse(content);
 
       reply.type('application/json');
       return openapi;
     } catch (error) {
-      app.log.error({ err: error, path: join(docsDir, 'openapi.json') }, 'Erreur lors du chargement de la documentation OpenAPI JSON');
+      app.log.error({ err: error, path: join(documentationDirectory, 'openapi.json') }, 'Erreur lors du chargement de la documentation OpenAPI JSON');
       reply.code(500);
       return { error: 'Impossible de charger la documentation OpenAPI' };
     }
@@ -29,13 +29,13 @@ export function registerDocsRoutes(app: FastifyInstance) {
 
   app.get('/docs/openapi.yaml', async (_req, reply) => {
     try {
-      const docsPath = join(docsDir, 'openapi.yaml');
+      const docsPath = join(documentationDirectory, 'openapi.yaml');
       const content = readFileSync(docsPath, 'utf-8');
 
       reply.type('text/yaml');
       return content;
     } catch (error) {
-      app.log.error({ err: error, path: join(docsDir, 'openapi.yaml') }, 'Erreur lors du chargement de la documentation OpenAPI YAML');
+      app.log.error({ err: error, path: join(documentationDirectory, 'openapi.yaml') }, 'Erreur lors du chargement de la documentation OpenAPI YAML');
       reply.code(500);
       return { error: 'Impossible de charger la documentation OpenAPI' };
     }
@@ -43,13 +43,13 @@ export function registerDocsRoutes(app: FastifyInstance) {
 
   app.get('/docs', async (_req, reply) => {
     try {
-      const docsPath = join(docsDir, 'index.html');
+      const docsPath = join(documentationDirectory, 'index.html');
       const content = readFileSync(docsPath, 'utf-8');
 
       reply.type('text/html');
       return content;
     } catch (error) {
-      app.log.error({ err: error, path: join(docsDir, 'index.html') }, 'Erreur lors du chargement de la documentation HTML');
+      app.log.error({ err: error, path: join(documentationDirectory, 'index.html') }, 'Erreur lors du chargement de la documentation HTML');
       reply.code(500);
       return { error: 'Impossible de charger la documentation' };
     }
@@ -59,4 +59,3 @@ export function registerDocsRoutes(app: FastifyInstance) {
     return reply.redirect('/docs');
   });
 }
-

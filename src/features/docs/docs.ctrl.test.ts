@@ -1,250 +1,139 @@
 import { strict as assert } from 'node:assert';
-import { test, describe, beforeEach, afterEach } from 'node:test';
-import type { FastifyInstance, FastifyReply } from 'fastify';
-import { existsSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { describe, test } from 'node:test';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { registerDocsRoutes } from './docs.ctrl.ts';
 
 interface MockWithTracking {
-  (...args: any[]): any;
-  mock: {
-    calls: any[][];
-    callCount(): number;
-  };
+  (...args: unknown[]): unknown;
+  calls: unknown[][];
 }
 
-function createMockFn(returnValue?: any, chainTarget?: any): MockWithTracking {
-  const calls: any[][] = [];
-  const fn = ((...args: any[]) => {
-    calls.push(args);
-    return returnValue ?? chainTarget ?? fn;
+function createMockFn(): MockWithTracking {
+  const fn = ((...args: unknown[]) => {
+    fn.calls.push(args);
+    return fn;
   }) as MockWithTracking;
-  fn.mock = {
-    calls,
-    callCount: () => calls.length,
-  };
+  fn.calls = [];
   return fn;
 }
 
-function createMockApp(): FastifyInstance & { handlers: Record<string, any> } {
-  const handlers: Record<string, any> = {};
-
-  const app: any = {
-    get: (path: string, handler: any) => {
+function createMockApp(): FastifyInstance & { handlers: Record<string, Function> } {
+  const handlers: Record<string, Function> = {};
+  return {
+    get: (path: string, handler: Function) => {
       handlers[path] = handler;
     },
     handlers,
-  };
-
-  return app as unknown as FastifyInstance & { handlers: Record<string, any> };
+    log: { error: () => undefined },
+  } as unknown as FastifyInstance & { handlers: Record<string, Function> };
 }
 
-function createMockReply(): FastifyReply & {
-  type: MockWithTracking;
-  code: MockWithTracking;
-  redirect: MockWithTracking;
-} {
-  const reply = {} as any;
-
-  reply.type = createMockFn(reply, reply);
-  reply.code = createMockFn(reply, reply);
-  reply.redirect = createMockFn(reply, reply);
-
-  return reply as FastifyReply & {
+function createMockReply() {
+  return {
+    type: createMockFn(),
+    code: createMockFn(),
+    redirect: createMockFn(),
+  } as unknown as FastifyReply & {
     type: MockWithTracking;
     code: MockWithTracking;
     redirect: MockWithTracking;
   };
 }
 
+function createTestDocsDirectory(t: { after: (callback: () => void) => void }): string {
+  const directory = mkdtempSync(join(tmpdir(), 'ocelot-docs-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  return directory;
+}
+
+function handlerFor(app: ReturnType<typeof createMockApp>, path: string): Function {
+  const handler = app.handlers[path];
+  assert.ok(handler, `Handler ${path} not found`);
+  return handler;
+}
+
 describe('Docs Controller', () => {
-  const testDocsDir = join(process.cwd(), 'test-docs');
-  const originalCwd = process.cwd();
+  test('retourne le JSON OpenAPI depuis le répertoire de documentation injecté', async (t) => {
+    const docsDirectory = createTestDocsDirectory(t);
+    const content = { openapi: '3.0.0', info: { title: 'Test API' } };
+    writeFileSync(join(docsDirectory, 'openapi.json'), JSON.stringify(content));
 
-  beforeEach(() => {
-    if (!existsSync(testDocsDir)) {
-      mkdirSync(testDocsDir, { recursive: true });
-    }
-    process.chdir(testDocsDir);
+    const app = createMockApp();
+    registerDocsRoutes(app, docsDirectory);
+    const reply = createMockReply();
+    const result = await handlerFor(app, '/docs/openapi.json')({}, reply);
+
+    assert.deepEqual(result, content);
+    assert.deepEqual(reply.type.calls, [['application/json']]);
   });
 
-  afterEach(() => {
-    process.chdir(originalCwd);
-    if (existsSync(testDocsDir)) {
-      try {
-        rmSync(testDocsDir, { recursive: true, force: true });
-      } catch (error: any) {
-        if (error.code !== 'ENOENT' && error.code !== 'EPERM') {
-          throw error;
-        }
-      }
-    }
+  test('retourne une erreur contrôlée si le JSON OpenAPI est absent ou invalide', async (t) => {
+    const docsDirectory = createTestDocsDirectory(t);
+    const app = createMockApp();
+    registerDocsRoutes(app, docsDirectory);
+
+    const absentReply = createMockReply();
+    assert.deepEqual(await handlerFor(app, '/docs/openapi.json')({}, absentReply), {
+      error: 'Impossible de charger la documentation OpenAPI',
+    });
+    assert.deepEqual(absentReply.code.calls, [[500]]);
+
+    writeFileSync(join(docsDirectory, 'openapi.json'), 'invalid json');
+    const invalidReply = createMockReply();
+    assert.deepEqual(await handlerFor(app, '/docs/openapi.json')({}, invalidReply), {
+      error: 'Impossible de charger la documentation OpenAPI',
+    });
+    assert.deepEqual(invalidReply.code.calls, [[500]]);
   });
 
-  describe('GET /docs/openapi.json', () => {
-    test('devrait retourner le contenu JSON de la documentation', async () => {
-      const docsDir = join(testDocsDir, 'docs');
-      mkdirSync(docsDir, { recursive: true });
+  test('retourne le YAML et le HTML avec leur type MIME', async (t) => {
+    const docsDirectory = createTestDocsDirectory(t);
+    const yaml = 'openapi: 3.0.0';
+    const html = '<html><body>Documentation</body></html>';
+    writeFileSync(join(docsDirectory, 'openapi.yaml'), yaml);
+    writeFileSync(join(docsDirectory, 'index.html'), html);
 
-      const openapiContent = { openapi: '3.0.0', info: { title: 'Test API' } };
-      writeFileSync(join(docsDir, 'openapi.json'), JSON.stringify(openapiContent));
+    const app = createMockApp();
+    registerDocsRoutes(app, docsDirectory);
 
-      const app = createMockApp();
-      registerDocsRoutes(app);
+    const yamlReply = createMockReply();
+    assert.equal(await handlerFor(app, '/docs/openapi.yaml')({}, yamlReply), yaml);
+    assert.deepEqual(yamlReply.type.calls, [['text/yaml']]);
 
-      const handler = app.handlers['/docs/openapi.json'];
-      if (!handler) {
-        throw new Error('Handler not found');
-      }
-
-      const reply = createMockReply();
-      const result = await handler({}, reply);
-
-      assert.equal(reply.type.mock.callCount(), 1);
-      assert.equal(reply.type.mock.calls[0][0], 'application/json');
-      assert.deepEqual(result, openapiContent);
-    });
-
-    test('devrait retourner une erreur 500 si le fichier n\'existe pas', async () => {
-      const app = createMockApp();
-      registerDocsRoutes(app);
-
-      const handler = app.handlers['/docs/openapi.json'];
-      if (!handler) {
-        throw new Error('Handler not found');
-      }
-
-      const reply = createMockReply();
-      const result = await handler({}, reply);
-
-      assert.equal(reply.code.mock.callCount(), 1);
-      assert.equal(reply.code.mock.calls[0][0], 500);
-      assert.equal(result.error, 'Impossible de charger la documentation OpenAPI');
-    });
-
-    test('devrait retourner une erreur 500 si le JSON est invalide', async () => {
-      const docsDir = join(testDocsDir, 'docs');
-      mkdirSync(docsDir, { recursive: true });
-
-      writeFileSync(join(docsDir, 'openapi.json'), 'invalid json content');
-
-      const app = createMockApp();
-      registerDocsRoutes(app);
-
-      const handler = app.handlers['/docs/openapi.json'];
-      if (!handler) {
-        throw new Error('Handler not found');
-      }
-
-      const reply = createMockReply();
-      const result = await handler({}, reply);
-
-      assert.equal(reply.code.mock.callCount(), 1);
-      assert.equal(reply.code.mock.calls[0][0], 500);
-      assert.equal(result.error, 'Impossible de charger la documentation OpenAPI');
-    });
+    const htmlReply = createMockReply();
+    assert.equal(await handlerFor(app, '/docs')({}, htmlReply), html);
+    assert.deepEqual(htmlReply.type.calls, [['text/html']]);
   });
 
-  describe('GET /docs/openapi.yaml', () => {
-    test('devrait retourner le contenu YAML de la documentation', async () => {
-      const docsDir = join(testDocsDir, 'docs');
-      mkdirSync(docsDir, { recursive: true });
+  test('retourne une erreur contrôlée si le YAML ou le HTML est absent', async (t) => {
+    const docsDirectory = createTestDocsDirectory(t);
+    const app = createMockApp();
+    registerDocsRoutes(app, docsDirectory);
 
-      const yamlContent = 'openapi: 3.0.0\ninfo:\n  title: Test API';
-      writeFileSync(join(docsDir, 'openapi.yaml'), yamlContent);
-
-      const app = createMockApp();
-      registerDocsRoutes(app);
-
-      const handler = app.handlers['/docs/openapi.yaml'];
-      if (!handler) {
-        throw new Error('Handler not found');
-      }
-
-      const reply = createMockReply();
-      const result = await handler({}, reply);
-
-      assert.equal(reply.type.mock.callCount(), 1);
-      assert.equal(reply.type.mock.calls[0][0], 'text/yaml');
-      assert.equal(result, yamlContent);
+    const yamlReply = createMockReply();
+    assert.deepEqual(await handlerFor(app, '/docs/openapi.yaml')({}, yamlReply), {
+      error: 'Impossible de charger la documentation OpenAPI',
     });
+    assert.deepEqual(yamlReply.code.calls, [[500]]);
 
-    test('devrait retourner une erreur 500 si le fichier n\'existe pas', async () => {
-      const app = createMockApp();
-      registerDocsRoutes(app);
-
-      const handler = app.handlers['/docs/openapi.yaml'];
-      if (!handler) {
-        throw new Error('Handler not found');
-      }
-
-      const reply = createMockReply();
-      const result = await handler({}, reply);
-
-      assert.equal(reply.code.mock.callCount(), 1);
-      assert.equal(reply.code.mock.calls[0][0], 500);
-      assert.equal(result.error, 'Impossible de charger la documentation OpenAPI');
+    const htmlReply = createMockReply();
+    assert.deepEqual(await handlerFor(app, '/docs')({}, htmlReply), {
+      error: 'Impossible de charger la documentation',
     });
+    assert.deepEqual(htmlReply.code.calls, [[500]]);
   });
 
-  describe('GET /docs', () => {
-    test('devrait retourner le contenu HTML de la documentation', async () => {
-      const docsDir = join(testDocsDir, 'docs');
-      mkdirSync(docsDir, { recursive: true });
+  test('redirige /docs/ vers /docs', async (t) => {
+    const docsDirectory = createTestDocsDirectory(t);
+    const app = createMockApp();
+    registerDocsRoutes(app, docsDirectory);
+    const reply = createMockReply();
 
-      const htmlContent = '<html><body>Documentation</body></html>';
-      writeFileSync(join(docsDir, 'index.html'), htmlContent);
+    await handlerFor(app, '/docs/')({}, reply);
 
-      const app = createMockApp();
-      registerDocsRoutes(app);
-
-      const handler = app.handlers['/docs'];
-      if (!handler) {
-        throw new Error('Handler not found');
-      }
-
-      const reply = createMockReply();
-      const result = await handler({}, reply);
-
-      assert.equal(reply.type.mock.callCount(), 1);
-      assert.equal(reply.type.mock.calls[0][0], 'text/html');
-      assert.equal(result, htmlContent);
-    });
-
-    test('devrait retourner une erreur 500 si le fichier n\'existe pas', async () => {
-      const app = createMockApp();
-      registerDocsRoutes(app);
-
-      const handler = app.handlers['/docs'];
-      if (!handler) {
-        throw new Error('Handler not found');
-      }
-
-      const reply = createMockReply();
-      const result = await handler({}, reply);
-
-      assert.equal(reply.code.mock.callCount(), 1);
-      assert.equal(reply.code.mock.calls[0][0], 500);
-      assert.equal(result.error, 'Impossible de charger la documentation');
-    });
-  });
-
-  describe('GET /docs/', () => {
-    test('devrait rediriger vers /docs', async () => {
-      const app = createMockApp();
-      registerDocsRoutes(app);
-
-      const handler = app.handlers['/docs/'];
-      if (!handler) {
-        throw new Error('Handler not found');
-      }
-
-      const reply = createMockReply();
-      await handler({}, reply);
-
-      assert.equal(reply.redirect.mock.callCount(), 1);
-      assert.equal(reply.redirect.mock.calls[0][0], '/docs');
-    });
+    assert.deepEqual(reply.redirect.calls, [['/docs']]);
   });
 });
-

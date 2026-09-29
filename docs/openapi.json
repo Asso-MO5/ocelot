@@ -4095,7 +4095,7 @@
                       "applied_at": {
                         "type": "string",
                         "format": "date-time",
-                        "default": "2026-09-29T14:26:05.282Z",
+                        "default": "2026-09-29T14:46:45.011Z",
                         "description": "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                       }
                     },
