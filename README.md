@@ -72,12 +72,16 @@ Le serveur utilise les variables d'environnement suivantes (définies dans `.env
 - `COOKIE_SECRET` - Secret pour signer les cookies (défaut: `your-secret-key-change-in-production`)
 - `COOKIE_DOMAIN` - Domaine des cookies (optionnel, utilisé en production)
 
-### Discord OAuth2
+### Zitadel OpenID Connect
 
-- `DISCORD_CLIENT_ID` - ID du client Discord (requis)
-- `DISCORD_CLIENT_SECRET` - Secret du client Discord (requis)
-- `DISCORD_REDIRECT_URI` - URI de redirection OAuth2 (défaut: `http://localhost:{PORT}/auth/callback`)
-- `DISCORD_SCOPES` - Scopes Discord demandés (défaut: `identify email`)
+- `ZITADEL_ISSUER` - URL de l'instance Zitadel, sans chemin (requis), par exemple `https://id.example.org`
+- `ZITADEL_CLIENT_ID` - ID du client OIDC confidentiel (requis)
+- `ZITADEL_CLIENT_SECRET` - Secret du client OIDC (requis, à ne jamais versionner)
+- `ZITADEL_REDIRECT_URI` - URI de redirection autorisée dans Zitadel (défaut: `http://localhost:{PORT}/auth/callback`)
+- `ZITADEL_SCOPES` - Scopes OIDC demandés. Par défaut : `openid profile email offline_access urn:zitadel:iam:org:project:roles`
+- `ZITADEL_ROLES_CLAIM` - Claim des rôles Zitadel (défaut : `urn:zitadel:iam:org:project:roles`)
+
+Dans Zitadel, activer l'émission des rôles pour l'application et attribuer les rôles du projet. La découverte OIDC est chargée depuis `${ZITADEL_ISSUER}/.well-known/openid-configuration`.
 - `REFRESH_TOKEN_MAX_AGE_DAYS` - Durée de vie du refresh token en jours (défaut: 90)
 
 ### Base de données PostgreSQL
