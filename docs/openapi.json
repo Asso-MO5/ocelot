@@ -71,7 +71,7 @@
           "Authentification"
         ],
         "summary": "Redirige vers Discord OAuth2 pour l'authentification",
-        "description": "**Redirection vers Discord pour l'authentification** : je devrais être redirigé vers Discord OAuth2 l'URL de redirection devrait contenir le client_id l'URL de redirection devrait contenir le redirect_uri l'URL de redirection devrait contenir les scopes demandés\n\n**Erreur si DISCORD_CLIENT_ID n'est pas configuré** : je devrais recevoir une erreur 500 le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"\n\n**Utilisation de scopes personnalisés** : l'URL de redirection Discord devrait contenir les scopes personnalisés\n\n**Configuration de l'URI de redirection personnalisée** : l'URL de redirection Discord devrait utiliser l'URI personnalisée\n\n### Scénarios de test\n\n**Redirection vers Discord pour l'authentification**\n\n📋 que je suis un utilisateur non authentifié\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ je devrais être redirigé vers Discord OAuth2\n\n✅ l'URL de redirection devrait contenir le client_id\n\n✅ l'URL de redirection devrait contenir le redirect_uri\n\n✅ l'URL de redirection devrait contenir les scopes demandés\n\n**Erreur si DISCORD_CLIENT_ID n'est pas configuré**\n\n📋 que DISCORD_CLIENT_ID n'est pas défini\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ je devrais recevoir une erreur 500\n\n✅ le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"\n\n**Utilisation de scopes personnalisés**\n\n📋 que DISCORD_SCOPES est configuré avec \"identify email guilds\"\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ l'URL de redirection Discord devrait contenir les scopes personnalisés\n\n**Configuration de l'URI de redirection personnalisée**\n\n📋 que DISCORD_REDIRECT_URI est configuré\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ l'URL de redirection Discord devrait utiliser l'URI personnalisée\n\n",
+        "description": "**Démarrer une connexion OIDC protégée par PKCE** : je suis redirigé vers l'endpoint d'autorisation Zitadel la requête contient un state, un nonce et un code_challenge S256 les valeurs de transaction sont conservées dans des cookies HTTP-only signés et temporaires\n\n**Refuser une configuration Zitadel incomplète** : je reçois une erreur 500 sans détail de secret\n\n### Scénarios de test\n\n**Démarrer une connexion OIDC protégée par PKCE**\n\n📋 que je ne suis pas authentifié\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ je suis redirigé vers l'endpoint d'autorisation Zitadel\n\n✅ la requête contient un state, un nonce et un code_challenge S256\n\n✅ les valeurs de transaction sont conservées dans des cookies HTTP-only signés et temporaires\n\n**Refuser une configuration Zitadel incomplète**\n\n📋 que ZITADEL_ISSUER, ZITADEL_CLIENT_ID ou ZITADEL_CLIENT_SECRET est absent\n\n⚡ je fais une requête GET vers \"/auth/signin\"\n\n✅ je reçois une erreur 500 sans détail de secret\n\n",
         "operationId": "get_auth_signin",
         "parameters": [],
         "responses": {
@@ -87,7 +87,7 @@
             }
           },
           "500": {
-            "description": "Erreur serveur - je devrais recevoir une erreur 500, le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"",
+            "description": "Erreur serveur - je reçois une erreur 500 sans détail de secret",
             "content": {
               "application/json": {
                 "schema": {
@@ -160,27 +160,27 @@
           "Authentification"
         ],
         "summary": "Callback OAuth2 de Discord - Échange le code d'autorisation contre des tokens",
-        "description": "**Callback OAuth2 sans code** : je devrais être redirigé vers le frontend avec error=missing_code\n\n### Scénarios de test\n\n**Callback OAuth2 sans code**\n\n📋 que Discord n'a pas retourné de code\n\n⚡ je fais une requête GET vers \"/auth/callback\"\n\n✅ je devrais être redirigé vers le frontend avec error=missing_code\n\n",
+        "description": "**Finaliser un callback OIDC valide** : que Zitadel retourne un code d'autorisation et un ID token valide le code est échangé avec le verifier PKCE la signature, l'issuer, l'audience et le nonce de l'ID token sont vérifiés les jetons de session sont stockés dans des cookies HTTP-only je suis redirigé vers le frontend avec success=true\n\n**Refuser un callback qui ne correspond pas à la transaction** : aucun jeton n'est échangé je suis redirigé vers le frontend avec error=invalid_state\n\n### Scénarios de test\n\n**Finaliser un callback OIDC valide**\n\n📋 qu'un state, un nonce et un verifier valides ont été conservés\n\n✅ que Zitadel retourne un code d'autorisation et un ID token valide\n\n⚡ je fais une requête GET vers \"/auth/callback\"\n\n✅ le code est échangé avec le verifier PKCE\n\n✅ la signature, l'issuer, l'audience et le nonce de l'ID token sont vérifiés\n\n✅ les jetons de session sont stockés dans des cookies HTTP-only\n\n✅ je suis redirigé vers le frontend avec success=true\n\n**Refuser un callback qui ne correspond pas à la transaction**\n\n📋 que le state retourné est absent, invalide ou expiré\n\n⚡ je fais une requête GET vers \"/auth/callback\"\n\n✅ aucun jeton n'est échangé\n\n✅ je suis redirigé vers le frontend avec error=invalid_state\n\n",
         "operationId": "get_auth_callback",
         "parameters": [
           {
             "name": "code",
             "in": "query",
-            "description": "Code d'autorisation retourné par Discord",
+            "description": "Code d'autorisation retourné par Zitadel",
             "required": false,
             "schema": {
               "type": "string",
-              "description": "Code d'autorisation retourné par Discord"
+              "description": "Code d'autorisation retourné par Zitadel"
             }
           },
           {
             "name": "error",
             "in": "query",
-            "description": "Code d'erreur retourné par Discord",
+            "description": "Code d'erreur retourné par Zitadel",
             "required": false,
             "schema": {
               "type": "string",
-              "description": "Code d'erreur retourné par Discord"
+              "description": "Code d'erreur retourné par Zitadel"
             }
           },
           {
@@ -203,7 +203,7 @@
           "Authentification"
         ],
         "summary": "Récupère les informations de l'utilisateur authentifié (gère automatiquement le refresh du token)",
-        "description": "**Récupération des données utilisateur - token valide** : je devrais recevoir mes informations utilisateur la réponse devrait contenir id, username, discriminator, avatar la réponse devrait contenir email si le scope email est accordé la réponse devrait contenir roles l'utilisateur devrait être sauvegardé en base de données\n\n**Récupération des données utilisateur - token expiré avec refresh automatique** : que j'ai un refresh_token valide le refresh_token devrait être utilisé pour obtenir un nouveau access_token les nouveaux tokens devraient être stockés dans les cookies je devrais recevoir mes informations utilisateur\n\n**Récupération des données utilisateur - token expiré sans refresh token** : que je n'ai pas de refresh_token je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"\n\n**Récupération des données utilisateur - refresh token invalide** : que mon refresh_token est invalide je devrais recevoir une erreur 401 les cookies devraient être supprimés le message d'erreur devrait indiquer \"Non authentifié\"\n\n**Récupération des données utilisateur - non authentifié** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"\n\n**Récupération des données utilisateur - erreur serveur** : qu'une erreur se produit lors de la récupération des données je devrais recevoir une erreur 500 le message d'erreur devrait indiquer \"Erreur serveur\"\n\n### Scénarios de test\n\n**Récupération des données utilisateur - token valide**\n\n📋 que j'ai un access_token valide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir mes informations utilisateur\n\n✅ la réponse devrait contenir id, username, discriminator, avatar\n\n✅ la réponse devrait contenir email si le scope email est accordé\n\n✅ la réponse devrait contenir roles\n\n✅ l'utilisateur devrait être sauvegardé en base de données\n\n**Récupération des données utilisateur - token expiré avec refresh automatique**\n\n📋 que mon access_token est expiré\n\n✅ que j'ai un refresh_token valide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ le refresh_token devrait être utilisé pour obtenir un nouveau access_token\n\n✅ les nouveaux tokens devraient être stockés dans les cookies\n\n✅ je devrais recevoir mes informations utilisateur\n\n**Récupération des données utilisateur - token expiré sans refresh token**\n\n📋 que mon access_token est expiré\n\n✅ que je n'ai pas de refresh_token\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ le message d'erreur devrait indiquer \"Non authentifié\"\n\n**Récupération des données utilisateur - refresh token invalide**\n\n📋 que mon access_token est expiré\n\n✅ que mon refresh_token est invalide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ les cookies devraient être supprimés\n\n✅ le message d'erreur devrait indiquer \"Non authentifié\"\n\n**Récupération des données utilisateur - non authentifié**\n\n📋 que je n'ai pas de token d'accès\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ le message d'erreur devrait indiquer \"Non authentifié\"\n\n**Récupération des données utilisateur - erreur serveur**\n\n📋 que j'ai un access_token valide\n\n✅ qu'une erreur se produit lors de la récupération des données\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je devrais recevoir une erreur 500\n\n✅ le message d'erreur devrait indiquer \"Erreur serveur\"\n\n",
+        "description": "**Récupérer ma session et mes rôles Zitadel** : je reçois mon identité et les rôles présents dans le claim configuré mon subject Zitadel est conservé comme identité locale\n\n### Scénarios de test\n\n**Récupérer ma session et mes rôles Zitadel**\n\n📋 que j'ai un access token Zitadel valide\n\n⚡ je fais une requête GET vers \"/auth/me\"\n\n✅ je reçois mon identité et les rôles présents dans le claim configuré\n\n✅ mon subject Zitadel est conservé comme identité locale\n\n",
         "operationId": "get_auth_me",
         "parameters": [],
         "responses": {
@@ -216,21 +216,17 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "ID unique de l'utilisateur Discord"
+                      "description": "ID interne ou subject Zitadel de l'utilisateur"
                     },
                     "username": {
                       "type": "string",
                       "description": "Nom d'utilisateur"
                     },
-                    "discriminator": {
-                      "type": "string",
-                      "description": "Discriminator (4 chiffres)"
-                    },
                     "avatar": {
                       "type": [
                         "string"
                       ],
-                      "description": "Hash de l'avatar ou null",
+                      "description": "URL de l'avatar ou null",
                       "nullable": true
                     },
                     "email": {
@@ -249,7 +245,6 @@
                   "required": [
                     "id",
                     "username",
-                    "discriminator",
                     "avatar",
                     "roles"
                   ]
@@ -258,7 +253,7 @@
             }
           },
           "401": {
-            "description": "Non authentifié - que je n'ai pas de refresh_token, je devrais recevoir une erreur 401, le message d'erreur devrait indiquer \"Non authentifié\"",
+            "description": "Non authentifié",
             "content": {
               "application/json": {
                 "schema": {
@@ -272,15 +267,12 @@
                   "required": [
                     "error"
                   ]
-                },
-                "example": {
-                  "error": "exemple_error"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur - qu'une erreur se produit lors de la récupération des données, je devrais recevoir une erreur 500, le message d'erreur devrait indiquer \"Erreur serveur\"",
+            "description": "Erreur serveur",
             "content": {
               "application/json": {
                 "schema": {
@@ -294,9 +286,6 @@
                   "required": [
                     "error"
                   ]
-                },
-                "example": {
-                  "error": "exemple_error"
                 }
               }
             }
@@ -315,7 +304,7 @@
           "Authentification"
         ],
         "summary": "Déconnecte l'utilisateur en supprimant les cookies de session (discord_access_token et discord_refresh_token)",
-        "description": "**Déconnexion de l'utilisateur** : que j'ai des cookies de session (discord_access_token et discord_refresh_token) les cookies discord_access_token et discord_refresh_token devraient être supprimés je devrais recevoir une réponse avec success=true\n\n### Scénarios de test\n\n**Déconnexion de l'utilisateur**\n\n📋 que je suis authentifié\n\n✅ que j'ai des cookies de session (discord_access_token et discord_refresh_token)\n\n⚡ je fais une requête GET vers \"/auth/signout\"\n\n✅ les cookies discord_access_token et discord_refresh_token devraient être supprimés\n\n✅ je devrais recevoir une réponse avec success=true\n\n",
+        "description": "**Déconnexion de l'utilisateur** : les cookies Zitadel et les cookies temporaires sont supprimés je reçois une réponse avec success=true\n\n### Scénarios de test\n\n**Déconnexion de l'utilisateur**\n\n📋 que je suis authentifié avec Zitadel\n\n⚡ je fais une requête GET vers \"/auth/signout\"\n\n✅ les cookies Zitadel et les cookies temporaires sont supprimés\n\n✅ je reçois une réponse avec success=true\n\n",
         "operationId": "get_auth_signout",
         "parameters": [],
         "responses": {
@@ -4092,7 +4081,7 @@
                       "applied_at": {
                         "type": "string",
                         "format": "date-time",
-                        "default": "2026-01-13T18:59:11.142Z",
+                        "default": "2026-09-29T13:10:25.413Z",
                         "description": "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                       }
                     },
@@ -5959,6 +5948,39 @@
                             "expired"
                           ],
                           "description": "Répartition par statut"
+                        },
+                        "payment_stats": {
+                          "type": "object",
+                          "properties": {
+                            "total_year": {
+                              "type": "number",
+                              "description": "Total des revenus de l'année courante"
+                            },
+                            "total_month": {
+                              "type": "number",
+                              "description": "Total des revenus du mois courant"
+                            },
+                            "total_week": {
+                              "type": "number",
+                              "description": "Total des revenus de la semaine courante"
+                            },
+                            "total_day": {
+                              "type": "number",
+                              "description": "Total des revenus du jour courant"
+                            },
+                            "currency": {
+                              "type": "string",
+                              "description": "Devise (EUR)"
+                            }
+                          },
+                          "required": [
+                            "total_year",
+                            "total_month",
+                            "total_week",
+                            "total_day",
+                            "currency"
+                          ],
+                          "description": "Statistiques de paiement par période"
                         }
                       },
                       "required": [
@@ -5971,7 +5993,8 @@
                         "grouped_reservations",
                         "total_revenue",
                         "conversion_rate",
-                        "status_distribution"
+                        "status_distribution",
+                        "payment_stats"
                       ]
                     }
                   },
@@ -9698,7 +9721,7 @@
           "Présences membres"
         ],
         "summary": "Créer ou mettre à jour la présence du membre connecté pour une date. Le membre peut indiquer s'il vient le matin, l'après-midi, ou les deux.",
-        "description": "**Création d'une présence** : je devrais recevoir la présence créée la présence devrait contenir mon user_id et mon user_name\n\n**Mise à jour d'une présence existante** : la présence devrait être mise à jour la période devrait être la nouvelle valeur\n\n**Erreur si la date est invalide** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Date invalide\"\n\n**Erreur si l'utilisateur n'existe pas** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Utilisateur non trouvé\"\n\n**Accès refusé sans authentification** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"\n\n### Scénarios de test\n\n**Création d'une présence**\n\n📋 que je suis authentifié\n\n⚡ je fais une requête POST vers \"/museum/member-presences\" avec une date et une période\n\n✅ je devrais recevoir la présence créée\n\n✅ la présence devrait contenir mon user_id et mon user_name\n\n**Mise à jour d'une présence existante**\n\n📋 qu'une présence existe déjà pour cette date\n\n⚡ je fais une requête POST vers \"/museum/member-presences\" avec la même date et une nouvelle période\n\n✅ la présence devrait être mise à jour\n\n✅ la période devrait être la nouvelle valeur\n\n**Erreur si la date est invalide**\n\n📋 que je suis authentifié\n\n⚡ je fais une requête POST vers \"/museum/member-presences\" avec une date invalide\n\n✅ je devrais recevoir une erreur 400\n\n✅ le message d'erreur devrait indiquer \"Date invalide\"\n\n**Erreur si l'utilisateur n'existe pas**\n\n📋 que mon discord_id n'existe pas dans la base de données\n\n⚡ je fais une requête POST vers \"/museum/member-presences\"\n\n✅ je devrais recevoir une erreur 400\n\n✅ le message d'erreur devrait indiquer \"Utilisateur non trouvé\"\n\n**Accès refusé sans authentification**\n\n📋 que je ne suis pas authentifié\n\n⚡ je fais une requête POST vers \"/museum/member-presences\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ le message d'erreur devrait indiquer \"Non authentifié\"\n\n",
+        "description": "**Création d'une présence** : je devrais recevoir la présence créée la présence devrait contenir mon user_id et mon user_name\n\n**Mise à jour d'une présence existante** : la présence devrait être mise à jour la période devrait être la nouvelle valeur\n\n**Erreur si la date est invalide** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Date invalide\"\n\n**Erreur si mon identité n'existe pas** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Utilisateur non trouvé\"\n\n**Accès refusé sans authentification** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"\n\n### Scénarios de test\n\n**Création d'une présence**\n\n📋 que je suis authentifié\n\n⚡ je fais une requête POST vers \"/museum/member-presences\" avec une date et une période\n\n✅ je devrais recevoir la présence créée\n\n✅ la présence devrait contenir mon user_id et mon user_name\n\n**Mise à jour d'une présence existante**\n\n📋 qu'une présence existe déjà pour cette date\n\n⚡ je fais une requête POST vers \"/museum/member-presences\" avec la même date et une nouvelle période\n\n✅ la présence devrait être mise à jour\n\n✅ la période devrait être la nouvelle valeur\n\n**Erreur si la date est invalide**\n\n📋 que je suis authentifié\n\n⚡ je fais une requête POST vers \"/museum/member-presences\" avec une date invalide\n\n✅ je devrais recevoir une erreur 400\n\n✅ le message d'erreur devrait indiquer \"Date invalide\"\n\n**Erreur si mon identité n'existe pas**\n\n📋 que mon identité n'existe pas dans la base de données\n\n⚡ je fais une requête POST vers \"/museum/member-presences\"\n\n✅ je devrais recevoir une erreur 400\n\n✅ le message d'erreur devrait indiquer \"Utilisateur non trouvé\"\n\n**Accès refusé sans authentification**\n\n📋 que je ne suis pas authentifié\n\n⚡ je fais une requête POST vers \"/museum/member-presences\"\n\n✅ je devrais recevoir une erreur 401\n\n✅ le message d'erreur devrait indiquer \"Non authentifié\"\n\n",
         "operationId": "post_museum_member-presences",
         "parameters": [],
         "responses": {

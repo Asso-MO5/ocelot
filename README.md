@@ -1,6 +1,6 @@
 # Ocelot - Museum Back End
 
-Backend Fastify pour le musée avec authentification Discord OAuth2.
+Backend Fastify pour le musée avec authentification Zitadel OpenID Connect.
 
 ## 🚀 Installation
 
@@ -24,11 +24,10 @@ yarn install
 
 ### Authentification
 
-- `GET /auth/signin` - Redirige vers Discord OAuth2 pour l'authentification
-- `GET /auth/login` - Alias de `/auth/signin`
-- `GET /auth/callback` - Callback OAuth2 de Discord (échange le code contre un token)
-- `GET /auth/session` - Vérifie l'état de la session (authentifié, refresh token disponible)
-- `GET /auth/me` - Récupère les informations de l'utilisateur authentifié (gère automatiquement le refresh du token)
+- `GET /auth/signin` - Démarre le flow Zitadel OpenID Connect avec PKCE
+- `GET /auth/callback` - Callback OIDC : vérifie state, nonce, ID token et crée la session
+- `GET /auth/me` - Récupère l'identité et les rôles Zitadel (renouvelle la session si nécessaire)
+- `GET /auth/signout` - Supprime les cookies de session Zitadel
 
 ### Paiement (Stripe)
 

@@ -41,55 +41,31 @@ paths:
       tags:
         - Authentification
       summary: "Redirige vers Discord OAuth2 pour l'authentification"
-      description: "**Redirection vers Discord pour l'authentification** : je devrais être redirigé vers Discord OAuth2 l'URL de redirection devrait contenir le client_id l'URL de redirection devrait contenir le redirect_uri l'URL de redirection devrait contenir les scopes demandés
+      description: "**Démarrer une connexion OIDC protégée par PKCE** : je suis redirigé vers l'endpoint d'autorisation Zitadel la requête contient un state, un nonce et un code_challenge S256 les valeurs de transaction sont conservées dans des cookies HTTP-only signés et temporaires
 
-**Erreur si DISCORD_CLIENT_ID n'est pas configuré** : je devrais recevoir une erreur 500 le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"
-
-**Utilisation de scopes personnalisés** : l'URL de redirection Discord devrait contenir les scopes personnalisés
-
-**Configuration de l'URI de redirection personnalisée** : l'URL de redirection Discord devrait utiliser l'URI personnalisée
+**Refuser une configuration Zitadel incomplète** : je reçois une erreur 500 sans détail de secret
 
 ### Scénarios de test
 
-**Redirection vers Discord pour l'authentification**
+**Démarrer une connexion OIDC protégée par PKCE**
 
-📋 que je suis un utilisateur non authentifié
-
-⚡ je fais une requête GET vers \"/auth/signin\"
-
-✅ je devrais être redirigé vers Discord OAuth2
-
-✅ l'URL de redirection devrait contenir le client_id
-
-✅ l'URL de redirection devrait contenir le redirect_uri
-
-✅ l'URL de redirection devrait contenir les scopes demandés
-
-**Erreur si DISCORD_CLIENT_ID n'est pas configuré**
-
-📋 que DISCORD_CLIENT_ID n'est pas défini
+📋 que je ne suis pas authentifié
 
 ⚡ je fais une requête GET vers \"/auth/signin\"
 
-✅ je devrais recevoir une erreur 500
+✅ je suis redirigé vers l'endpoint d'autorisation Zitadel
 
-✅ le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\"
+✅ la requête contient un state, un nonce et un code_challenge S256
 
-**Utilisation de scopes personnalisés**
+✅ les valeurs de transaction sont conservées dans des cookies HTTP-only signés et temporaires
 
-📋 que DISCORD_SCOPES est configuré avec \"identify email guilds\"
+**Refuser une configuration Zitadel incomplète**
 
-⚡ je fais une requête GET vers \"/auth/signin\"
-
-✅ l'URL de redirection Discord devrait contenir les scopes personnalisés
-
-**Configuration de l'URI de redirection personnalisée**
-
-📋 que DISCORD_REDIRECT_URI est configuré
+📋 que ZITADEL_ISSUER, ZITADEL_CLIENT_ID ou ZITADEL_CLIENT_SECRET est absent
 
 ⚡ je fais une requête GET vers \"/auth/signin\"
 
-✅ l'URL de redirection Discord devrait utiliser l'URI personnalisée
+✅ je reçois une erreur 500 sans détail de secret
 
 "
       operationId: "get_auth_signin"
@@ -104,7 +80,7 @@ paths:
                 type: "string"
               description: "URL de redirection"
         500:
-          description: "Erreur serveur - je devrais recevoir une erreur 500, le message d'erreur devrait indiquer \"DISCORD_CLIENT_ID non configuré\""
+          description: "Erreur serveur - je reçois une erreur 500 sans détail de secret"
           content:
             application/json:
               schema:
@@ -154,35 +130,55 @@ paths:
       tags:
         - Authentification
       summary: "Callback OAuth2 de Discord - Échange le code d'autorisation contre des tokens"
-      description: "**Callback OAuth2 sans code** : je devrais être redirigé vers le frontend avec error=missing_code
+      description: "**Finaliser un callback OIDC valide** : que Zitadel retourne un code d'autorisation et un ID token valide le code est échangé avec le verifier PKCE la signature, l'issuer, l'audience et le nonce de l'ID token sont vérifiés les jetons de session sont stockés dans des cookies HTTP-only je suis redirigé vers le frontend avec success=true
+
+**Refuser un callback qui ne correspond pas à la transaction** : aucun jeton n'est échangé je suis redirigé vers le frontend avec error=invalid_state
 
 ### Scénarios de test
 
-**Callback OAuth2 sans code**
+**Finaliser un callback OIDC valide**
 
-📋 que Discord n'a pas retourné de code
+📋 qu'un state, un nonce et un verifier valides ont été conservés
+
+✅ que Zitadel retourne un code d'autorisation et un ID token valide
 
 ⚡ je fais une requête GET vers \"/auth/callback\"
 
-✅ je devrais être redirigé vers le frontend avec error=missing_code
+✅ le code est échangé avec le verifier PKCE
+
+✅ la signature, l'issuer, l'audience et le nonce de l'ID token sont vérifiés
+
+✅ les jetons de session sont stockés dans des cookies HTTP-only
+
+✅ je suis redirigé vers le frontend avec success=true
+
+**Refuser un callback qui ne correspond pas à la transaction**
+
+📋 que le state retourné est absent, invalide ou expiré
+
+⚡ je fais une requête GET vers \"/auth/callback\"
+
+✅ aucun jeton n'est échangé
+
+✅ je suis redirigé vers le frontend avec error=invalid_state
 
 "
       operationId: "get_auth_callback"
       parameters:
         - name: "code"
           in: "query"
-          description: "Code d'autorisation retourné par Discord"
+          description: "Code d'autorisation retourné par Zitadel"
           required: false
           schema:
             type: "string"
-            description: "Code d'autorisation retourné par Discord"
+            description: "Code d'autorisation retourné par Zitadel"
         - name: "error"
           in: "query"
-          description: "Code d'erreur retourné par Discord"
+          description: "Code d'erreur retourné par Zitadel"
           required: false
           schema:
             type: "string"
-            description: "Code d'erreur retourné par Discord"
+            description: "Code d'erreur retourné par Zitadel"
         - name: "state"
           in: "query"
           description: "État passé lors de la requête initiale"
@@ -196,97 +192,19 @@ paths:
       tags:
         - Authentification
       summary: "Récupère les informations de l'utilisateur authentifié (gère automatiquement le refresh du token)"
-      description: "**Récupération des données utilisateur - token valide** : je devrais recevoir mes informations utilisateur la réponse devrait contenir id, username, discriminator, avatar la réponse devrait contenir email si le scope email est accordé la réponse devrait contenir roles l'utilisateur devrait être sauvegardé en base de données
-
-**Récupération des données utilisateur - token expiré avec refresh automatique** : que j'ai un refresh_token valide le refresh_token devrait être utilisé pour obtenir un nouveau access_token les nouveaux tokens devraient être stockés dans les cookies je devrais recevoir mes informations utilisateur
-
-**Récupération des données utilisateur - token expiré sans refresh token** : que je n'ai pas de refresh_token je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"
-
-**Récupération des données utilisateur - refresh token invalide** : que mon refresh_token est invalide je devrais recevoir une erreur 401 les cookies devraient être supprimés le message d'erreur devrait indiquer \"Non authentifié\"
-
-**Récupération des données utilisateur - non authentifié** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"
-
-**Récupération des données utilisateur - erreur serveur** : qu'une erreur se produit lors de la récupération des données je devrais recevoir une erreur 500 le message d'erreur devrait indiquer \"Erreur serveur\"
+      description: "**Récupérer ma session et mes rôles Zitadel** : je reçois mon identité et les rôles présents dans le claim configuré mon subject Zitadel est conservé comme identité locale
 
 ### Scénarios de test
 
-**Récupération des données utilisateur - token valide**
+**Récupérer ma session et mes rôles Zitadel**
 
-📋 que j'ai un access_token valide
-
-⚡ je fais une requête GET vers \"/auth/me\"
-
-✅ je devrais recevoir mes informations utilisateur
-
-✅ la réponse devrait contenir id, username, discriminator, avatar
-
-✅ la réponse devrait contenir email si le scope email est accordé
-
-✅ la réponse devrait contenir roles
-
-✅ l'utilisateur devrait être sauvegardé en base de données
-
-**Récupération des données utilisateur - token expiré avec refresh automatique**
-
-📋 que mon access_token est expiré
-
-✅ que j'ai un refresh_token valide
+📋 que j'ai un access token Zitadel valide
 
 ⚡ je fais une requête GET vers \"/auth/me\"
 
-✅ le refresh_token devrait être utilisé pour obtenir un nouveau access_token
+✅ je reçois mon identité et les rôles présents dans le claim configuré
 
-✅ les nouveaux tokens devraient être stockés dans les cookies
-
-✅ je devrais recevoir mes informations utilisateur
-
-**Récupération des données utilisateur - token expiré sans refresh token**
-
-📋 que mon access_token est expiré
-
-✅ que je n'ai pas de refresh_token
-
-⚡ je fais une requête GET vers \"/auth/me\"
-
-✅ je devrais recevoir une erreur 401
-
-✅ le message d'erreur devrait indiquer \"Non authentifié\"
-
-**Récupération des données utilisateur - refresh token invalide**
-
-📋 que mon access_token est expiré
-
-✅ que mon refresh_token est invalide
-
-⚡ je fais une requête GET vers \"/auth/me\"
-
-✅ je devrais recevoir une erreur 401
-
-✅ les cookies devraient être supprimés
-
-✅ le message d'erreur devrait indiquer \"Non authentifié\"
-
-**Récupération des données utilisateur - non authentifié**
-
-📋 que je n'ai pas de token d'accès
-
-⚡ je fais une requête GET vers \"/auth/me\"
-
-✅ je devrais recevoir une erreur 401
-
-✅ le message d'erreur devrait indiquer \"Non authentifié\"
-
-**Récupération des données utilisateur - erreur serveur**
-
-📋 que j'ai un access_token valide
-
-✅ qu'une erreur se produit lors de la récupération des données
-
-⚡ je fais une requête GET vers \"/auth/me\"
-
-✅ je devrais recevoir une erreur 500
-
-✅ le message d'erreur devrait indiquer \"Erreur serveur\"
+✅ mon subject Zitadel est conservé comme identité locale
 
 "
       operationId: "get_auth_me"
@@ -301,17 +219,14 @@ paths:
                 properties:
                   id:
                     type: "string"
-                    description: "ID unique de l'utilisateur Discord"
+                    description: "ID interne ou subject Zitadel de l'utilisateur"
                   username:
                     type: "string"
                     description: "Nom d'utilisateur"
-                  discriminator:
-                    type: "string"
-                    description: "Discriminator (4 chiffres)"
                   avatar:
                     type:
                       - string
-                    description: "Hash de l'avatar ou null"
+                    description: "URL de l'avatar ou null"
                     nullable: true
                   email:
                     type: "string"
@@ -325,13 +240,12 @@ paths:
                 required:
                   - id
                   - username
-                  - discriminator
                   - avatar
                   - roles
               example: null
           headers: null
         401:
-          description: "Non authentifié - que je n'ai pas de refresh_token, je devrais recevoir une erreur 401, le message d'erreur devrait indiquer \"Non authentifié\""
+          description: "Non authentifié"
           content:
             application/json:
               schema:
@@ -342,11 +256,10 @@ paths:
                     description: "Message d'erreur"
                 required:
                   - error
-              example:
-                error: "exemple_error"
+              example: null
           headers: null
         500:
-          description: "Erreur serveur - qu'une erreur se produit lors de la récupération des données, je devrais recevoir une erreur 500, le message d'erreur devrait indiquer \"Erreur serveur\""
+          description: "Erreur serveur"
           content:
             application/json:
               schema:
@@ -357,8 +270,7 @@ paths:
                     description: "Message d'erreur"
                 required:
                   - error
-              example:
-                error: "exemple_error"
+              example: null
           headers: null
       security:
         - cookieAuth:
@@ -367,21 +279,19 @@ paths:
       tags:
         - Authentification
       summary: "Déconnecte l'utilisateur en supprimant les cookies de session (discord_access_token et discord_refresh_token)"
-      description: "**Déconnexion de l'utilisateur** : que j'ai des cookies de session (discord_access_token et discord_refresh_token) les cookies discord_access_token et discord_refresh_token devraient être supprimés je devrais recevoir une réponse avec success=true
+      description: "**Déconnexion de l'utilisateur** : les cookies Zitadel et les cookies temporaires sont supprimés je reçois une réponse avec success=true
 
 ### Scénarios de test
 
 **Déconnexion de l'utilisateur**
 
-📋 que je suis authentifié
-
-✅ que j'ai des cookies de session (discord_access_token et discord_refresh_token)
+📋 que je suis authentifié avec Zitadel
 
 ⚡ je fais une requête GET vers \"/auth/signout\"
 
-✅ les cookies discord_access_token et discord_refresh_token devraient être supprimés
+✅ les cookies Zitadel et les cookies temporaires sont supprimés
 
-✅ je devrais recevoir une réponse avec success=true
+✅ je reçois une réponse avec success=true
 
 "
       operationId: "get_auth_signout"
@@ -4005,7 +3915,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2026-01-13T18:59:11.142Z"
+                      default: "2026-09-29T13:10:25.413Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -5489,6 +5399,31 @@ paths:
                           - used
                           - expired
                         description: "Répartition par statut"
+                      payment_stats:
+                        type: "object"
+                        properties:
+                          total_year:
+                            type: "number"
+                            description: "Total des revenus de l'année courante"
+                          total_month:
+                            type: "number"
+                            description: "Total des revenus du mois courant"
+                          total_week:
+                            type: "number"
+                            description: "Total des revenus de la semaine courante"
+                          total_day:
+                            type: "number"
+                            description: "Total des revenus du jour courant"
+                          currency:
+                            type: "string"
+                            description: "Devise (EUR)"
+                        required:
+                          - total_year
+                          - total_month
+                          - total_week
+                          - total_day
+                          - currency
+                        description: "Statistiques de paiement par période"
                     required:
                       - total_tickets_sold
                       - week_tickets_sold
@@ -5500,6 +5435,7 @@ paths:
                       - total_revenue
                       - conversion_rate
                       - status_distribution
+                      - payment_stats
                 required:
                   - tickets_stats
               example:
@@ -8491,7 +8427,7 @@ paths:
 
 **Erreur si la date est invalide** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Date invalide\"
 
-**Erreur si l'utilisateur n'existe pas** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Utilisateur non trouvé\"
+**Erreur si mon identité n'existe pas** : je devrais recevoir une erreur 400 le message d'erreur devrait indiquer \"Utilisateur non trouvé\"
 
 **Accès refusé sans authentification** : je devrais recevoir une erreur 401 le message d'erreur devrait indiquer \"Non authentifié\"
 
@@ -8527,9 +8463,9 @@ paths:
 
 ✅ le message d'erreur devrait indiquer \"Date invalide\"
 
-**Erreur si l'utilisateur n'existe pas**
+**Erreur si mon identité n'existe pas**
 
-📋 que mon discord_id n'existe pas dans la base de données
+📋 que mon identité n'existe pas dans la base de données
 
 ⚡ je fais une requête POST vers \"/museum/member-presences\"
 
