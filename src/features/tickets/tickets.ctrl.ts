@@ -350,8 +350,9 @@ export async function validateTicketHandler(
   app: FastifyInstance
 ) {
   try {
-    const ticket = await validateTicket(app, req.body.qr_code);
-    sendToRoom('tickets_stats', 'refetch')
+    const mode = req.body.mode || 'entry';
+    const ticket = await validateTicket(app, req.body.qr_code, 30, mode);
+    if (mode === 'entry') sendToRoom('tickets_stats', 'refetch');
     return reply.send(ticket);
   } catch (err: any) {
     app.log.error({ err, qr_code: req.body.qr_code }, 'Erreur lors de la validation du ticket');
@@ -473,7 +474,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: validateTicketSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireAnyRole([roles.bureau, roles.dev, roles.museum, roles.museum_ticket_scan]),
       ],
     },
     async (req, reply) => validateTicketHandler(req, reply, app)
@@ -602,4 +603,3 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => deleteTicketHandler(req, reply, app)
   );
 }
-

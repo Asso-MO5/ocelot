@@ -547,7 +547,8 @@ export async function updateTicket(
 export async function validateTicket(
   app: FastifyInstance,
   qrCode: string,
-  toleranceMinutes: number = 30 // Tolérance en minutes (par défaut 30 minutes avant/après le créneau)
+  toleranceMinutes: number = 30,
+  mode: 'entry' | 'adult_zone' = 'entry',
 ): Promise<Ticket> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
@@ -565,6 +566,24 @@ export async function validateTicket(
   }
 
   app.log.info({ ticketId: ticket.id, qrCode: ticket.qr_code, status: ticket.status }, 'Ticket trouvé, début de la validation');
+
+  if (mode === 'adult_zone') {
+    if (!ticket.adult_access) {
+      throw createStructuredError(
+        403,
+        'Ce billet ne donne pas accès à la zone réservée aux majeurs',
+        'This ticket does not grant access to the adults-only area',
+      );
+    }
+    if (!['paid', 'used'].includes(ticket.status)) {
+      throw createStructuredError(
+        400,
+        `Le ticket n'est pas payé. Statut actuel: ${ticket.status}`,
+        `The ticket is not paid. Current status: ${ticket.status}`,
+      );
+    }
+    return ticket;
+  }
 
   if (ticket.used_at) {
     throw createStructuredError(
@@ -737,6 +756,21 @@ export async function createTicketsWithPayment(
   const slotCapacityHours = (await getSettingValue<number>(app, 'slot_capacity', 1)) || 1;
   const { isSlotComplete, calculateSlotPrice } = await import('../slots/slots.service.ts');
 
+  const adultAccessOption = await getSettingValue<{ enabled?: boolean; amount?: number; label?: string }>(
+    app,
+    'adult_access_option',
+    { enabled: false, amount: 0, label: 'Accès zone réservée aux majeurs' },
+  );
+  const adultAccessAmount = Number(adultAccessOption?.amount ?? 0);
+  if (!Number.isFinite(adultAccessAmount) || adultAccessAmount < 0) {
+    throw createStructuredError(500, 'La configuration de l’option majeure est invalide', 'Adult access option configuration is invalid');
+  }
+  for (const ticket of data.tickets) {
+    if (ticket.adult_access && !adultAccessOption?.enabled) {
+      throw createStructuredError(400, 'L’option d’accès réservée aux majeurs n’est pas disponible', 'Adults-only access option is unavailable');
+    }
+  }
+
   const wantsGuidedTour = data.guided_tour === true;
   let guidedTourPrice = 0;
   if (wantsGuidedTour) {
@@ -781,7 +815,7 @@ export async function createTicketsWithPayment(
       }
     }
     const donationAmount = ticket.donation_amount ?? 0;
-    totalAmount += ticketPrice + donationAmount;
+    totalAmount += ticketPrice + donationAmount + (ticket.adult_access ? adultAccessAmount : 0);
   }
   if (wantsGuidedTour) {
     totalAmount += guidedTourPrice * data.tickets.length;
@@ -993,7 +1027,7 @@ export async function createTicketsWithPayment(
         'The donation amount must be positive or null'
       );
     }
-    totalAmount += ticketPrice + donationAmount;
+    totalAmount += ticketPrice + donationAmount + (ticket.adult_access ? adultAccessAmount : 0);
   }
 
   if (wantsGuidedTour) {
@@ -1082,7 +1116,8 @@ export async function createTicketsWithPayment(
       const ticketPrice = ticketData.ticket_price;
       const donationAmount = ticketData.donation_amount ?? 0;
       const ticketGuidedTourPrice = wantsGuidedTour ? guidedTourPrice : 0;
-      const ticketTotalAmount = ticketPrice + donationAmount + ticketGuidedTourPrice;
+      const ticketAdultAccessAmount = ticketData.adult_access ? adultAccessAmount : 0;
+      const ticketTotalAmount = ticketPrice + donationAmount + ticketGuidedTourPrice + ticketAdultAccessAmount;
 
       const qrCode = await generateUniqueQRCode(app);
       const notesContent = buildNotesContent(ticketData.notes, ticketData.pricing_info, wantsGuidedTour, guidedTourPrice);
@@ -1097,9 +1132,9 @@ export async function createTicketsWithPayment(
         `INSERT INTO tickets (
           qr_code, first_name, last_name, email, reservation_date,
           slot_start_time, slot_end_time, checkout_id, checkout_reference,
-          transaction_status, ticket_price, donation_amount, guided_tour_price, total_amount,
+          transaction_status, ticket_price, donation_amount, guided_tour_price, adult_access, adult_access_amount, adult_access_label, total_amount,
           status, notes, language
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         RETURNING *`,
         [
           qrCode,
@@ -1116,6 +1151,9 @@ export async function createTicketsWithPayment(
           ticketPrice,
           donationAmount,
           ticketGuidedTourPrice,
+          ticketData.adult_access === true,
+          ticketAdultAccessAmount,
+          ticketData.adult_access ? adultAccessOption?.label || 'Accès zone réservée aux majeurs' : null,
           ticketTotalAmount,
           ticketStatus,
           notesContent,
@@ -1715,4 +1753,3 @@ export async function cancelExpiredPendingTickets(
 
   return cancelledCount;
 }
-

@@ -473,6 +473,12 @@ export const validateTicketSchema = {
         pattern: '^[A-Z0-9]{8}$',
         description: 'Code QR du ticket à valider (8 caractères alphanumériques majuscules)',
       },
+      mode: {
+        type: 'string',
+        enum: ['entry', 'adult_zone'],
+        default: 'entry',
+        description: 'entry consomme le billet ; adult_zone vérifie uniquement l’option majeure',
+      },
     },
   },
   response: {
@@ -556,6 +562,11 @@ export const createTicketsWithPaymentSchema = {
           type: 'object',
           required: ['reservation_date', 'slot_start_time', 'slot_end_time', 'ticket_price'],
           properties: {
+            adult_access: {
+              type: 'boolean',
+              default: false,
+              description: 'Souscription à l’option d’accès réservée aux majeurs pour ce billet',
+            },
             reservation_date: {
               type: 'string',
               format: 'date',
@@ -1138,4 +1149,3 @@ export const deleteTicketSchema = {
     },
   },
 };
-

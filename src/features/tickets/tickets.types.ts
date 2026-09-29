@@ -32,6 +32,9 @@ export interface Ticket {
   ticket_price: number;
   donation_amount: number;
   guided_tour_price: number;
+  adult_access?: boolean;
+  adult_access_amount?: number;
+  adult_access_label?: string | null;
   total_amount: number;
   status: TicketStatus;
   used_at: string | null;
@@ -55,6 +58,7 @@ export interface CreateTicketBody {
   transaction_status?: string;
   notes?: string;
   pricing_info?: TicketPricingInfo;
+  adult_access?: boolean;
   language?: string;
 }
 
@@ -94,6 +98,7 @@ export interface PaginatedTicketsResponse {
 
 export interface ValidateTicketBody {
   qr_code: string;
+  mode?: 'entry' | 'adult_zone';
 }
 
 export interface CreateTicketsWithPaymentBody {
@@ -109,6 +114,7 @@ export interface CreateTicketsWithPaymentBody {
     donation_amount?: number;
     notes?: string;
     pricing_info?: TicketPricingInfo;
+    adult_access?: boolean;
   }>;
   gift_codes?: string[];
   guided_tour?: boolean;

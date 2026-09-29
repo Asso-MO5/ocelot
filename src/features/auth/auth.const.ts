@@ -9,4 +9,5 @@ export const roles = {
   reviewer: "reviewer",
   publisher: "publisher",
   "museum": "museum",
+  "museum_ticket_scan": "museum_ticket_scan",
 }
