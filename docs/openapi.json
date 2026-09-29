@@ -4081,7 +4081,7 @@
                       "applied_at": {
                         "type": "string",
                         "format": "date-time",
-                        "default": "2026-09-29T13:10:25.413Z",
+                        "default": "2026-09-29T13:35:47.712Z",
                         "description": "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                       }
                     },
@@ -5038,7 +5038,7 @@
           "Musée - Tickets"
         ],
         "summary": "Valide/utilise un ticket en scannant son code QR (route publique)",
-        "description": "**Valider un ticket (scan QR)** : qu'un ticket existe avec status='paid' et used_at=null que je fournis qr_code je reçois une réponse 200 la réponse indique que le ticket est valide le ticket est marqué comme utilisé (used_at est défini)\n\n**Erreur si le ticket est déjà utilisé** : qu'un ticket existe avec used_at déjà défini que je fournis qr_code je reçois une réponse 400 la réponse indique que le ticket est déjà utilisé\n\n### Scénarios de test\n\n**Valider un ticket (scan QR)**\n\n📋 que je suis authentifié avec un rôle bureau, dev ou museum\n\n✅ qu'un ticket existe avec status='paid' et used_at=null\n\n⚡ je fais une requête POST vers \"/museum/tickets/validate\"\n\n✅ que je fournis qr_code\n\n✅ je reçois une réponse 200\n\n✅ la réponse indique que le ticket est valide\n\n✅ le ticket est marqué comme utilisé (used_at est défini)\n\n**Erreur si le ticket est déjà utilisé**\n\n📋 que je suis authentifié avec un rôle bureau, dev ou museum\n\n✅ qu'un ticket existe avec used_at déjà défini\n\n⚡ je fais une requête POST vers \"/museum/tickets/validate\"\n\n✅ que je fournis qr_code\n\n✅ je reçois une réponse 400\n\n✅ la réponse indique que le ticket est déjà utilisé\n\n",
+        "description": "**Valider un ticket à l'entrée (scan QR)** : qu'un ticket existe avec status='paid' et used_at=null que je fournis qr_code je reçois une réponse 200 la réponse indique que le ticket est valide le ticket est marqué comme utilisé (used_at est défini)\n\n**Erreur si le ticket est déjà utilisé à l'entrée** : qu'un ticket existe avec used_at déjà défini que je fournis qr_code je reçois une réponse 400 la réponse indique que le ticket est déjà utilisé\n\n**Contrôler l'accès à la zone réservée aux majeurs** : qu'un ticket payé a souscrit l'option d'accès réservée aux majeurs je reçois une réponse 200 le ticket n'est pas marqué comme utilisé par ce contrôle\n\n**Refuser la zone réservée aux majeurs sans option** : qu'un ticket payé n'a pas souscrit l'option d'accès réservée aux majeurs je reçois une réponse 403 la réponse indique que le billet ne donne pas accès à la zone\n\n### Scénarios de test\n\n**Valider un ticket à l'entrée (scan QR)**\n\n📋 que je suis authentifié avec un rôle bureau, dev, museum ou museum_ticket_scan\n\n✅ qu'un ticket existe avec status='paid' et used_at=null\n\n⚡ je fais une requête POST vers \"/museum/tickets/validate\"\n\n✅ que je fournis qr_code\n\n✅ je reçois une réponse 200\n\n✅ la réponse indique que le ticket est valide\n\n✅ le ticket est marqué comme utilisé (used_at est défini)\n\n**Erreur si le ticket est déjà utilisé à l'entrée**\n\n📋 que je suis authentifié avec un rôle bureau, dev, museum ou museum_ticket_scan\n\n✅ qu'un ticket existe avec used_at déjà défini\n\n⚡ je fais une requête POST vers \"/museum/tickets/validate\"\n\n✅ que je fournis qr_code\n\n✅ je reçois une réponse 400\n\n✅ la réponse indique que le ticket est déjà utilisé\n\n**Contrôler l'accès à la zone réservée aux majeurs**\n\n📋 que je suis authentifié avec un rôle museum_ticket_scan\n\n✅ qu'un ticket payé a souscrit l'option d'accès réservée aux majeurs\n\n⚡ je fais une requête POST vers \"/museum/tickets/validate\" avec mode=\"adult_zone\"\n\n✅ je reçois une réponse 200\n\n✅ le ticket n'est pas marqué comme utilisé par ce contrôle\n\n**Refuser la zone réservée aux majeurs sans option**\n\n📋 que je suis authentifié avec un rôle museum_ticket_scan\n\n✅ qu'un ticket payé n'a pas souscrit l'option d'accès réservée aux majeurs\n\n⚡ je fais une requête POST vers \"/museum/tickets/validate\" avec mode=\"adult_zone\"\n\n✅ je reçois une réponse 403\n\n✅ la réponse indique que le billet ne donne pas accès à la zone\n\n",
         "operationId": "post_museum_tickets_validate",
         "parameters": [],
         "responses": {
@@ -5221,6 +5221,15 @@
                     "maxLength": 8,
                     "pattern": "^[A-Z0-9]{8}$",
                     "description": "Code QR du ticket à valider (8 caractères alphanumériques majuscules)"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "entry",
+                      "adult_zone"
+                    ],
+                    "default": "entry",
+                    "description": "entry consomme le billet ; adult_zone vérifie uniquement l’option majeure"
                   }
                 }
               }
@@ -5240,12 +5249,12 @@
           "Musée - Tickets"
         ],
         "summary": "Crée plusieurs tickets avec paiement. Crée d'abord un checkout avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)",
-        "description": "**Créer plusieurs tickets avec paiement** : que je fournis tickets, success_url, cancel_url je reçois une réponse 201 la réponse contient un checkout_session_id la réponse contient les tickets créés\n\n**Accès public pour créer des tickets avec paiement** : je peux créer des tickets avec paiement\n\n### Scénarios de test\n\n**Créer plusieurs tickets avec paiement**\n\n📋 que je ne suis pas authentifié\n\n⚡ je fais une requête POST vers \"/museum/tickets/payment\"\n\n✅ que je fournis tickets, success_url, cancel_url\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient un checkout_session_id\n\n✅ la réponse contient les tickets créés\n\n**Accès public pour créer des tickets avec paiement**\n\n📋 que je ne suis pas authentifié\n\n⚡ je fais une requête POST vers \"/museum/tickets/payment\"\n\n✅ je peux créer des tickets avec paiement\n\n",
+        "description": "**Créer plusieurs tickets avec paiement** : que je peux définir adult_access pour chaque billet que je fournis tickets, success_url, cancel_url je reçois une réponse 201 la réponse contient un checkout_session_id la réponse contient les tickets créés\n\n**Accès public pour créer des tickets avec paiement** : je peux créer des tickets avec paiement\n\n**Refuser une option majeure désactivée au checkout** : je reçois une réponse 400\n\n### Scénarios de test\n\n**Créer plusieurs tickets avec paiement**\n\n📋 que je ne suis pas authentifié\n\n⚡ je fais une requête POST vers \"/museum/tickets/payment\"\n\n✅ que je peux définir adult_access pour chaque billet\n\n✅ que je fournis tickets, success_url, cancel_url\n\n✅ je reçois une réponse 201\n\n✅ la réponse contient un checkout_session_id\n\n✅ la réponse contient les tickets créés\n\n**Accès public pour créer des tickets avec paiement**\n\n📋 que je ne suis pas authentifié\n\n⚡ je fais une requête POST vers \"/museum/tickets/payment\"\n\n✅ je peux créer des tickets avec paiement\n\n**Refuser une option majeure désactivée au checkout**\n\n📋 que adult_access_option.enabled vaut false dans la configuration du musée\n\n⚡ je fais une requête POST vers \"/museum/tickets/payment\" avec adult_access=true\n\n✅ je reçois une réponse 400\n\n",
         "operationId": "post_museum_tickets_payment",
         "parameters": [],
         "responses": {
           "201": {
-            "description": "Code 201 - que je fournis tickets, success_url, cancel_url, je reçois une réponse 201, la réponse contient un checkout_session_id, la réponse contient les tickets créés",
+            "description": "Code 201 - que je peux définir adult_access pour chaque billet, que je fournis tickets, success_url, cancel_url, je reçois une réponse 201, la réponse contient un checkout_session_id, la réponse contient les tickets créés",
             "content": {
               "application/json": {
                 "schema": {
@@ -5376,7 +5385,7 @@
             }
           },
           "400": {
-            "description": "Code 400",
+            "description": "Code 400 - je reçois une réponse 400",
             "content": {
               "application/json": {
                 "schema": {
@@ -5386,6 +5395,9 @@
                       "type": "string"
                     }
                   }
+                },
+                "example": {
+                  "error": "exemple_error"
                 }
               }
             }
@@ -5451,6 +5463,11 @@
                         "ticket_price"
                       ],
                       "properties": {
+                        "adult_access": {
+                          "type": "boolean",
+                          "default": false,
+                          "description": "Souscription à l’option d’accès réservée aux majeurs pour ce billet"
+                        },
                         "reservation_date": {
                           "type": "string",
                           "format": "date",

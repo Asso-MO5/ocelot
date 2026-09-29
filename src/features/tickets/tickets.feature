@@ -17,6 +17,7 @@ Feature: Gestion des tickets du musée
   Scenario: Créer plusieurs tickets avec paiement
     Étant donné que je ne suis pas authentifié
     Quand je fais une requête POST vers "/museum/tickets/payment"
+    Et que je peux définir adult_access pour chaque billet
     Et que je fournis tickets, success_url, cancel_url
     Alors je reçois une réponse 201
     Et la réponse contient un checkout_session_id
@@ -42,8 +43,8 @@ Feature: Gestion des tickets du musée
     Alors je reçois une réponse 200
     Et la réponse contient le ticket avec le code QR demandé
 
-  Scenario: Valider un ticket (scan QR)
-    Étant donné que je suis authentifié avec un rôle bureau, dev ou museum
+  Scenario: Valider un ticket à l'entrée (scan QR)
+    Étant donné que je suis authentifié avec un rôle bureau, dev, museum ou museum_ticket_scan
     Et qu'un ticket existe avec status='paid' et used_at=null
     Quand je fais une requête POST vers "/museum/tickets/validate"
     Et que je fournis qr_code
@@ -51,8 +52,8 @@ Feature: Gestion des tickets du musée
     Et la réponse indique que le ticket est valide
     Et le ticket est marqué comme utilisé (used_at est défini)
 
-  Scenario: Erreur si le ticket est déjà utilisé
-    Étant donné que je suis authentifié avec un rôle bureau, dev ou museum
+  Scenario: Erreur si le ticket est déjà utilisé à l'entrée
+    Étant donné que je suis authentifié avec un rôle bureau, dev, museum ou museum_ticket_scan
     Et qu'un ticket existe avec used_at déjà défini
     Quand je fais une requête POST vers "/museum/tickets/validate"
     Et que je fournis qr_code
@@ -141,3 +142,22 @@ Feature: Gestion des tickets du musée
     Étant donné que je ne suis pas authentifié
     Quand je fais une requête POST vers "/museum/tickets/payment"
     Alors je peux créer des tickets avec paiement
+
+  Scenario: Contrôler l'accès à la zone réservée aux majeurs
+    Étant donné que je suis authentifié avec un rôle museum_ticket_scan
+    Et qu'un ticket payé a souscrit l'option d'accès réservée aux majeurs
+    Quand je fais une requête POST vers "/museum/tickets/validate" avec mode="adult_zone"
+    Alors je reçois une réponse 200
+    Et le ticket n'est pas marqué comme utilisé par ce contrôle
+
+  Scenario: Refuser la zone réservée aux majeurs sans option
+    Étant donné que je suis authentifié avec un rôle museum_ticket_scan
+    Et qu'un ticket payé n'a pas souscrit l'option d'accès réservée aux majeurs
+    Quand je fais une requête POST vers "/museum/tickets/validate" avec mode="adult_zone"
+    Alors je reçois une réponse 403
+    Et la réponse indique que le billet ne donne pas accès à la zone
+
+  Scenario: Refuser une option majeure désactivée au checkout
+    Étant donné que adult_access_option.enabled vaut false dans la configuration du musée
+    Quand je fais une requête POST vers "/museum/tickets/payment" avec adult_access=true
+    Alors je reçois une réponse 400
