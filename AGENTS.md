@@ -8,3 +8,9 @@
 - Tout bug est rattaché à l'US concernée. Ne pas créer de ticket orphelin.
 - Avant de modifier le code, consulter le ticket et ses critères d'acceptation ; y documenter les décisions, risques, migrations et vérifications réalisées.
 - Les scénarios Gherkin et les tests associés sont mis à jour avec la tâche technique qui change le comportement.
+
+## Branches et pull requests
+
+- Toute pull request cible la branche `staging`.
+- Les pull requests sont fusionnées dans `staging` avec une fusion par squash.
+- La branche `main` ne reçoit que la fusion de `staging`.
