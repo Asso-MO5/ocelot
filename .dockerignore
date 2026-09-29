@@ -1,0 +1,13 @@
+.env
+.env.*
+.git
+.agents
+.codex
+node_modules
+dist
+build
+data
+logs
+*.log
+coverage
+README.md

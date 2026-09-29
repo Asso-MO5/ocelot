@@ -222,7 +222,15 @@ yarn migrate:prod
 yarn migrate:prod:down
 ```
 
-**⚠️ Attention** : Assurez-vous que le fichier `.env.prod` contient bien la `DATABASE_URL` de votre base de données de production avant d'exécuter les migrations.
+**⚠️ Attention** : En production, injecter `DATABASE_URL` via la plateforme de
+déploiement ; ne jamais versionner ni intégrer un fichier `.env.prod` à l’image.
+
+### CapRover
+
+Le dépôt fournit un `Dockerfile` Node 24 et un `captain-definition`. La
+procédure de configuration, de migration et de vérification est décrite dans
+[`docs/caprover.md`](docs/caprover.md). Les secrets doivent être injectés par
+CapRover et ne doivent jamais être ajoutés à une image ou à un fichier versionné.
 
 ### Structure de la table `errors`
 

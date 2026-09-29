@@ -22,15 +22,17 @@ import { sendToRoom } from './features/websocket/websocket.manager.ts';
 import { registerErrorHandlers, registerProcessErrorHandlers } from './features/terror/error.handler.ts';
 import { cancelExpiredPendingTickets } from './features/tickets/tickets.service.ts';
 
-const logger = {
-  level: 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-    }
-  }
-};
+const logger = process.env.NODE_ENV === 'production'
+  ? { level: 'info' }
+  : {
+      level: 'info',
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+        },
+      },
+    };
 
 const app = fastify({ logger });
 
