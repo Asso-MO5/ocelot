@@ -1,20 +1,12 @@
 import { roles } from './auth.const.ts';
 
-/**
- * Permissions métier du musée. L'absence de permission vaut refus : les
- * anciens rôles techniques (`dev`, `museum`) ne donnent pas accès par défaut.
- */
-export const museumPermissionRoles = {
-  ticket_scan: [
-    roles.administrateur,
-    roles.bureau,
-    roles.museum_administrateur,
-    roles.museum_ticket_scan,
-  ],
-  ticket_manage: [roles.administrateur, roles.bureau, roles.museum_administrateur],
-  configuration: [roles.administrateur, roles.bureau, roles.museum_administrateur, roles.museum_configuration],
-  member_presence_manage: [roles.administrateur, roles.bureau, roles.museum_administrateur],
-  donation_proof_manage: [roles.administrateur, roles.bureau, roles.museum_administrateur],
+/** Chaque route musée exige exactement un scope présent dans le claim Zitadel. */
+export const museumScopes = {
+  ticket_scan: roles.museum_mediateur,
+  ticket_manage: roles.museum_ticket_manage,
+  configuration: roles.museum_configuration,
+  member_presence_manage: roles.museum_member_presence_manage,
+  donation_proof_manage: roles.museum_donation_proof_manage,
 } as const;
 
-export type MuseumPermission = keyof typeof museumPermissionRoles;
+export type MuseumScope = keyof typeof museumScopes;

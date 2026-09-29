@@ -147,14 +147,14 @@ Feature: Gestion des tickets du musée
     Alors je peux créer des tickets avec paiement
 
   Scenario: Contrôler l'accès à la zone réservée aux majeurs
-    Étant donné que je suis authentifié avec un rôle museum_ticket_scan
+    Étant donné que je suis authentifié avec le scope museum_mediateur
     Et qu'un ticket payé a souscrit l'option d'accès réservée aux majeurs
     Quand je fais une requête POST vers "/museum/tickets/validate" avec mode="adult_zone"
     Alors je reçois une réponse 200
     Et le ticket n'est pas marqué comme utilisé par ce contrôle
 
   Scenario: Refuser la zone réservée aux majeurs sans option
-    Étant donné que je suis authentifié avec un rôle museum_ticket_scan
+    Étant donné que je suis authentifié avec le scope museum_mediateur
     Et qu'un ticket payé n'a pas souscrit l'option d'accès réservée aux majeurs
     Quand je fais une requête POST vers "/museum/tickets/validate" avec mode="adult_zone"
     Alors je reçois une réponse 403

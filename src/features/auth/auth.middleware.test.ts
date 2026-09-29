@@ -3,10 +3,10 @@ import { describe, test } from 'node:test';
 import {
   hasAllRoles,
   hasAnyRole,
-  hasMuseumPermission,
+  hasMuseumScope,
   hasRole,
   requireAuth,
-  requireMuseumPermission,
+  requireMuseumScope,
 } from './auth.middleware.ts';
 
 const user = { id: 'subject', username: 'musee', avatar: null, roles: ['bureau'] };
@@ -28,25 +28,26 @@ describe('Auth middleware Zitadel', () => {
     assert.equal(result, null);
   });
 
-  test('enforces least-privilege museum permissions', () => {
-    const scanner = { ...user, roles: ['museum_ticket_scan'] };
+  test('enforces one explicit museum scope per action', () => {
+    const mediator = { ...user, roles: ['membre', 'museum_mediateur'] };
     const configurator = { ...user, roles: ['museum_configuration'] };
     const member = { ...user, roles: ['membre'] };
     const administrator = { ...user, roles: ['museum_administrateur'] };
 
-    assert.equal(hasMuseumPermission(scanner, 'ticket_scan'), true);
-    assert.equal(hasMuseumPermission(scanner, 'ticket_manage'), false);
-    assert.equal(hasMuseumPermission(configurator, 'configuration'), true);
-    assert.equal(hasMuseumPermission(configurator, 'ticket_scan'), false);
-    assert.equal(hasMuseumPermission(member, 'configuration'), false);
-    assert.equal(hasMuseumPermission(administrator, 'donation_proof_manage'), true);
+    assert.equal(hasMuseumScope(mediator, 'ticket_scan'), true);
+    assert.equal(hasMuseumScope(mediator, 'ticket_manage'), false);
+    assert.equal(hasMuseumScope(configurator, 'configuration'), true);
+    assert.equal(hasMuseumScope(configurator, 'ticket_scan'), false);
+    assert.equal(hasMuseumScope(member, 'ticket_scan'), false);
+    assert.equal(hasMuseumScope(administrator, 'donation_proof_manage'), false);
+    assert.equal(hasMuseumScope({ ...user, roles: ['dev'] }, 'configuration'), false);
   });
 
-  test('rejects a scanner from ticket administration', async () => {
+  test('rejects a mediator from ticket administration', async () => {
     let statusCode: number | undefined;
-    const hook = requireMuseumPermission('ticket_manage');
+    const hook = requireMuseumScope('ticket_manage');
     await hook(
-      { method: 'POST', user: { ...user, roles: ['museum_ticket_scan'] } } as any,
+      { method: 'POST', user: { ...user, roles: ['museum_mediateur'] } } as any,
       { code: (code: number) => ({ send: () => { statusCode = code; } }) } as any,
     );
     assert.equal(statusCode, 403);

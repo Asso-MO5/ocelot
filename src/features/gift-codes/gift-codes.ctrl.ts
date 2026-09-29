@@ -24,7 +24,7 @@ import {
   purchaseGiftCodes,
   confirmPurchaseGiftCodes,
 } from './gift-codes.service.ts';
-import { authenticateHook, requireMuseumPermission } from '../auth/auth.middleware.ts';
+import { authenticateHook, requireMuseumScope } from '../auth/auth.middleware.ts';
 import { emailUtils } from '../email/email.utils.ts';
 
 export async function createGiftCodePackHandler(
@@ -246,7 +246,7 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
       schema: createGiftCodePackSchema,
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('ticket_manage'),
+        requireMuseumScope('ticket_manage'),
       ],
     },
     async (req, reply) => createGiftCodePackHandler(req, reply, app)
@@ -258,7 +258,7 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
       schema: distributeGiftCodesSchema,
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('ticket_manage'),
+        requireMuseumScope('ticket_manage'),
       ],
     },
     async (req, reply) => distributeGiftCodesHandler(req, reply, app)
@@ -270,7 +270,7 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
       schema: getGiftCodesSchema,
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('ticket_manage'),
+        requireMuseumScope('ticket_manage'),
       ],
     },
     async (req, reply) => getGiftCodesHandler(req, reply, app)
@@ -282,7 +282,7 @@ export function registerGiftCodesRoutes(app: FastifyInstance) {
       schema: getGiftCodePacksSchema,
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('ticket_manage'),
+        requireMuseumScope('ticket_manage'),
       ],
     },
     async (req, reply) => getGiftCodePacksHandler(req, reply, app)

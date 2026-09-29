@@ -16,7 +16,7 @@ import {
   updateSpecialPeriod,
   deleteSpecialPeriod,
 } from './special-periods.service.ts';
-import { authenticateHook, requireMuseumPermission } from '../auth/auth.middleware.ts';
+import { authenticateHook, requireMuseumScope } from '../auth/auth.middleware.ts';
 
 export async function createSpecialPeriodHandler(
   req: FastifyRequest<{ Body: CreateSpecialPeriodBody }>,
@@ -104,7 +104,7 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
       schema: createSpecialPeriodSchema,
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('configuration'),
+        requireMuseumScope('configuration'),
       ],
     },
     async (req, reply) => createSpecialPeriodHandler(req, reply, app)
@@ -116,7 +116,7 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
       schema: getSpecialPeriodsSchema,
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('configuration'),
+        requireMuseumScope('configuration'),
       ],
     },
     async (req, reply) => getSpecialPeriodsHandler(req, reply, app)
@@ -127,7 +127,7 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
     {
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('configuration'),
+        requireMuseumScope('configuration'),
       ],
     },
     async (req, reply) => getSpecialPeriodByIdHandler(req, reply, app)
@@ -139,7 +139,7 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
       schema: updateSpecialPeriodSchema,
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('configuration'),
+        requireMuseumScope('configuration'),
       ],
     },
     async (req, reply) => updateSpecialPeriodHandler(req, reply, app)
@@ -150,7 +150,7 @@ export function registerSpecialPeriodsRoutes(app: FastifyInstance) {
     {
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('configuration'),
+        requireMuseumScope('configuration'),
       ],
     },
     async (req, reply) => deleteSpecialPeriodHandler(req, reply, app)

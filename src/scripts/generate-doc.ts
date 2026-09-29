@@ -503,14 +503,14 @@ async function generateOpenAPIDoc(): Promise<void> {
       method: 'GET',
       path: '/museum/tickets/qr/:qrCode',
       schema: getTicketByIdSchema,
-      description: 'Récupère un ticket par son code QR. Réservé à la permission ticket_scan.',
+      description: 'Récupère un ticket par son code QR. Réservé au scope museum_mediateur.',
       tag: 'Musée - Tickets',
     },
     {
       method: 'POST',
       path: '/museum/tickets/validate',
       schema: validateTicketSchema,
-      description: 'Valide/utilise un ticket en scannant son code QR. Réservé à la permission ticket_scan.',
+      description: 'Valide/utilise un ticket en scannant son code QR. Réservé au scope museum_mediateur.',
       tag: 'Musée - Tickets',
     },
     {
@@ -524,14 +524,14 @@ async function generateOpenAPIDoc(): Promise<void> {
       method: 'GET',
       path: '/museum/tickets/checkout/:checkoutId',
       schema: getTicketsByCheckoutIdSchema,
-      description: 'Récupère tous les tickets associés à un checkout_id donné. Réservé à la permission ticket_manage.',
+      description: 'Récupère tous les tickets associés à un checkout_id donné. Réservé au scope museum_ticket_manage.',
       tag: 'Musée - Tickets',
     },
     {
       method: 'GET',
       path: '/museum/tickets/stats',
       schema: getTicketsStatsSchema,
-      description: 'Récupère les statistiques complètes des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, total des dons, coût moyen, statistiques par horaire (pour identifier les horaires à forte influence), statistiques sur les réservations groupées (même checkout_reference), revenus totaux, taux de conversion et répartition par statut. Réservé à la permission ticket_manage.',
+      description: 'Récupère les statistiques complètes des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, total des dons, coût moyen, statistiques par horaire (pour identifier les horaires à forte influence), statistiques sur les réservations groupées (même checkout_reference), revenus totaux, taux de conversion et répartition par statut. Réservé au scope museum_ticket_manage.',
       tag: 'Musée - Tickets',
     },
     {

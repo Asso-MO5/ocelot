@@ -16,7 +16,7 @@ import {
   refusePresenceSchema,
   deletePresenceSchema,
 } from './member-presences.schemas.ts';
-import { authenticateHook, hasMuseumPermission, requireMuseumPermission } from '../auth/auth.middleware.ts';
+import { authenticateHook, hasMuseumScope, requireMuseumScope } from '../auth/auth.middleware.ts';
 
 export async function upsertPresenceHandler(
   req: FastifyRequest<{ Body: UpsertPresenceBody }>,
@@ -49,10 +49,10 @@ export async function getPresencesHandler(
       return reply.code(401).send({ error: 'Non authentifié' });
     }
 
-    const isAdmin = hasMuseumPermission(req.user, 'member_presence_manage');
+    const canManagePresences = hasMuseumScope(req.user, 'member_presence_manage');
 
     let presences;
-    if (isAdmin) {
+    if (canManagePresences) {
       presences = await getAllPresences(app, req.query);
     } else {
       presences = await getPresencesForMember(app, req.user.id, req.query);
@@ -97,8 +97,8 @@ export async function deletePresenceHandler(
       return reply.code(401).send({ error: 'Non authentifié' });
     }
 
-    const isAdmin = hasMuseumPermission(req.user, 'member_presence_manage');
-    const success = await deletePresence(app, req.params.id, req.user.id, isAdmin);
+    const canManagePresences = hasMuseumScope(req.user, 'member_presence_manage');
+    const success = await deletePresence(app, req.params.id, req.user.id, canManagePresences);
 
     if (!success) {
       return reply.code(404).send({
@@ -133,7 +133,7 @@ export function registerMemberPresencesRoutes(app: FastifyInstance) {
     schema: refusePresenceSchema,
     preHandler: [
       authenticateHook(app),
-      requireMuseumPermission('member_presence_manage'),
+      requireMuseumScope('member_presence_manage'),
     ],
     handler: (req, reply) => refusePresenceHandler(req, reply, app),
   });

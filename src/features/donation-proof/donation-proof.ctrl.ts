@@ -3,7 +3,7 @@ import { generateDonationProofSchema } from './donation-proof.schemas.ts';
 import type { GenerateDonationProofQuery } from './donation-proof.types.ts';
 import { getTicketById } from '../tickets/tickets.service.ts';
 import { generateDonationProofFromTicket } from './donation-proof.service.ts';
-import { authenticateHook, requireMuseumPermission } from '../auth/auth.middleware.ts';
+import { authenticateHook, requireMuseumScope } from '../auth/auth.middleware.ts';
 
 export async function generateDonationProofHandler(
   req: FastifyRequest<{ Querystring: GenerateDonationProofQuery }>,
@@ -96,7 +96,7 @@ export function registerDonationProofRoutes(app: FastifyInstance) {
       schema: generateDonationProofSchema,
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('donation_proof_manage'),
+        requireMuseumScope('donation_proof_manage'),
       ],
     },
     async (req, reply) => generateDonationProofHandler(req, reply, app)
@@ -107,7 +107,7 @@ export function registerDonationProofRoutes(app: FastifyInstance) {
     {
       preHandler: [
         authenticateHook(app),
-        requireMuseumPermission('donation_proof_manage'),
+        requireMuseumScope('donation_proof_manage'),
       ],
     },
     async (req, reply) => generateDonationProofDebugHandler(req, reply, app)

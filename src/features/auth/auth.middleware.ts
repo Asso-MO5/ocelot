@@ -3,7 +3,7 @@ import type { AuthenticatedUser } from './auth.types.ts';
 import { authUtils } from './auth.utils.ts';
 import { getOidcDiscovery, getUserinfo, refreshTokens } from './auth.oidc.ts';
 import { getZitadelConfiguration } from './auth.zitadel.ts';
-import { museumPermissionRoles, type MuseumPermission } from './auth.permissions.ts';
+import { museumScopes, type MuseumScope } from './auth.permissions.ts';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -110,16 +110,16 @@ export function requireAnyRole(roles: string[]) {
   };
 }
 
-export function hasMuseumPermission(user: AuthenticatedUser | undefined, permission: MuseumPermission): boolean {
-  return hasAnyRole(user, [...museumPermissionRoles[permission]]);
+export function hasMuseumScope(user: AuthenticatedUser | undefined, scope: MuseumScope): boolean {
+  return hasRole(user, museumScopes[scope]);
 }
 
-export function requireMuseumPermission(permission: MuseumPermission) {
+export function requireMuseumScope(scope: MuseumScope) {
   return async (req: FastifyRequest, reply: FastifyReply) => {
     if (req.method === 'OPTIONS') return;
     if (!req.user) return reply.code(401).send({ error: 'Non authentifié' });
-    if (!hasMuseumPermission(req.user, permission)) {
-      return reply.code(403).send({ error: 'Accès refusé : permission insuffisante' });
+    if (!hasMuseumScope(req.user, scope)) {
+      return reply.code(403).send({ error: 'Accès refusé : scope insuffisant' });
     }
   };
 }

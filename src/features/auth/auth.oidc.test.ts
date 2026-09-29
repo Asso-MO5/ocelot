@@ -44,7 +44,7 @@ function installFetchMock() {
         sub: 'zitadel-subject',
         preferred_username: 'musee',
         email: 'musee@example.test',
-        [configuration.rolesClaim]: { bureau: {}, museum_ticket_scan: {} },
+        [configuration.rolesClaim]: { bureau: {}, museum_mediateur: {} },
       });
     }
     return response({ access_token: 'access', token_type: 'Bearer', expires_in: 3600 });
@@ -92,7 +92,7 @@ describe('OIDC Zitadel', () => {
       username: 'musee',
       avatar: null,
       email: 'musee@example.test',
-      roles: ['bureau', 'museum_ticket_scan'],
+      roles: ['bureau', 'museum_mediateur'],
     });
     assert.equal((calls[1][1]?.headers as Record<string, string>).Authorization, 'Bearer access-token');
   });

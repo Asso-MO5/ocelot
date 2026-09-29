@@ -23,40 +23,59 @@ Le rapprochement, s’il est requis pour reprendre un historique de présences, 
 5. Retirer l’ancien fournisseur seulement dans une migration ultérieure et
    planifiée.
 
-## Rôles et permissions musée
+## Rôles d’organisation et scopes musée
 
-Les clés de rôle Zitadel sont en minuscules et sont évaluées côté API selon le
-principe du moindre privilège. Les rôles historiques `dev` et `museum` restent
-visibles dans Zitadel pour faciliter la migration, mais n’accordent plus de
-droit applicatif : chaque personne doit recevoir l’un des rôles ci-dessous.
+L’API applique un modèle de scopes : chaque route musée vérifie **un seul**
+scope exact porté par le claim Zitadel. Il n’y a ni héritage, ni rôle
+administrateur implicite dans le serveur. Les rôles d’organisation servent à
+gérer les populations dans Zitadel ; l’attribution des scopes reste explicite.
 
-| Rôle Zitadel | Accès accordé |
+| Rôle d’organisation | Usage |
 | --- | --- |
-| `administrateur` | Tous les droits du musée. |
-| `bureau` | Tous les droits opérationnels du musée. |
-| `membre` | Espace membre et ses propres présences uniquement. |
-| `museum_administrateur` | Tous les droits du musée, sans rôle associatif global. |
-| `museum_configuration` | Paramétrage des tarifs, horaires, périodes, événements et réglages. Aucun accès aux billets, statistiques, dons ou scans. |
-| `museum_ticket_scan` | Lecture d’un billet par QR et contrôle entrée/zone réservée aux majeurs. Aucun accès à la configuration, aux données de commande ou à l’administration des billets. |
+| `administrateur` | Administration MO5 globale ; aucun droit API musée implicite. |
+| `bureau` | Fonction associative ; aucun droit API musée implicite. |
+| `membre` | Appartenance à MO5 ; accès à ses propres présences uniquement. |
+| `museum_administrateur` | Fonction de responsable musée ; aucun droit API musée implicite. |
 
-Les permissions appliquées par l’API sont : `configuration`, `ticket_manage`,
-`ticket_scan`, `member_presence_manage` et `donation_proof_manage`. Elles sont
-centralisées dans `src/features/auth/auth.permissions.ts` ; une route métier ne
-doit pas réintroduire une liste de rôles locale.
+| Scope Zitadel | Une route qui le demande autorise |
+| --- | --- |
+| `museum_mediateur` | Recherche et contrôle de billets, entrée et zone réservée aux majeurs. |
+| `museum_ticket_manage` | Billets, commandes, statistiques, PDF et codes cadeaux. |
+| `museum_configuration` | Tarifs, horaires, périodes, événements et réglages. |
+| `museum_member_presence_manage` | Consultation, refus et suppression des présences de l’ensemble des membres. |
+| `museum_donation_proof_manage` | Génération des justificatifs de don. |
 
-L’évaluation des rôles compare explicitement les rôles attendus à ceux du jeton
-validé. Aucun rôle présent dans le jeton ne doit, à lui seul, être interprété
-comme un rôle administrateur.
+Attributions minimales recommandées :
+
+| Personne | Rôles/scopes Zitadel à attribuer |
+| --- | --- |
+| Membre médiateur | `membre` + `museum_mediateur` |
+| Responsable de configuration | `museum_configuration` |
+| Gestionnaire de billetterie | `museum_ticket_manage` |
+| Administrateur musée | `museum_administrateur` + les scopes nécessaires à son périmètre (souvent les cinq) |
+| Bureau ou administrateur MO5 intervenant au musée | Son rôle d’organisation + les scopes nécessaires ; jamais le rôle seul |
+
+Les scopes sont centralisés dans `src/features/auth/auth.permissions.ts`. Une
+route métier ne doit pas accepter une liste de rôles ni reconstituer une
+hiérarchie côté serveur.
+
+### Retrait des anciens rôles
+
+Après attribution et recette des nouveaux scopes à tous les comptes concernés,
+supprimer dans Zitadel les rôles techniques historiques `dev`, `museum` et
+`museum_ticket_scan`, ainsi que les rôles Discord devenus inutiles. Ils ne sont
+plus définis ni interprétés par l’API : un claim inconnu est refusé pour toute
+route protégée.
 
 ### Recette de sécurité avant mise en production
 
-1. Dans Zitadel, attribuer les nouveaux rôles aux comptes de test avant le
-   déploiement, puis retirer les anciens rôles techniques.
-2. Vérifier qu’un compte `museum_ticket_scan` peut valider un QR sans consulter
-   une commande ni modifier un tarif.
-3. Vérifier qu’un compte `museum_configuration` peut modifier un horaire sans
-   consulter les billets, statistiques ou justificatifs de don.
-4. Vérifier qu’un compte `membre` ne consulte que ses propres présences.
+1. Tester un membre médiateur avec `membre` + `museum_mediateur` : le scan est
+   autorisé, la configuration et les commandes sont refusées.
+2. Tester chaque scope seul : il n’autorise que les routes de son tableau.
+3. Tester un compte `administrateur`, `bureau` ou `museum_administrateur` sans
+   scope : toute route musée sensible est refusée.
+4. Retirer les anciens rôles de comptes de test, se reconnecter, puis vérifier
+   que leur claim Zitadel ne contient que les rôles/scopes attendus.
 
 ## Retour arrière
 

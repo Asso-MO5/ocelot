@@ -40,6 +40,12 @@ Feature: Authentification Zitadel OpenID Connect
     Alors je reçois mon identité et les rôles présents dans le claim configuré
     Et mon subject Zitadel est conservé comme identité locale
 
+  Scenario: Refuser un rôle d’organisation sans scope métier
+    Étant donné que mon claim Zitadel contient seulement le rôle administrateur, bureau ou museum_administrateur
+    Quand je fais une requête vers une route musée protégée
+    Alors je reçois une erreur 403
+    Et l’accès n’est accordé que si le scope précis de la route est présent
+
   Scenario: Renouveler une session expirée
     Étant donné que mon access token est refusé par Zitadel
     Et que j'ai un refresh token valide
