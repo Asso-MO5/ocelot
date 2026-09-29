@@ -1,6 +1,8 @@
 import type { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
-import type { DiscordUser, DiscordTokenResponse, AuthenticatedUser } from './auth.types.ts';
+import type { AuthenticatedUser } from './auth.types.ts';
 import { authUtils } from './auth.utils.ts';
+import { getOidcDiscovery, getUserinfo, refreshTokens } from './auth.oidc.ts';
+import { getZitadelConfiguration } from './auth.zitadel.ts';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -10,200 +12,83 @@ declare module 'fastify' {
     ws: {
       on(event: 'connection', listener: (socket: any) => void): any;
       send?: (room: string, action: string) => void;
-    } & {
-      send(room: string, action: string): void;
-    };
+    } & { send(room: string, action: string): void };
   }
 }
 
-async function getUserWithRoles(
-  app: FastifyInstance,
-  accessToken: string
-): Promise<AuthenticatedUser | null> {
-  try {
-    let userResponse = await fetch('https://discord.com/api/users/@me', {
-      headers: { 'Authorization': `Bearer ${accessToken}` },
-    });
-
-    if (userResponse.status === 401) return null;
-    if (!userResponse.ok) return null;
-
-    const userData = await userResponse.json() as DiscordUser;
-
-    const guildMemberResponse = await fetch(
-      `https://discord.com/api/guilds/${process.env.DISCORD_GUILD_ID}/members/${userData.id}`,
-      {
-        headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}` },
-      }
-    );
-
-    if (!guildMemberResponse.ok) {
-      return {
-        id: userData.id,
-        username: userData.username,
-        discriminator: userData.discriminator,
-        avatar: userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : null,
-        email: userData.email,
-        roles: [],
-      };
-    }
-
-    const guildMember = await guildMemberResponse.json();
-
-    const guildRolesResponse = await fetch(
-      `https://discord.com/api/guilds/${process.env.DISCORD_GUILD_ID}/roles`,
-      {
-        headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}` },
-      }
-    );
-
-    if (!guildRolesResponse.ok) {
-      return {
-        id: userData.id,
-        username: userData.username,
-        discriminator: userData.discriminator,
-        avatar: userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : null,
-        email: userData.email,
-        roles: [],
-      };
-    }
-
-    const guildRolesData = await guildRolesResponse.json();
-    const roles = guildRolesData
-      .filter((role: any) => guildMember.roles.includes(role.id))
-      .map((role: any) => role.name.toLowerCase());
-
-    if (process.env.IS_DEV === 'true' && roles.includes('tester')) roles.push('dev')
-
-    return {
-      id: userData.id,
-      username: userData.username,
-      discriminator: userData.discriminator,
-      avatar: userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : null,
-      email: userData.email,
-      roles,
-    };
-  } catch (err) {
-    app.log.error({ err }, 'Erreur lors de la récupération des données utilisateur');
-    return null;
-  }
+function clearSessionCookies(reply: FastifyReply) {
+  const options = { ...authUtils.getCookieOptions(), maxAge: 0 };
+  reply.clearCookie('zitadel_access_token', options);
+  reply.clearCookie('zitadel_refresh_token', options);
 }
 
-async function refreshAccessToken(
-  app: FastifyInstance,
-  refreshToken: string,
-  reply: FastifyReply
-): Promise<string | null> {
-  const clientId = process.env.DISCORD_CLIENT_ID;
-  const clientSecret = process.env.DISCORD_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) return null;
-
-  try {
-    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const params = new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
+function setSessionCookies(reply: FastifyReply, tokens: { access_token: string; expires_in?: number; refresh_token?: string }) {
+  const options = authUtils.getCookieOptions();
+  reply.setCookie('zitadel_access_token', tokens.access_token, {
+    ...options,
+    maxAge: tokens.expires_in || 3600,
+  });
+  if (tokens.refresh_token) {
+    reply.setCookie('zitadel_refresh_token', tokens.refresh_token, {
+      ...options,
+      maxAge: 60 * 60 * 24 * (Number(process.env.REFRESH_TOKEN_MAX_AGE_DAYS) || 90),
     });
-
-    const refreshResponse = await fetch('https://discord.com/api/v10/oauth2/token', {
-      method: 'POST',
-      body: params.toString(),
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${credentials}`,
-      },
-    });
-
-    if (!refreshResponse.ok) return null;
-
-    const refreshData = await refreshResponse.json() as DiscordTokenResponse;
-    const cookieOptions = authUtils.getCookieOptions();
-
-    if (refreshData.access_token) {
-      reply.setCookie('discord_access_token', refreshData.access_token, {
-        ...cookieOptions,
-        maxAge: refreshData.expires_in || 604800
-      });
-    }
-
-    if (refreshData.refresh_token) {
-      const refreshTokenMaxAge = Number(process.env.REFRESH_TOKEN_MAX_AGE_DAYS) || 90;
-      reply.setCookie('discord_refresh_token', refreshData.refresh_token, {
-        ...cookieOptions,
-        maxAge: 60 * 60 * 24 * refreshTokenMaxAge
-      });
-    }
-
-    return refreshData.access_token;
-  } catch (err) {
-    app.log.error({ err }, 'Erreur lors du rafraîchissement du token');
-    return null;
   }
 }
 
 export async function requireAuth(
   req: FastifyRequest,
   reply: FastifyReply,
-  app: FastifyInstance
+  app: FastifyInstance,
 ): Promise<AuthenticatedUser | null> {
-  let accessToken = req.cookies.discord_access_token;
-
+  const accessToken = req.cookies.zitadel_access_token;
   if (!accessToken) return null;
 
-  let user = await getUserWithRoles(app, accessToken);
+  try {
+    const configuration = getZitadelConfiguration();
+    const discovery = await getOidcDiscovery(configuration);
+    let user = await getUserinfo(configuration, discovery, accessToken);
+    if (user) return user;
 
-  if (!user) {
-    const refreshToken = req.cookies.discord_refresh_token;
-    if (refreshToken) {
-      const newAccessToken = await refreshAccessToken(app, refreshToken, reply);
-      if (newAccessToken) {
-        user = await getUserWithRoles(app, newAccessToken);
-      } else {
-        reply.clearCookie('discord_access_token');
-        reply.clearCookie('discord_refresh_token');
-        return null;
-      }
-    } else {
+    const refreshToken = req.cookies.zitadel_refresh_token;
+    if (!refreshToken) {
+      clearSessionCookies(reply);
       return null;
     }
+    const tokens = await refreshTokens(configuration, discovery, refreshToken);
+    user = await getUserinfo(configuration, discovery, tokens.access_token);
+    if (!user) {
+      clearSessionCookies(reply);
+      return null;
+    }
+    setSessionCookies(reply, { ...tokens, refresh_token: tokens.refresh_token || refreshToken });
+    return user;
+  } catch (err) {
+    app.log.error({ err }, 'Échec de la vérification de session Zitadel');
+    clearSessionCookies(reply);
+    return null;
   }
-
-  return user;
 }
-
 
 export function authenticateHook(app: FastifyInstance) {
   return async (req: FastifyRequest, reply: FastifyReply) => {
     if (req.method === 'OPTIONS') return;
-
     const user = await requireAuth(req, reply, app);
-
     if (!user) return reply.code(401).send({ error: 'Non authentifié' });
-
     req.user = user;
   };
 }
 
-
 export function hasRole(user: AuthenticatedUser | undefined, role: string): boolean {
-  if (!user) {
-    return false;
-  }
-  return user.roles.includes(role.toLowerCase());
+  return Boolean(user?.roles.includes(role.toLowerCase()));
 }
-
 
 export function hasAnyRole(user: AuthenticatedUser | undefined, roles: string[]): boolean {
-  if (!user) return false;
-
-  return roles.some(role => user.roles.includes(role.toLowerCase()));
+  return Boolean(user?.roles.some((role) => user.roles.includes(role.toLowerCase())));
 }
 
-
 export function hasAllRoles(user: AuthenticatedUser | undefined, roles: string[]): boolean {
-  if (!user) return false;
-  return roles.every(role => user.roles.includes(role.toLowerCase()));
+  return Boolean(user && roles.every((role) => user.roles.includes(role.toLowerCase())));
 }
 
 export function requireRole(role: string) {
@@ -214,13 +99,11 @@ export function requireRole(role: string) {
   };
 }
 
-
 export function requireAnyRole(roles: string[]) {
   return async (req: FastifyRequest, reply: FastifyReply) => {
     if (req.method === 'OPTIONS') return;
     if (!req.user) return reply.code(401).send({ error: 'Non authentifié' });
     if (!hasAnyRole(req.user, roles)) return reply.code(403).send({ error: 'Accès refusé : rôle insuffisant' });
-    return;
   };
 }
 
@@ -229,7 +112,5 @@ export function requireAllRoles(roles: string[]) {
     if (req.method === 'OPTIONS') return;
     if (!req.user) return reply.code(401).send({ error: 'Non authentifié' });
     if (!hasAllRoles(req.user, roles)) return reply.code(403).send({ error: 'Accès refusé : rôles insuffisants' });
-    return;
   };
 }
-

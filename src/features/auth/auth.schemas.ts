@@ -5,11 +5,11 @@ const callbackQuerySchema = {
   properties: {
     code: {
       type: 'string',
-      description: 'Code d\'autorisation retourné par Discord',
+      description: 'Code d\'autorisation retourné par Zitadel',
     },
     error: {
       type: 'string',
-      description: 'Code d\'erreur retourné par Discord',
+      description: 'Code d\'erreur retourné par Zitadel',
     },
     state: {
       type: 'string',
@@ -23,19 +23,15 @@ const meResponseSchema = {
   properties: {
     id: {
       type: 'string',
-      description: 'ID unique de l\'utilisateur Discord',
+      description: 'ID interne ou subject Zitadel de l\'utilisateur',
     },
     username: {
       type: 'string',
       description: 'Nom d\'utilisateur',
     },
-    discriminator: {
-      type: 'string',
-      description: 'Discriminator (4 chiffres)',
-    },
     avatar: {
       type: ['string', 'null'],
-      description: 'Hash de l\'avatar ou null',
+      description: 'URL de l\'avatar ou null',
     },
     email: {
       type: 'string',
@@ -50,7 +46,7 @@ const meResponseSchema = {
       },
     },
   },
-  required: ['id', 'username', 'discriminator', 'avatar', 'roles'],
+  required: ['id', 'username', 'avatar', 'roles'],
 } as const;
 
 const errorResponseSchema = {
@@ -80,7 +76,7 @@ export const signinSchema: FastifySchema = {
   response: {
     302: {
       type: 'null',
-      description: 'Redirection vers Discord OAuth2',
+      description: 'Redirection vers Zitadel OpenID Connect',
     },
     500: errorResponseSchema,
   },
@@ -102,4 +98,3 @@ export const signoutSchema: FastifySchema = {
     200: signoutResponseSchema,
   },
 } as const;
-
