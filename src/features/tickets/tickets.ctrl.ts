@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   createTicket,
   createTicketsWithPayment,
+  getAdultAccessOption,
   getTickets,
   getTicketById,
   getTicketByQRCode,
@@ -24,6 +25,7 @@ import type {
 import {
   createTicketSchema,
   createTicketsWithPaymentSchema,
+  getAdultAccessOptionSchema,
   updateTicketSchema,
   getTicketsSchema,
   getTicketByIdSchema,
@@ -76,6 +78,17 @@ async function createTicketsWithPaymentHandler(
 
     const errorMessage = err.message || err.toString() || 'Erreur lors de la création des tickets avec paiement';
     return reply.code(500).send({ error: errorMessage });
+  }
+}
+
+async function getAdultAccessOptionHandler(reply: FastifyReply, app: FastifyInstance) {
+  try {
+    return reply.send(await getAdultAccessOption(app));
+  } catch (err: any) {
+    app.log.error({ err }, 'Erreur lors de la récupération de l’option majeure');
+    const handled = handleStructuredError(err, reply);
+    if (handled.sent) return;
+    return reply.code(500).send({ error: 'Erreur lors de la récupération de l’option majeure' });
   }
 }
 
@@ -432,6 +445,12 @@ export async function resendTicketsByCheckoutIdHandler(
 }
 
 export function registerTicketsRoutes(app: FastifyInstance) {
+  app.get(
+    '/museum/tickets/adult-access-option',
+    { schema: getAdultAccessOptionSchema },
+    async (_req, reply) => getAdultAccessOptionHandler(reply, app)
+  );
+
   app.get<{ Querystring: GetTicketsQuery }>(
     '/museum/tickets',
     {

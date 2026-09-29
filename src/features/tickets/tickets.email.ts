@@ -5,7 +5,13 @@ import { emailUtils } from '../email/email.utils.ts';
 import QRCode from 'qrcode';
 import { getLogoBase64 } from '../../utils/get-logo-base64.ts';
 
-export async function generateQRCodeBase64(qrCode: string): Promise<string> {
+const adultAccessQRCodeColor = '#B91C1C';
+
+export function getTicketQRCodeColor(ticket: Pick<Ticket, 'adult_access'>): string | undefined {
+  return ticket.adult_access ? adultAccessQRCodeColor : undefined;
+}
+
+export async function generateQRCodeBase64(qrCode: string, darkColor?: string): Promise<string> {
   if (!qrCode || qrCode.trim().length === 0) {
     throw new Error('Le code QR ne peut pas être vide');
   }
@@ -16,6 +22,7 @@ export async function generateQRCodeBase64(qrCode: string): Promise<string> {
       type: 'image/png',
       width: 300,
       margin: 2,
+      ...(darkColor ? { color: { dark: darkColor, light: '#FFFFFF' } } : {}),
     });
     return qrCodeDataUrl;
   } catch (error: any) {
@@ -81,6 +88,10 @@ export function prepareTicketData(ticket: Ticket) {
     : ticket.total_amount;
 
   const hasGuidedTour = guidedTourPrice > 0;
+  const adultAccessAmount = typeof ticket.adult_access_amount === 'string'
+    ? parseFloat(ticket.adult_access_amount)
+    : (ticket.adult_access_amount ?? 0);
+  const hasAdultAccess = ticket.adult_access === true;
 
   return {
     visitorName,
@@ -89,6 +100,9 @@ export function prepareTicketData(ticket: Ticket) {
     guidedTourPrice,
     totalAmount,
     hasGuidedTour,
+    adultAccessAmount,
+    hasAdultAccess,
+    adultAccessLabel: ticket.adult_access_label || undefined,
   };
 }
 
@@ -110,7 +124,17 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
     containerPadding = '30px',
   } = options;
 
-  const { visitorName, ticketPrice, donationAmount, totalAmount, hasGuidedTour, guidedTourPrice } = prepareTicketData(ticket);
+  const {
+    visitorName,
+    ticketPrice,
+    donationAmount,
+    totalAmount,
+    hasGuidedTour,
+    guidedTourPrice,
+    hasAdultAccess,
+    adultAccessAmount,
+    adultAccessLabel,
+  } = prepareTicketData(ticket);
 
   const translations = {
     fr: {
@@ -120,6 +144,8 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       ticketPrice: 'Prix du billet',
       donation: 'Don',
       guidedTour: 'Visite guidée',
+      adultAccess: 'Accès zone réservée aux majeurs',
+      adultAccessNotice: 'Option souscrite : accès à la zone réservée aux majeurs inclus.',
       total: 'Total',
       qrCodeTitle: 'Votre code QR',
       qrCodeDescription: 'Présentez ce code QR à l\'entrée du musée',
@@ -132,6 +158,8 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       ticketPrice: 'Ticket price',
       donation: 'Donation',
       guidedTour: 'Guided tour',
+      adultAccess: 'Adults-only area access',
+      adultAccessNotice: 'Option purchased: access to the adults-only area is included.',
       total: 'Total',
       qrCodeTitle: 'Your QR code',
       qrCodeDescription: 'Present this QR code at the museum entrance',
@@ -215,6 +243,18 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       border-radius: 5px;
       padding: 10px;
       background-color: #ffffff;
+    }
+    .qr-code.adult-access img {
+      border-color: ${adultAccessQRCodeColor};
+    }
+    .adult-access-notice {
+      margin: 20px 0;
+      padding: 14px;
+      border: 2px solid ${adultAccessQRCodeColor};
+      border-radius: 5px;
+      background-color: #fff1f2;
+      color: #5f1010;
+      font-weight: bold;
     }
     .qr-code-text {
       margin-top: 15px;
@@ -305,6 +345,12 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
         <span class="detail-value">${guidedTourPrice.toFixed(2)}€</span>
       </div>
       ` : ''}
+      ${hasAdultAccess ? `
+      <div class="detail-row">
+        <span class="detail-label">${adultAccessLabel || t.adultAccess}:</span>
+        <span class="detail-value">${adultAccessAmount.toFixed(2)}€</span>
+      </div>
+      ` : ''}
       <div class="detail-row">
         <span class="detail-label"><strong>${t.total}:</strong></span>
         <span class="detail-value"><strong>${totalAmount.toFixed(2)}€</strong></span>
@@ -317,9 +363,11 @@ function generateTicketHTMLBase(options: TicketHTMLOptions): string {
       ` : ''}
     </div>
 
-    <div class="qr-code">
+    ${hasAdultAccess ? `<p class="adult-access-notice">${t.adultAccessNotice}</p>` : ''}
+
+    <div class="qr-code${hasAdultAccess ? ' adult-access' : ''}">
       <h3 style="text-align: center; margin-bottom: 20px;">${t.qrCodeTitle}</h3>
-      <img src="${qrCodeBase64}" alt="QR Code" />
+      <img src="${qrCodeBase64}" alt="${hasAdultAccess ? t.adultAccessNotice : 'QR Code'}" />
       <p class="qr-code-text" style="text-align: center; margin-bottom: 20px;">${ticket.qr_code}</p>
       <p class="qr-description" style="text-align: center; margin-bottom: 20px;">${t.qrCodeDescription}</p>
     </div>
@@ -344,7 +392,7 @@ async function generateTicketEmailHTML(
 
   let qrCodeBase64: string;
   try {
-    qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code);
+    qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code, getTicketQRCodeColor(ticket));
   } catch (error) {
     throw new Error(`Erreur lors de la génération du QR code pour le ticket ${ticket.id}: ${error}`);
   }
@@ -500,7 +548,7 @@ async function generateMultipleTicketsEmailHTML(
     tickets.map(async (ticket, index) => {
       let qrCodeBase64: string;
       try {
-        qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code);
+        qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code, getTicketQRCodeColor(ticket));
       } catch (error) {
         throw new Error(`Erreur lors de la génération du QR code pour le ticket ${ticket.id}: ${error}`);
       }
@@ -716,7 +764,7 @@ export async function generateTicketViewHTML(
 
   let qrCodeBase64: string;
   try {
-    qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code);
+    qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code, getTicketQRCodeColor(ticket));
   } catch (error) {
     throw new Error(`Erreur lors de la génération du QR code pour le ticket ${ticket.id}: ${error}`);
   }
@@ -775,4 +823,3 @@ export async function generateTicketViewHTML(
     containerPadding: '40px',
   });
 }
-

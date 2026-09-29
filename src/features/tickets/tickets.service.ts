@@ -720,6 +720,36 @@ export async function deleteTicket(
   return result.rowCount !== null && result.rowCount > 0;
 }
 
+export interface AdultAccessOption {
+  enabled: boolean;
+  amount: number;
+  label: string;
+}
+
+/** Returns only the visitor-facing part of the adults-only option configuration. */
+export async function getAdultAccessOption(app: FastifyInstance): Promise<AdultAccessOption> {
+  const { getSettingValue } = await import('../settings/settings.service.ts');
+  const option = await getSettingValue<{ enabled?: boolean; amount?: number; label?: string }>(
+    app,
+    'adult_access_option',
+    { enabled: false, amount: 0, label: 'Accès zone réservée aux majeurs' },
+  );
+  const amount = Number(option?.amount ?? 0);
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw createStructuredError(
+      500,
+      'La configuration de l’option majeure est invalide',
+      'Adult access option configuration is invalid',
+    );
+  }
+
+  return {
+    enabled: option?.enabled === true,
+    amount,
+    label: option?.label?.trim() || 'Accès zone réservée aux majeurs',
+  };
+}
+
 /**
  * Crée plusieurs tickets avec paiement
  * Crée d'abord le checkout, puis enregistre tous les tickets avec le checkout_id
@@ -727,7 +757,13 @@ export async function deleteTicket(
 export async function createTicketsWithPayment(
   app: FastifyInstance,
   data: CreateTicketsWithPaymentBody
-): Promise<{ checkout_id: string | null; checkout_reference: string | null; checkout_url: string | null; tickets: Ticket[] }> {
+): Promise<{
+  checkout_id: string | null;
+  checkout_reference: string | null;
+  checkout_url: string | null;
+  adult_access: { count: number; amount: number; total_amount: number; label: string };
+  tickets: Ticket[];
+}> {
   if (!app.pg) {
     throw createStructuredError(
       500,
@@ -756,15 +792,8 @@ export async function createTicketsWithPayment(
   const slotCapacityHours = (await getSettingValue<number>(app, 'slot_capacity', 1)) || 1;
   const { isSlotComplete, calculateSlotPrice } = await import('../slots/slots.service.ts');
 
-  const adultAccessOption = await getSettingValue<{ enabled?: boolean; amount?: number; label?: string }>(
-    app,
-    'adult_access_option',
-    { enabled: false, amount: 0, label: 'Accès zone réservée aux majeurs' },
-  );
-  const adultAccessAmount = Number(adultAccessOption?.amount ?? 0);
-  if (!Number.isFinite(adultAccessAmount) || adultAccessAmount < 0) {
-    throw createStructuredError(500, 'La configuration de l’option majeure est invalide', 'Adult access option configuration is invalid');
-  }
+  const adultAccessOption = await getAdultAccessOption(app);
+  const adultAccessAmount = adultAccessOption.amount;
   for (const ticket of data.tickets) {
     if (ticket.adult_access && !adultAccessOption?.enabled) {
       throw createStructuredError(400, 'L’option d’accès réservée aux majeurs n’est pas disponible', 'Adults-only access option is unavailable');
@@ -1082,10 +1111,15 @@ export async function createTicketsWithPayment(
 
   let checkout: { id: string; checkout_reference: string; status: string, url: string } | null = null;
   const isFreeOrder = totalAmount === 0;
+  const adultAccessCount = data.tickets.filter(ticket => ticket.adult_access === true).length;
+  const adultAccessTotal = adultAccessCount * adultAccessAmount;
 
   if (!isFreeOrder) {
     const currency = data.currency || 'EUR';
-    const description = data.description || `Réservation de ${data.tickets.length} ticket(s)`;
+    const baseDescription = data.description || `Réservation de ${data.tickets.length} ticket(s)`;
+    const description = adultAccessCount > 0
+      ? `${baseDescription} — ${adultAccessCount} × ${adultAccessOption.label}`
+      : baseDescription;
 
     const session = await createCheckout(
       app,
@@ -1094,7 +1128,11 @@ export async function createTicketsWithPayment(
       currency,
       data.success_url,
       data.cancel_url,
-      { checkout_type: 'tickets' }
+      {
+        checkout_type: 'tickets',
+        adult_access_count: String(adultAccessCount),
+        adult_access_total: adultAccessTotal.toFixed(2),
+      }
     );
 
     checkout = {
@@ -1153,7 +1191,7 @@ export async function createTicketsWithPayment(
           ticketGuidedTourPrice,
           ticketData.adult_access === true,
           ticketAdultAccessAmount,
-          ticketData.adult_access ? adultAccessOption?.label || 'Accès zone réservée aux majeurs' : null,
+          ticketData.adult_access ? adultAccessOption.label : null,
           ticketTotalAmount,
           ticketStatus,
           notesContent,
@@ -1194,6 +1232,12 @@ export async function createTicketsWithPayment(
     checkout_id: checkout?.id ?? null,
     checkout_reference: checkout?.checkout_reference ?? null,
     checkout_url: checkout?.url ?? null,
+    adult_access: {
+      count: adultAccessCount,
+      amount: adultAccessAmount,
+      total_amount: adultAccessTotal,
+      label: adultAccessOption.label,
+    },
     tickets: createdTickets,
   };
 }

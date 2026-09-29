@@ -124,7 +124,7 @@ Feature: Gestion des tickets du musée
   Scenario: Visualiser un ticket en HTML
     Étant donné qu'un ticket existe avec status='paid' et used_at=null
     Et que la date de réservation est valide
-    Quand je fais une requête GET vers "/museum/tickets/view/:qrCode"
+    Quand je fais une requête GET vers "/tickets/:qrCode"
     Alors je reçois une réponse 200
     Et la réponse est du type text/html
     Et la réponse contient le QR code et les détails du ticket
@@ -164,3 +164,14 @@ Feature: Gestion des tickets du musée
     Étant donné que adult_access_option.enabled vaut false dans la configuration du musée
     Quand je fais une requête POST vers "/museum/tickets/payment" avec adult_access=true
     Alors je reçois une réponse 400
+
+  Scenario: Afficher explicitement l’option majeure sur le billet
+    Étant donné qu’un ticket payé a souscrit l’option d’accès réservée aux majeurs
+    Quand je consulte "/tickets/:qrCode"
+    Alors le billet indique textuellement que l’option est souscrite
+    Et son code QR est affiché en rouge
+
+  Scenario: Consulter le tarif paramétré de l’option majeure
+    Étant donné que l’option d’accès réservée aux majeurs est configurée
+    Quand je fais une requête GET vers "/museum/tickets/adult-access-option"
+    Alors je reçois enabled, amount et label sans authentification

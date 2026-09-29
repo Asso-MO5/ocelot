@@ -230,6 +230,7 @@ async function generateOpenAPIDoc(): Promise<void> {
   const {
     createTicketSchema,
     createTicketsWithPaymentSchema,
+    getAdultAccessOptionSchema,
     updateTicketSchema,
     getTicketsSchema,
     getTicketByIdSchema,
@@ -514,10 +515,17 @@ async function generateOpenAPIDoc(): Promise<void> {
       tag: 'Musée - Tickets',
     },
     {
+      method: 'GET',
+      path: '/museum/tickets/adult-access-option',
+      schema: getAdultAccessOptionSchema,
+      description: 'Expose l’état, le libellé et le montant de l’option d’accès réservée aux majeurs pour le checkout public.',
+      tag: 'Musée - Tickets',
+    },
+    {
       method: 'POST',
       path: '/museum/tickets/payment',
       schema: createTicketsWithPaymentSchema,
-      description: 'Crée plusieurs tickets avec paiement. Crée d\'abord un checkout avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)',
+      description: 'Crée plusieurs tickets avec paiement. Le montant inclut le tarif, le don et, lorsque souscrite, l’option d’accès réservée aux majeurs paramétrée par le musée. Enregistre ensuite tous les tickets avec le checkout_id et le statut pending (route publique).',
       tag: 'Musée - Tickets',
     },
     {

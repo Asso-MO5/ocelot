@@ -155,6 +155,9 @@ export const createTicketSchema = {
         ticket_price: { type: 'number' },
         donation_amount: { type: 'number' },
         guided_tour_price: { type: 'number' },
+        adult_access: { type: 'boolean' },
+        adult_access_amount: { type: 'number' },
+        adult_access_label: { type: ['string', 'null'] },
         total_amount: { type: 'number' },
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
@@ -286,6 +289,9 @@ export const updateTicketSchema = {
         ticket_price: { type: 'number' },
         donation_amount: { type: 'number' },
         guided_tour_price: { type: 'number' },
+        adult_access: { type: 'boolean' },
+        adult_access_amount: { type: 'number' },
+        adult_access_label: { type: ['string', 'null'] },
         total_amount: { type: 'number' },
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
@@ -370,6 +376,10 @@ export const getTicketsSchema = {
               transaction_status: { type: ['string', 'null'] },
               ticket_price: { type: 'number' },
               donation_amount: { type: 'number' },
+              guided_tour_price: { type: 'number' },
+              adult_access: { type: 'boolean' },
+              adult_access_amount: { type: 'number' },
+              adult_access_label: { type: ['string', 'null'] },
               total_amount: { type: 'number' },
               status: { type: 'string' },
               used_at: { type: ['string', 'null'] },
@@ -437,6 +447,9 @@ export const getTicketByIdSchema = {
         ticket_price: { type: 'number' },
         donation_amount: { type: 'number' },
         guided_tour_price: { type: 'number' },
+        adult_access: { type: 'boolean' },
+        adult_access_amount: { type: 'number' },
+        adult_access_label: { type: ['string', 'null'] },
         total_amount: { type: 'number' },
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
@@ -499,6 +512,9 @@ export const validateTicketSchema = {
         ticket_price: { type: 'number' },
         donation_amount: { type: 'number' },
         guided_tour_price: { type: 'number' },
+        adult_access: { type: 'boolean' },
+        adult_access_amount: { type: 'number' },
+        adult_access_label: { type: ['string', 'null'] },
         total_amount: { type: 'number' },
         status: { type: 'string' },
         used_at: { type: ['string', 'null'] },
@@ -514,10 +530,46 @@ export const validateTicketSchema = {
         error: { type: 'string' },
       },
     },
+    403: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
     404: {
       type: 'object',
       properties: {
         error: { type: 'string' },
+      },
+    },
+    500: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+      },
+    },
+  },
+};
+
+export const getAdultAccessOptionSchema = {
+  response: {
+    200: {
+      type: 'object',
+      required: ['enabled', 'amount', 'label'],
+      properties: {
+        enabled: {
+          type: 'boolean',
+          description: 'Indique si l’option d’accès réservée aux majeurs peut être souscrite',
+        },
+        amount: {
+          type: 'number',
+          minimum: 0,
+          description: 'Montant paramétré de l’option, en euros',
+        },
+        label: {
+          type: 'string',
+          description: 'Libellé affichable de l’option',
+        },
       },
     },
     500: {
@@ -725,6 +777,17 @@ export const createTicketsWithPaymentSchema = {
           format: 'uri',
           description: 'URL de redirection vers la page de paiement (null si la commande est gratuite)',
         },
+        adult_access: {
+          type: 'object',
+          required: ['count', 'amount', 'total_amount', 'label'],
+          description: 'Récapitulatif de l’option majeure appliquée à la commande',
+          properties: {
+            count: { type: 'integer', minimum: 0 },
+            amount: { type: 'number', minimum: 0 },
+            total_amount: { type: 'number', minimum: 0 },
+            label: { type: 'string' },
+          },
+        },
         tickets: {
           type: 'array',
           items: {
@@ -743,6 +806,10 @@ export const createTicketsWithPaymentSchema = {
               transaction_status: { type: ['string', 'null'] },
               ticket_price: { type: 'number' },
               donation_amount: { type: 'number' },
+              guided_tour_price: { type: 'number' },
+              adult_access: { type: 'boolean' },
+              adult_access_amount: { type: 'number' },
+              adult_access_label: { type: ['string', 'null'] },
               total_amount: { type: 'number' },
               status: { type: 'string' },
               used_at: { type: ['string', 'null'] },
@@ -755,7 +822,7 @@ export const createTicketsWithPaymentSchema = {
           description: 'Liste des tickets créés',
         },
       },
-      required: ['tickets'],
+      required: ['tickets', 'adult_access'],
     },
     400: {
       type: 'object',
@@ -831,6 +898,10 @@ export const getTicketsByCheckoutIdSchema = {
           transaction_status: { type: ['string', 'null'] },
           ticket_price: { type: 'number' },
           donation_amount: { type: 'number' },
+          guided_tour_price: { type: 'number' },
+          adult_access: { type: 'boolean' },
+          adult_access_amount: { type: 'number' },
+          adult_access_label: { type: ['string', 'null'] },
           total_amount: { type: 'number' },
           status: { type: 'string' },
           used_at: { type: ['string', 'null'] },

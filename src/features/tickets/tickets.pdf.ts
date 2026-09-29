@@ -3,6 +3,7 @@ import type { Ticket } from './tickets.types.ts';
 import PDFDocument from 'pdfkit';
 import {
   generateQRCodeBase64,
+  getTicketQRCodeColor,
   formatDate,
   formatTime,
   normalizeLanguage,
@@ -17,9 +18,17 @@ export async function generateTicketPDF(
 
 
   const language = normalizeLanguage(ticket.language);
-  const { visitorName, ticketPrice, donationAmount, totalAmount } = prepareTicketData(ticket);
+  const {
+    visitorName,
+    ticketPrice,
+    donationAmount,
+    totalAmount,
+    hasAdultAccess,
+    adultAccessAmount,
+    adultAccessLabel,
+  } = prepareTicketData(ticket);
 
-  const qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code);
+  const qrCodeBase64 = await generateQRCodeBase64(ticket.qr_code, getTicketQRCodeColor(ticket));
   const qrCodeBuffer = Buffer.from(qrCodeBase64.split(',')[1] || qrCodeBase64, 'base64');
 
   const doc = new PDFDocument({
@@ -91,6 +100,8 @@ export async function generateTicketPDF(
           timeSlot: 'Créneau horaire',
           ticketPrice: 'Prix du billet',
           donation: 'Don',
+          adultAccess: 'Accès zone réservée aux majeurs',
+          adultAccessNotice: 'Option souscrite : accès à la zone réservée aux majeurs inclus.',
           total: 'Total',
           status: 'Statut',
           qrCodeTitle: 'Votre code QR',
@@ -108,6 +119,8 @@ export async function generateTicketPDF(
           timeSlot: 'Time slot',
           ticketPrice: 'Ticket price',
           donation: 'Donation',
+          adultAccess: 'Adults-only area access',
+          adultAccessNotice: 'Option purchased: access to the adults-only area is included.',
           total: 'Total',
           status: 'Status',
           qrCodeTitle: 'Your QR code',
@@ -138,16 +151,19 @@ export async function generateTicketPDF(
         })
         .moveDown(0.5);
 
+      const lineHeight = 25;
+      const detailsRows = 5 + (donationAmount > 0 ? 1 : 0) + (hasAdultAccess ? 1 : 0);
+      const detailsHeight = 40 + detailsRows * lineHeight;
+
       // Fond gris pour la section détails
       const detailsY = doc.y;
-      doc.rect(50, detailsY, 495, 200)
+      doc.rect(50, detailsY, 495, detailsHeight)
         .fillColor(backgroundColor)
         .fill()
         .fillColor('#333');
 
       // Détails du ticket
       let currentY = detailsY + 20;
-      const lineHeight = 25;
       const labelWidth = 200;
       const valueWidth = 250;
 
@@ -187,6 +203,14 @@ export async function generateTicketPDF(
         currentY += lineHeight;
       }
 
+      if (hasAdultAccess) {
+        doc.fillColor(secondaryColor)
+          .text(`${adultAccessLabel || t.adultAccess}:`, 60, currentY, { width: labelWidth })
+          .fillColor('#5f1010')
+          .text(`${adultAccessAmount.toFixed(2)}€`, 260, currentY, { width: valueWidth });
+        currentY += lineHeight;
+      }
+
       // Total
       doc.font('Helvetica-Bold')
         .fillColor(secondaryColor)
@@ -208,7 +232,7 @@ export async function generateTicketPDF(
         );
 
       // Position pour le QR code
-      doc.y = detailsY + 200;
+      doc.y = detailsY + detailsHeight;
 
       // Centrer le QR code (en tenant compte des marges de 50 points de chaque côté)
       const qrSize = 200;
@@ -259,6 +283,17 @@ export async function generateTicketPDF(
         })
         .moveDown(2);
 
+      if (hasAdultAccess) {
+        doc.x = leftMargin;
+        doc.fontSize(12)
+          .fillColor('#5f1010')
+          .text(t.adultAccessNotice, {
+            align: 'center',
+            width: usableWidth,
+          })
+          .moveDown(1);
+      }
+
       // Footer
       doc.x = leftMargin;
       doc.fontSize(12)
@@ -275,4 +310,3 @@ export async function generateTicketPDF(
     }
   });
 }
-

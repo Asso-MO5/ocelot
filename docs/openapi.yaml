@@ -3726,6 +3726,14 @@ paths:
                     type: "number"
                   guided_tour_price:
                     type: "number"
+                  adult_access:
+                    type: "boolean"
+                  adult_access_amount:
+                    type: "number"
+                  adult_access_label:
+                    type:
+                      - string
+                    nullable: true
                   total_amount:
                     type: "number"
                   status:
@@ -3756,6 +3764,8 @@ paths:
                 ticket_price: 123
                 donation_amount: 123
                 guided_tour_price: 123
+                adult_access: true
+                adult_access_amount: 123
                 total_amount: 123
                 status: "exemple_status"
                 created_at: "exemple_created_at"
@@ -3915,7 +3925,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2026-09-29T13:55:20.668Z"
+                      default: "2026-09-29T14:24:52.268Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -4027,6 +4037,16 @@ paths:
                           type: "number"
                         donation_amount:
                           type: "number"
+                        guided_tour_price:
+                          type: "number"
+                        adult_access:
+                          type: "boolean"
+                        adult_access_amount:
+                          type: "number"
+                        adult_access_label:
+                          type:
+                            - string
+                          nullable: true
                         total_amount:
                           type: "number"
                         status:
@@ -4152,6 +4172,14 @@ paths:
                     type: "number"
                   guided_tour_price:
                     type: "number"
+                  adult_access:
+                    type: "boolean"
+                  adult_access_amount:
+                    type: "number"
+                  adult_access_label:
+                    type:
+                      - string
+                    nullable: true
                   total_amount:
                     type: "number"
                   status:
@@ -4182,6 +4210,8 @@ paths:
                 ticket_price: 123
                 donation_amount: 123
                 guided_tour_price: 123
+                adult_access: true
+                adult_access_amount: 123
                 total_amount: 123
                 status: "exemple_status"
                 created_at: "exemple_created_at"
@@ -4290,6 +4320,14 @@ paths:
                     type: "number"
                   guided_tour_price:
                     type: "number"
+                  adult_access:
+                    type: "boolean"
+                  adult_access_amount:
+                    type: "number"
+                  adult_access_label:
+                    type:
+                      - string
+                    nullable: true
                   total_amount:
                     type: "number"
                   status:
@@ -4320,6 +4358,8 @@ paths:
                 ticket_price: 123
                 donation_amount: 123
                 guided_tour_price: 123
+                adult_access: true
+                adult_access_amount: 123
                 total_amount: 123
                 status: "exemple_status"
                 created_at: "exemple_created_at"
@@ -4587,6 +4627,14 @@ paths:
                     type: "number"
                   guided_tour_price:
                     type: "number"
+                  adult_access:
+                    type: "boolean"
+                  adult_access_amount:
+                    type: "number"
+                  adult_access_label:
+                    type:
+                      - string
+                    nullable: true
                   total_amount:
                     type: "number"
                   status:
@@ -4617,6 +4665,8 @@ paths:
                 ticket_price: 123
                 donation_amount: 123
                 guided_tour_price: 123
+                adult_access: true
+                adult_access_amount: 123
                 total_amount: 123
                 status: "exemple_status"
                 created_at: "exemple_created_at"
@@ -4764,6 +4814,14 @@ paths:
                     type: "number"
                   guided_tour_price:
                     type: "number"
+                  adult_access:
+                    type: "boolean"
+                  adult_access_amount:
+                    type: "number"
+                  adult_access_label:
+                    type:
+                      - string
+                    nullable: true
                   total_amount:
                     type: "number"
                   status:
@@ -4794,6 +4852,8 @@ paths:
                 ticket_price: 123
                 donation_amount: 123
                 guided_tour_price: 123
+                adult_access: true
+                adult_access_amount: 123
                 total_amount: 123
                 status: "exemple_status"
                 created_at: "exemple_created_at"
@@ -4801,6 +4861,18 @@ paths:
           headers: null
         400:
           description: "Code 400 - qu'un ticket existe avec used_at déjà défini, que je fournis qr_code, je reçois une réponse 400, la réponse indique que le ticket est déjà utilisé"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example:
+                error: "exemple_error"
+          headers: null
+        403:
+          description: "Code 403 - qu'un ticket payé n'a pas souscrit l'option d'accès réservée aux majeurs, je reçois une réponse 403, la réponse indique que le billet ne donne pas accès à la zone"
           content:
             application/json:
               schema:
@@ -4857,11 +4929,68 @@ paths:
                   description: "entry consomme le billet ; adult_zone vérifie uniquement l’option majeure"
       security:
         - cookieAuth:
+  /museum/tickets/adult-access-option:
+    get:
+      tags:
+        - Musée - Tickets
+      summary: "Expose l’état, le libellé et le montant de l’option d’accès réservée aux majeurs pour le checkout public."
+      description: "**Consulter le tarif paramétré de l’option majeure** : je reçois enabled, amount et label sans authentification
+
+### Scénarios de test
+
+**Consulter le tarif paramétré de l’option majeure**
+
+📋 que l’option d’accès réservée aux majeurs est configurée
+
+⚡ je fais une requête GET vers \"/museum/tickets/adult-access-option\"
+
+✅ je reçois enabled, amount et label sans authentification
+
+"
+      operationId: "get_museum_tickets_adult-access-option"
+      parameters:
+      responses:
+        200:
+          description: "Succès"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - enabled
+                  - amount
+                  - label
+                properties:
+                  enabled:
+                    type: "boolean"
+                    description: "Indique si l’option d’accès réservée aux majeurs peut être souscrite"
+                  amount:
+                    type: "number"
+                    minimum: 0
+                    description: "Montant paramétré de l’option, en euros"
+                  label:
+                    type: "string"
+                    description: "Libellé affichable de l’option"
+              example: null
+          headers: null
+        500:
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+              example: null
+          headers: null
+      security:
+        - cookieAuth:
   /museum/tickets/payment:
     post:
       tags:
         - Musée - Tickets
-      summary: "Crée plusieurs tickets avec paiement. Crée d'abord un checkout avec le montant total (somme de tous les ticket_price + donation_amount), puis enregistre tous les tickets avec le checkout_id et le statut pending (route publique)"
+      summary: "Crée plusieurs tickets avec paiement. Le montant inclut le tarif, le don et, lorsque souscrite, l’option d’accès réservée aux majeurs paramétrée par le musée. Enregistre ensuite tous les tickets avec le checkout_id et le statut pending (route publique)."
       description: "**Créer plusieurs tickets avec paiement** : que je peux définir adult_access pour chaque billet que je fournis tickets, success_url, cancel_url je reçois une réponse 201 la réponse contient un checkout_session_id la réponse contient les tickets créés
 
 **Accès public pour créer des tickets avec paiement** : je peux créer des tickets avec paiement
@@ -4929,6 +5058,26 @@ paths:
                     format: "uri"
                     description: "URL de redirection vers la page de paiement (null si la commande est gratuite)"
                     nullable: true
+                  adult_access:
+                    type: "object"
+                    required:
+                      - count
+                      - amount
+                      - total_amount
+                      - label
+                    description: "Récapitulatif de l’option majeure appliquée à la commande"
+                    properties:
+                      count:
+                        type: "integer"
+                        minimum: 0
+                      amount:
+                        type: "number"
+                        minimum: 0
+                      total_amount:
+                        type: "number"
+                        minimum: 0
+                      label:
+                        type: "string"
                   tickets:
                     type: "array"
                     items:
@@ -4970,6 +5119,16 @@ paths:
                           type: "number"
                         donation_amount:
                           type: "number"
+                        guided_tour_price:
+                          type: "number"
+                        adult_access:
+                          type: "boolean"
+                        adult_access_amount:
+                          type: "number"
+                        adult_access_label:
+                          type:
+                            - string
+                          nullable: true
                         total_amount:
                           type: "number"
                         status:
@@ -4993,6 +5152,7 @@ paths:
                     description: "Liste des tickets créés"
                 required:
                   - tickets
+                  - adult_access
               example:
           headers: null
         400:
@@ -5272,6 +5432,16 @@ paths:
                       type: "number"
                     donation_amount:
                       type: "number"
+                    guided_tour_price:
+                      type: "number"
+                    adult_access:
+                      type: "boolean"
+                    adult_access_amount:
+                      type: "number"
+                    adult_access_label:
+                      type:
+                        - string
+                      nullable: true
                     total_amount:
                       type: "number"
                     status:
