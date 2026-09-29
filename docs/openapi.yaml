@@ -3925,7 +3925,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2026-09-29T14:24:52.268Z"
+                      default: "2026-09-29T14:26:05.282Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -4709,6 +4709,12 @@ paths:
 
 **Refuser la zone réservée aux majeurs sans option** : qu'un ticket payé n'a pas souscrit l'option d'accès réservée aux majeurs je reçois une réponse 403 la réponse indique que le billet ne donne pas accès à la zone
 
+**Contrôler une zone majeure après le scan d’entrée** : qu’un ticket utilisé a souscrit l’option d’accès réservée aux majeurs je reçois une réponse 200 le ticket reste utilisé sans être modifié par ce contrôle
+
+**Conserver le scan d’entrée général pour un billet avec option** : qu’un ticket payé a souscrit l’option d’accès réservée aux majeurs je reçois une réponse 200 le ticket est marqué comme utilisé
+
+**Refuser le contrôle de zone sans le scope de médiation** : je reçois une réponse 403
+
 ### Scénarios de test
 
 **Valider un ticket à l'entrée (scan QR)**
@@ -4764,6 +4770,38 @@ paths:
 ✅ je reçois une réponse 403
 
 ✅ la réponse indique que le billet ne donne pas accès à la zone
+
+**Contrôler une zone majeure après le scan d’entrée**
+
+📋 que je suis authentifié avec le scope museum_mediateur
+
+✅ qu’un ticket utilisé a souscrit l’option d’accès réservée aux majeurs
+
+⚡ je fais une requête POST vers \"/museum/tickets/validate\" avec mode=\"adult_zone\"
+
+✅ je reçois une réponse 200
+
+✅ le ticket reste utilisé sans être modifié par ce contrôle
+
+**Conserver le scan d’entrée général pour un billet avec option**
+
+📋 que je suis authentifié avec le scope museum_mediateur
+
+✅ qu’un ticket payé a souscrit l’option d’accès réservée aux majeurs
+
+⚡ je fais une requête POST vers \"/museum/tickets/validate\" sans préciser mode
+
+✅ je reçois une réponse 200
+
+✅ le ticket est marqué comme utilisé
+
+**Refuser le contrôle de zone sans le scope de médiation**
+
+📋 que je suis authentifié sans le scope museum_mediateur
+
+⚡ je fais une requête POST vers \"/museum/tickets/validate\" avec mode=\"adult_zone\"
+
+✅ je reçois une réponse 403
 
 "
       operationId: "post_museum_tickets_validate"

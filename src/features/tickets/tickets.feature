@@ -160,6 +160,25 @@ Feature: Gestion des tickets du musée
     Alors je reçois une réponse 403
     Et la réponse indique que le billet ne donne pas accès à la zone
 
+  Scenario: Contrôler une zone majeure après le scan d’entrée
+    Étant donné que je suis authentifié avec le scope museum_mediateur
+    Et qu’un ticket utilisé a souscrit l’option d’accès réservée aux majeurs
+    Quand je fais une requête POST vers "/museum/tickets/validate" avec mode="adult_zone"
+    Alors je reçois une réponse 200
+    Et le ticket reste utilisé sans être modifié par ce contrôle
+
+  Scenario: Conserver le scan d’entrée général pour un billet avec option
+    Étant donné que je suis authentifié avec le scope museum_mediateur
+    Et qu’un ticket payé a souscrit l’option d’accès réservée aux majeurs
+    Quand je fais une requête POST vers "/museum/tickets/validate" sans préciser mode
+    Alors je reçois une réponse 200
+    Et le ticket est marqué comme utilisé
+
+  Scenario: Refuser le contrôle de zone sans le scope de médiation
+    Étant donné que je suis authentifié sans le scope museum_mediateur
+    Quand je fais une requête POST vers "/museum/tickets/validate" avec mode="adult_zone"
+    Alors je reçois une réponse 403
+
   Scenario: Refuser une option majeure désactivée au checkout
     Étant donné que adult_access_option.enabled vaut false dans la configuration du musée
     Quand je fais une requête POST vers "/museum/tickets/payment" avec adult_access=true
