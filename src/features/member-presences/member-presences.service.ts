@@ -9,17 +9,17 @@ import type {
 import { getPublicSchedules } from '../schedules/schedules.service.ts';
 import { isHolidayPeriod } from '../special-periods/special-periods.service.ts';
 
-async function getUserIdFromDiscordId(
+async function getUserIdFromIdentity(
   app: FastifyInstance,
-  discordId: string
+  subject: string
 ): Promise<string | null> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
 
   const result = await app.pg.query<{ id: string }>(
-    `SELECT id FROM users WHERE discord_id = $1`,
-    [discordId]
+    `SELECT id FROM users WHERE zitadel_subject = $1 OR discord_id = $1`,
+    [subject]
   );
 
   return result.rows[0]?.id ?? null;
@@ -27,14 +27,14 @@ async function getUserIdFromDiscordId(
 
 export async function upsertPresence(
   app: FastifyInstance,
-  discordId: string,
+  subject: string,
   data: UpsertPresenceBody
 ): Promise<MemberPresence> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
 
-  const userId = await getUserIdFromDiscordId(app, discordId);
+  const userId = await getUserIdFromIdentity(app, subject);
   if (!userId) {
     throw new Error('Utilisateur non trouvé');
   }
@@ -72,14 +72,14 @@ export async function upsertPresence(
 
 export async function getPresencesForMember(
   app: FastifyInstance,
-  discordId: string,
+  subject: string,
   query: GetPresencesQuery
 ): Promise<PresencesResponse> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
 
-  const userId = await getUserIdFromDiscordId(app, discordId);
+  const userId = await getUserIdFromIdentity(app, subject);
   if (!userId) {
     throw new Error('Utilisateur non trouvé');
   }
@@ -326,14 +326,14 @@ export async function refusePresence(
 export async function deletePresence(
   app: FastifyInstance,
   presenceId: string,
-  discordId: string,
+  subject: string,
   isAdmin: boolean
 ): Promise<boolean> {
   if (!app.pg) {
     throw new Error('Base de données non disponible');
   }
 
-  const userId = await getUserIdFromDiscordId(app, discordId);
+  const userId = await getUserIdFromIdentity(app, subject);
   if (!userId) {
     throw new Error('Utilisateur non trouvé');
   }
@@ -360,4 +360,3 @@ export async function deletePresence(
 
   return result.rowCount !== null && result.rowCount > 0;
 }
-

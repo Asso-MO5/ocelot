@@ -25,8 +25,8 @@ Feature: Gestion des présences des membres
     Alors je devrais recevoir une erreur 400
     Et le message d'erreur devrait indiquer "Date invalide"
 
-  Scenario: Erreur si l'utilisateur n'existe pas
-    Étant donné que mon discord_id n'existe pas dans la base de données
+  Scenario: Erreur si mon identité n'existe pas
+    Étant donné que mon identité n'existe pas dans la base de données
     Quand je fais une requête POST vers "/museum/member-presences"
     Alors je devrais recevoir une erreur 400
     Et le message d'erreur devrait indiquer "Utilisateur non trouvé"

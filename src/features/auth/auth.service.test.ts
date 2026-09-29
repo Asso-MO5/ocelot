@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test, describe, beforeEach } from 'node:test';
 import type { FastifyInstance } from 'fastify';
-import { saveUserIfNotExists } from './auth.service.ts';
+import { saveUserIfNotExists, saveZitadelUserIfNotExists } from './auth.service.ts';
 
 interface MockWithTracking {
   (...args: any[]): any;
@@ -83,6 +83,19 @@ describe('Auth Service', () => {
       assert.deepEqual(secondInsertQueryCall[1], ['123456789', 'updateduser']);
     });
 
+    test('devrait enregistrer une identité Zitadel dans sa colonne dédiée', async () => {
+      const app = createMockApp(true);
+
+      await saveZitadelUserIfNotExists(app, 'zitadel-subject', 'testuser');
+
+      const insertQueryCall = (app.pg.query as MockWithTracking).mock.calls[0];
+      assert.ok(insertQueryCall[0].includes('INSERT INTO users (zitadel_subject, name)'));
+      assert.deepEqual(insertQueryCall[1], ['zitadel-subject', 'testuser']);
+      const selectQueryCall = (app.pg.query as MockWithTracking).mock.calls[1];
+      assert.ok(selectQueryCall[0].includes('WHERE zitadel_subject = $1'));
+      assert.deepEqual(selectQueryCall[1], ['zitadel-subject']);
+    });
+
     test('devrait logger une erreur si la requête échoue', async () => {
       const error = new Error('Database error');
       const app: any = {
@@ -105,9 +118,9 @@ describe('Auth Service', () => {
       assert.equal((app.log.error as MockWithTracking).mock.callCount(), 2);
       const firstErrorCall = (app.log.error as MockWithTracking).mock.calls[0];
       assert.equal(firstErrorCall[0].err, error);
-      assert.equal(firstErrorCall[0].discordId, '123456789');
+      assert.equal(firstErrorCall[0].provider, 'discord');
+      assert.equal(firstErrorCall[0].subject, '123456789');
       assert.equal(firstErrorCall[0].name, 'testuser');
     });
   });
 });
-
