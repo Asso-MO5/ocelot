@@ -21,8 +21,7 @@ import {
   deletePriceSchema,
   reorderPricesSchema,
 } from './prices.schemas.ts';
-import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
-import { roles } from '../auth/auth.const.ts';
+import { authenticateHook, requireMuseumPermission } from '../auth/auth.middleware.ts';
 
 export async function createPriceHandler(
   req: FastifyRequest<{ Body: CreatePriceBody }>,
@@ -174,7 +173,7 @@ export function registerPricesRoutes(app: FastifyInstance) {
       schema: createPriceSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => createPriceHandler(req, reply, app)
@@ -186,7 +185,7 @@ export function registerPricesRoutes(app: FastifyInstance) {
       schema: updatePriceSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => updatePriceHandler(req, reply, app)
@@ -198,7 +197,7 @@ export function registerPricesRoutes(app: FastifyInstance) {
       schema: deletePriceSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => deletePriceHandler(req, reply, app)
@@ -210,10 +209,9 @@ export function registerPricesRoutes(app: FastifyInstance) {
       schema: reorderPricesSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => reorderPricesHandler(req, reply, app)
   );
 }
-

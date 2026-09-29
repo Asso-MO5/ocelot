@@ -19,8 +19,7 @@ import {
   getMaxCapacitySchema,
   setMaxCapacitySchema,
 } from './settings.schemas.ts';
-import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
-import { roles } from '../auth/auth.const.ts';
+import { authenticateHook, requireMuseumPermission } from '../auth/auth.middleware.ts';
 import { sendToRoom } from '../websocket/websocket.manager.ts';
 
 export async function upsertSettingHandler(
@@ -138,6 +137,7 @@ export function registerSettingsRoutes(app: FastifyInstance) {
     '/museum/settings',
     {
       schema: getSettingsSchema,
+      preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     },
     async (req, reply) => getSettingsHandler(req, reply, app)
   );
@@ -146,6 +146,7 @@ export function registerSettingsRoutes(app: FastifyInstance) {
     '/museum/settings/:key',
     {
       schema: getSettingByKeySchema,
+      preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     },
     async (req, reply) => getSettingByKeyHandler(req, reply, app)
   );
@@ -154,6 +155,7 @@ export function registerSettingsRoutes(app: FastifyInstance) {
     '/museum/capacity/max',
     {
       schema: getMaxCapacitySchema,
+      preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     },
     async (_req, reply) => getMaxCapacityHandler(_req, reply, app)
   );
@@ -164,7 +166,7 @@ export function registerSettingsRoutes(app: FastifyInstance) {
       schema: upsertSettingSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => upsertSettingHandler(req, reply, app)
@@ -176,7 +178,7 @@ export function registerSettingsRoutes(app: FastifyInstance) {
       schema: upsertSettingSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => upsertSettingHandler(req, reply, app)
@@ -188,7 +190,7 @@ export function registerSettingsRoutes(app: FastifyInstance) {
       schema: deleteSettingSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => deleteSettingHandler(req, reply, app)
@@ -200,10 +202,9 @@ export function registerSettingsRoutes(app: FastifyInstance) {
       schema: setMaxCapacitySchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => setMaxCapacityHandler(req, reply, app)
   );
 }
-

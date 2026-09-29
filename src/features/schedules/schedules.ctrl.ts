@@ -24,8 +24,7 @@ import {
   deleteScheduleSchema,
   reorderSchedulesSchema,
 } from './schedules.schemas.ts';
-import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
-import { roles } from '../auth/auth.const.ts';
+import { authenticateHook, requireMuseumPermission } from '../auth/auth.middleware.ts';
 
 export async function upsertScheduleHandler(
   req: FastifyRequest<{ Body: CreateScheduleBody }>,
@@ -169,7 +168,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
     '/museum/schedules',
     {
       schema: getSchedulesSchema,
-      preHandler: [authenticateHook(app)],
+      preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     },
     async (req, reply) => getSchedulesHandler(req, reply, app)
   );
@@ -178,6 +177,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
     '/museum/schedules/:id',
     {
       schema: getScheduleByIdSchema,
+      preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     },
     async (req, reply) => getScheduleByIdHandler(req, reply, app)
   );
@@ -188,7 +188,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       schema: createScheduleSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => upsertScheduleHandler(req, reply, app)
@@ -200,7 +200,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       schema: updateScheduleSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => updateScheduleHandler(req, reply, app)
@@ -212,7 +212,7 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       schema: deleteScheduleSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => deleteScheduleHandler(req, reply, app)
@@ -224,10 +224,9 @@ export function registerSchedulesRoutes(app: FastifyInstance) {
       schema: reorderSchedulesSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('configuration'),
       ],
     },
     async (req, reply) => reorderSchedulesHandler(req, reply, app)
   );
 }
-

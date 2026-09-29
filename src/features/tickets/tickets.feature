@@ -8,7 +8,7 @@ Feature: Gestion des tickets du musée
     Et que le serveur est démarré
 
   Scenario: Créer un ticket
-    Étant donné que je suis authentifié avec un rôle bureau ou dev
+    Étant donné que je suis authentifié avec la permission ticket_manage
     Quand je fais une requête POST vers "/museum/tickets"
     Et que je fournis email, reservation_date, slot_start_time, slot_end_time, ticket_price
     Alors je reçois une réponse 201
@@ -24,27 +24,29 @@ Feature: Gestion des tickets du musée
     Et la réponse contient les tickets créés
 
   Scenario: Récupérer les tickets avec filtres
-    Étant donné que des tickets existent
+    Étant donné que je suis authentifié avec la permission ticket_manage
+    Et que des tickets existent
     Quand je fais une requête GET vers "/museum/tickets?status=paid&page=1&limit=10"
     Alors je reçois une réponse 200
     Et la réponse contient un tableau tickets
     Et la réponse contient total, page, limit, totalPages
 
   Scenario: Récupérer un ticket par ID
-    Étant donné que je suis authentifié
+    Étant donné que je suis authentifié avec la permission ticket_manage
     Et qu'un ticket existe avec un ID spécifique
     Quand je fais une requête GET vers "/museum/tickets/:id"
     Alors je reçois une réponse 200
     Et la réponse contient le ticket avec l'ID demandé
 
   Scenario: Récupérer un ticket par code QR
-    Étant donné qu'un ticket existe avec un code QR spécifique
+    Étant donné que je suis authentifié avec la permission ticket_scan
+    Et qu'un ticket existe avec un code QR spécifique
     Quand je fais une requête GET vers "/museum/tickets/qr/:qrCode"
     Alors je reçois une réponse 200
     Et la réponse contient le ticket avec le code QR demandé
 
   Scenario: Valider un ticket à l'entrée (scan QR)
-    Étant donné que je suis authentifié avec un rôle bureau, dev, museum ou museum_ticket_scan
+    Étant donné que je suis authentifié avec la permission ticket_scan
     Et qu'un ticket existe avec status='paid' et used_at=null
     Quand je fais une requête POST vers "/museum/tickets/validate"
     Et que je fournis qr_code
@@ -53,7 +55,7 @@ Feature: Gestion des tickets du musée
     Et le ticket est marqué comme utilisé (used_at est défini)
 
   Scenario: Erreur si le ticket est déjà utilisé à l'entrée
-    Étant donné que je suis authentifié avec un rôle bureau, dev, museum ou museum_ticket_scan
+    Étant donné que je suis authentifié avec la permission ticket_scan
     Et qu'un ticket existe avec used_at déjà défini
     Quand je fais une requête POST vers "/museum/tickets/validate"
     Et que je fournis qr_code
@@ -61,7 +63,7 @@ Feature: Gestion des tickets du musée
     Et la réponse indique que le ticket est déjà utilisé
 
   Scenario: Mettre à jour un ticket
-    Étant donné que je suis authentifié avec un rôle bureau, dev ou museum
+    Étant donné que je suis authentifié avec la permission ticket_manage
     Et qu'un ticket existe
     Quand je fais une requête PUT vers "/museum/tickets/:id"
     Et que je fournis de nouvelles valeurs
@@ -69,14 +71,14 @@ Feature: Gestion des tickets du musée
     Et la réponse contient le ticket mis à jour
 
   Scenario: Supprimer un ticket
-    Étant donné que je suis authentifié avec un rôle bureau, dev ou museum
+    Étant donné que je suis authentifié avec la permission ticket_manage
     Et qu'un ticket existe
     Quand je fais une requête DELETE vers "/museum/tickets/:id"
     Alors je reçois une réponse 204
     Et le ticket est supprimé de la base de données
 
   Scenario: Récupérer les statistiques des tickets
-    Étant donné que je suis authentifié avec un rôle bureau ou dev
+    Étant donné que je suis authentifié avec la permission ticket_manage
     Et que des tickets existent
     Quand je fais une requête GET vers "/museum/tickets/stats"
     Alors je reçois une réponse 200
@@ -84,20 +86,21 @@ Feature: Gestion des tickets du musée
     Et la réponse contient average_ticket_price, hourly_stats, grouped_reservations
 
   Scenario: Récupérer les statistiques des créneaux de la semaine
-    Étant donné que je suis authentifié avec un rôle bureau ou dev
+    Étant donné que je suis authentifié avec la permission ticket_manage
     Quand je fais une requête GET vers "/museum/tickets/weekly-slots-stats"
     Alors je reçois une réponse 200
     Et la réponse contient week_start, week_end, slots_stats, daily_totals
 
   Scenario: Récupérer les tickets par checkout_id
-    Étant donné qu'un checkout_id existe
+    Étant donné que je suis authentifié avec la permission ticket_manage
+    Et qu'un checkout_id existe
     Et que des tickets sont associés à ce checkout_id
     Quand je fais une requête GET vers "/museum/tickets/checkout/:checkoutId"
     Alors je reçois une réponse 200
     Et la réponse contient un tableau de tickets associés au checkout_id
 
   Scenario: Renvoyer les tickets d'une commande par email
-    Étant donné que je suis authentifié avec un rôle bureau ou dev
+    Étant donné que je suis authentifié avec la permission ticket_manage
     Et qu'un checkout_id existe avec des tickets associés
     Quand je fais une requête POST vers "/museum/tickets/checkout/:checkoutId/resend"
     Alors je reçois une réponse 200
@@ -106,14 +109,14 @@ Feature: Gestion des tickets du musée
     Et les emails de confirmation sont envoyés pour tous les tickets
 
   Scenario: Erreur si aucun ticket trouvé pour le renvoi
-    Étant donné que je suis authentifié avec un rôle bureau ou dev
+    Étant donné que je suis authentifié avec la permission ticket_manage
     Et qu'aucun ticket n'existe pour ce checkout_id
     Quand je fais une requête POST vers "/museum/tickets/checkout/:checkoutId/resend"
     Alors je reçois une réponse 404
     Et la réponse contient un message d'erreur "Aucun ticket trouvé pour ce checkout"
 
   Scenario: Accès non autorisé pour renvoyer des tickets sans les rôles requis
-    Étant donné que je suis authentifié mais sans les rôles bureau ou dev
+    Étant donné que je suis authentifié sans la permission ticket_manage
     Quand je fais une requête POST vers "/museum/tickets/checkout/:checkoutId/resend"
     Alors je reçois une réponse 403
     Et la réponse contient un message d'erreur "Accès refusé : rôle insuffisant"
@@ -133,7 +136,7 @@ Feature: Gestion des tickets du musée
     Et la réponse contient un message d'erreur "Ticket non trouvé"
 
   Scenario: Accès non autorisé pour créer un ticket sans les rôles requis
-    Étant donné que je suis authentifié mais sans les rôles bureau ou dev
+    Étant donné que je suis authentifié sans la permission ticket_manage
     Quand je fais une requête POST vers "/museum/tickets"
     Alors je reçois une réponse 403
     Et la réponse contient un message d'erreur "Accès refusé : rôle insuffisant"

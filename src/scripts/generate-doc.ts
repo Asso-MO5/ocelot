@@ -503,14 +503,14 @@ async function generateOpenAPIDoc(): Promise<void> {
       method: 'GET',
       path: '/museum/tickets/qr/:qrCode',
       schema: getTicketByIdSchema,
-      description: 'Récupère un ticket par son code QR (route publique)',
+      description: 'Récupère un ticket par son code QR. Réservé à la permission ticket_scan.',
       tag: 'Musée - Tickets',
     },
     {
       method: 'POST',
       path: '/museum/tickets/validate',
       schema: validateTicketSchema,
-      description: 'Valide/utilise un ticket en scannant son code QR (route publique)',
+      description: 'Valide/utilise un ticket en scannant son code QR. Réservé à la permission ticket_scan.',
       tag: 'Musée - Tickets',
     },
     {
@@ -524,14 +524,14 @@ async function generateOpenAPIDoc(): Promise<void> {
       method: 'GET',
       path: '/museum/tickets/checkout/:checkoutId',
       schema: getTicketsByCheckoutIdSchema,
-      description: 'Récupère tous les tickets associés à un checkout_id donné (route publique)',
+      description: 'Récupère tous les tickets associés à un checkout_id donné. Réservé à la permission ticket_manage.',
       tag: 'Musée - Tickets',
     },
     {
       method: 'GET',
       path: '/museum/tickets/stats',
       schema: getTicketsStatsSchema,
-      description: 'Récupère les statistiques complètes des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, total des dons, coût moyen, statistiques par horaire (pour identifier les horaires à forte influence), statistiques sur les réservations groupées (même checkout_reference), revenus totaux, taux de conversion et répartition par statut. Réservé aux rôles bureau et dev.',
+      description: 'Récupère les statistiques complètes des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, total des dons, coût moyen, statistiques par horaire (pour identifier les horaires à forte influence), statistiques sur les réservations groupées (même checkout_reference), revenus totaux, taux de conversion et répartition par statut. Réservé à la permission ticket_manage.',
       tag: 'Musée - Tickets',
     },
     {
@@ -960,8 +960,8 @@ async function generateOpenAPIDoc(): Promise<void> {
       cookieAuth: {
         type: 'apiKey',
         in: 'cookie',
-        name: 'discord_access_token',
-        description: 'Token d\'accès Discord stocké dans un cookie HTTP-only',
+        name: 'zitadel_access_token',
+        description: 'Jeton d\'accès Zitadel stocké dans un cookie HTTP-only',
       },
     },
   };
@@ -970,28 +970,32 @@ async function generateOpenAPIDoc(): Promise<void> {
   const protectedPaths = [
     '/auth/me',
     '/auth/session',
-    '/museum/settings', // POST, PUT, DELETE
-    '/museum/settings/:key', // DELETE
-    '/museum/capacity/max', // POST
-    '/museum/capacity/validated-tickets', // GET (dev, bureau, museum)
-    '/museum/schedules', // GET (membres), POST
-    '/museum/schedules/:id', // PUT, DELETE
-    '/museum/schedules/reorder', // POST
-    '/museum/prices', // POST
-    '/museum/prices/:id', // PUT, DELETE
-    '/museum/prices/reorder', // POST
-    '/museum/tickets', // POST
-    '/museum/tickets/:id', // PUT, DELETE
-    '/museum/tickets/validate', // POST (dev, bureau, museum)
-    '/museum/donation-proof/generate', // GET (dev, bureau, museum)
-    '/museum/gift-codes/packs', // POST (dev, bureau), GET (dev, bureau, museum)
-    '/museum/gift-codes/distribute', // POST (dev, bureau)
-    '/museum/gift-codes', // GET (dev, bureau, museum)
-    '/museum/special-periods', // POST, GET (dev, bureau, museum)
-    '/museum/special-periods/:id', // GET, PUT, DELETE (dev, bureau, museum)
+    '/museum/settings',
+    '/museum/settings/:key',
+    '/museum/capacity/max',
+    '/museum/capacity/validated-tickets',
+    '/museum/schedules',
+    '/museum/schedules/:id',
+    '/museum/schedules/reorder',
+    '/museum/prices',
+    '/museum/prices/:id',
+    '/museum/prices/reorder',
+    '/museum/tickets',
+    '/museum/tickets/:id',
+    '/museum/tickets/qr/:qrCode',
+    '/museum/tickets/validate',
+    '/museum/tickets/checkout/:checkoutId',
+    '/museum/tickets/stats',
+    '/museum/tickets/weekly-slots-stats',
+    '/museum/donation-proof/generate',
+    '/museum/gift-codes/packs',
+    '/museum/gift-codes/distribute',
+    '/museum/gift-codes',
+    '/museum/special-periods',
+    '/museum/special-periods/:id',
     '/events', // POST, GET
     '/events/:id', // GET, PUT, DELETE
-    '/museum/calendar', // GET (route publique)
+    '/museum/calendar',
   ];
 
   for (const path in openApiDoc.paths) {
@@ -1017,7 +1021,6 @@ async function generateOpenAPIDoc(): Promise<void> {
           path === '/museum/tickets/payment' ||
           path === '/pay/webhook' ||
           path.startsWith('/pay/checkout/') ||
-          path.startsWith('/museum/tickets/checkout/') ||
           path.startsWith('/museum/gift-codes/validate/') ||
           path === '/museum/gift-codes/purchase' ||
           path === '/museum/gift-codes/purchase/confirm';
@@ -1244,4 +1247,3 @@ generateOpenAPIDoc().catch(err => {
   console.error('❌ Erreur lors de la génération de la documentation:', err);
   process.exit(1);
 });
-

@@ -16,8 +16,7 @@ import {
   refusePresenceSchema,
   deletePresenceSchema,
 } from './member-presences.schemas.ts';
-import { authenticateHook, requireAnyRole, hasAnyRole } from '../auth/auth.middleware.ts';
-import { roles } from '../auth/auth.const.ts';
+import { authenticateHook, hasMuseumPermission, requireMuseumPermission } from '../auth/auth.middleware.ts';
 
 export async function upsertPresenceHandler(
   req: FastifyRequest<{ Body: UpsertPresenceBody }>,
@@ -50,15 +49,13 @@ export async function getPresencesHandler(
       return reply.code(401).send({ error: 'Non authentifié' });
     }
 
-    const isAdmin = hasAnyRole(req.user, [roles.bureau, roles.dev]);
+    const isAdmin = hasMuseumPermission(req.user, 'member_presence_manage');
 
     let presences;
     if (isAdmin) {
       presences = await getAllPresences(app, req.query);
     } else {
-      presences = await getAllPresences(app, req.query);
-      //WARNING: pour le moment, les membres sont autorisés à voir comme les admins
-      //presences = await getPresencesForMember(app, req.user.id, req.query);
+      presences = await getPresencesForMember(app, req.user.id, req.query);
     }
 
     return reply.send(presences);
@@ -100,7 +97,7 @@ export async function deletePresenceHandler(
       return reply.code(401).send({ error: 'Non authentifié' });
     }
 
-    const isAdmin = hasAnyRole(req.user, [roles.bureau, roles.dev]);
+    const isAdmin = hasMuseumPermission(req.user, 'member_presence_manage');
     const success = await deletePresence(app, req.params.id, req.user.id, isAdmin);
 
     if (!success) {
@@ -136,7 +133,7 @@ export function registerMemberPresencesRoutes(app: FastifyInstance) {
     schema: refusePresenceSchema,
     preHandler: [
       authenticateHook(app),
-      requireAnyRole([roles.bureau, roles.dev]),
+      requireMuseumPermission('member_presence_manage'),
     ],
     handler: (req, reply) => refusePresenceHandler(req, reply, app),
   });
@@ -147,4 +144,3 @@ export function registerMemberPresencesRoutes(app: FastifyInstance) {
     handler: (req, reply) => deletePresenceHandler(req, reply, app),
   });
 }
-

@@ -3657,7 +3657,7 @@ paths:
 
 **Créer un ticket**
 
-📋 que je suis authentifié avec un rôle bureau ou dev
+📋 que je suis authentifié avec la permission ticket_manage
 
 ⚡ je fais une requête POST vers \"/museum/tickets\"
 
@@ -3669,7 +3669,7 @@ paths:
 
 **Accès non autorisé pour créer un ticket sans les rôles requis**
 
-📋 que je suis authentifié mais sans les rôles bureau ou dev
+📋 que je suis authentifié sans la permission ticket_manage
 
 ⚡ je fais une requête POST vers \"/museum/tickets\"
 
@@ -3915,7 +3915,7 @@ paths:
                     applied_at:
                       type: "string"
                       format: "date-time"
-                      default: "2026-09-29T13:35:47.712Z"
+                      default: "2026-09-29T13:46:50.561Z"
                       description: "Date d'application du tarif (format ISO). Générée automatiquement si non fournie."
                   required:
                     - price_amount
@@ -4085,7 +4085,7 @@ paths:
 
 **Récupérer un ticket par ID**
 
-📋 que je suis authentifié
+📋 que je suis authentifié avec la permission ticket_manage
 
 ✅ qu'un ticket existe avec un ID spécifique
 
@@ -4221,7 +4221,7 @@ paths:
 
 **Mettre à jour un ticket**
 
-📋 que je suis authentifié avec un rôle bureau, dev ou museum
+📋 que je suis authentifié avec la permission ticket_manage
 
 ✅ qu'un ticket existe
 
@@ -4455,7 +4455,7 @@ paths:
 
 **Supprimer un ticket**
 
-📋 que je suis authentifié avec un rôle bureau, dev ou museum
+📋 que je suis authentifié avec la permission ticket_manage
 
 ✅ qu'un ticket existe
 
@@ -4513,14 +4513,16 @@ paths:
     get:
       tags:
         - Musée - Tickets
-      summary: "Récupère un ticket par son code QR (route publique)"
-      description: "**Récupérer un ticket par code QR** : je reçois une réponse 200 la réponse contient le ticket avec le code QR demandé
+      summary: "Récupère un ticket par son code QR. Réservé à la permission ticket_scan."
+      description: "**Récupérer un ticket par code QR** : qu'un ticket existe avec un code QR spécifique je reçois une réponse 200 la réponse contient le ticket avec le code QR demandé
 
 ### Scénarios de test
 
 **Récupérer un ticket par code QR**
 
-📋 qu'un ticket existe avec un code QR spécifique
+📋 que je suis authentifié avec la permission ticket_scan
+
+✅ qu'un ticket existe avec un code QR spécifique
 
 ⚡ je fais une requête GET vers \"/museum/tickets/qr/:qrCode\"
 
@@ -4541,7 +4543,7 @@ paths:
             description: "ID du ticket"
       responses:
         200:
-          description: "Succès - je reçois une réponse 200, la réponse contient le ticket avec le code QR demandé"
+          description: "Succès - qu'un ticket existe avec un code QR spécifique, je reçois une réponse 200, la réponse contient le ticket avec le code QR demandé"
           content:
             application/json:
               schema:
@@ -4642,11 +4644,13 @@ paths:
                     type: "string"
               example: null
           headers: null
+      security:
+        - cookieAuth:
   /museum/tickets/validate:
     post:
       tags:
         - Musée - Tickets
-      summary: "Valide/utilise un ticket en scannant son code QR (route publique)"
+      summary: "Valide/utilise un ticket en scannant son code QR. Réservé à la permission ticket_scan."
       description: "**Valider un ticket à l'entrée (scan QR)** : qu'un ticket existe avec status='paid' et used_at=null que je fournis qr_code je reçois une réponse 200 la réponse indique que le ticket est valide le ticket est marqué comme utilisé (used_at est défini)
 
 **Erreur si le ticket est déjà utilisé à l'entrée** : qu'un ticket existe avec used_at déjà défini que je fournis qr_code je reçois une réponse 400 la réponse indique que le ticket est déjà utilisé
@@ -4659,7 +4663,7 @@ paths:
 
 **Valider un ticket à l'entrée (scan QR)**
 
-📋 que je suis authentifié avec un rôle bureau, dev, museum ou museum_ticket_scan
+📋 que je suis authentifié avec la permission ticket_scan
 
 ✅ qu'un ticket existe avec status='paid' et used_at=null
 
@@ -4675,7 +4679,7 @@ paths:
 
 **Erreur si le ticket est déjà utilisé à l'entrée**
 
-📋 que je suis authentifié avec un rôle bureau, dev, museum ou museum_ticket_scan
+📋 que je suis authentifié avec la permission ticket_scan
 
 ✅ qu'un ticket existe avec used_at déjà défini
 
@@ -5193,14 +5197,16 @@ paths:
     get:
       tags:
         - Musée - Tickets
-      summary: "Récupère tous les tickets associés à un checkout_id donné (route publique)"
-      description: "**Récupérer les tickets par checkout_id** : que des tickets sont associés à ce checkout_id je reçois une réponse 200 la réponse contient un tableau de tickets associés au checkout_id
+      summary: "Récupère tous les tickets associés à un checkout_id donné. Réservé à la permission ticket_manage."
+      description: "**Récupérer les tickets par checkout_id** : qu'un checkout_id existe que des tickets sont associés à ce checkout_id je reçois une réponse 200 la réponse contient un tableau de tickets associés au checkout_id
 
 ### Scénarios de test
 
 **Récupérer les tickets par checkout_id**
 
-📋 qu'un checkout_id existe
+📋 que je suis authentifié avec la permission ticket_manage
+
+✅ qu'un checkout_id existe
 
 ✅ que des tickets sont associés à ce checkout_id
 
@@ -5222,7 +5228,7 @@ paths:
             description: "ID du checkout"
       responses:
         200:
-          description: "Succès - que des tickets sont associés à ce checkout_id, je reçois une réponse 200, la réponse contient un tableau de tickets associés au checkout_id"
+          description: "Succès - qu'un checkout_id existe, que des tickets sont associés à ce checkout_id, je reçois une réponse 200, la réponse contient un tableau de tickets associés au checkout_id"
           content:
             application/json:
               schema:
@@ -5299,18 +5305,20 @@ paths:
                     type: "string"
               example: null
           headers: null
+      security:
+        - cookieAuth:
   /museum/tickets/stats:
     get:
       tags:
         - Musée - Tickets
-      summary: "Récupère les statistiques complètes des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, total des dons, coût moyen, statistiques par horaire (pour identifier les horaires à forte influence), statistiques sur les réservations groupées (même checkout_reference), revenus totaux, taux de conversion et répartition par statut. Réservé aux rôles bureau et dev."
+      summary: "Récupère les statistiques complètes des tickets : nombre total vendus, nombre de la semaine avec répartition par jour, total des dons, coût moyen, statistiques par horaire (pour identifier les horaires à forte influence), statistiques sur les réservations groupées (même checkout_reference), revenus totaux, taux de conversion et répartition par statut. Réservé à la permission ticket_manage."
       description: "**Récupérer les statistiques des tickets** : que des tickets existent je reçois une réponse 200 la réponse contient total_tickets_sold, week_tickets_sold, total_donations la réponse contient average_ticket_price, hourly_stats, grouped_reservations
 
 ### Scénarios de test
 
 **Récupérer les statistiques des tickets**
 
-📋 que je suis authentifié avec un rôle bureau ou dev
+📋 que je suis authentifié avec la permission ticket_manage
 
 ✅ que des tickets existent
 
@@ -5516,7 +5524,7 @@ paths:
 
 **Récupérer les statistiques des créneaux de la semaine**
 
-📋 que je suis authentifié avec un rôle bureau ou dev
+📋 que je suis authentifié avec la permission ticket_manage
 
 ⚡ je fais une requête GET vers \"/museum/tickets/weekly-slots-stats\"
 
@@ -8903,5 +8911,5 @@ components:
     cookieAuth:
       type: "apiKey"
       in: "cookie"
-      name: "discord_access_token"
-      description: "Token d'accès Discord stocké dans un cookie HTTP-only"
+      name: "zitadel_access_token"
+      description: "Jeton d'accès Zitadel stocké dans un cookie HTTP-only"

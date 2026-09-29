@@ -21,6 +21,7 @@ import {
   deleteEventSchema,
   getCalendarSchema,
 } from './events.schemas.ts';
+import { authenticateHook, requireMuseumPermission } from '../auth/auth.middleware.ts';
 
 async function createEventHandler(
   req: FastifyRequest<{ Body: CreateEventBody }>,
@@ -143,32 +144,37 @@ async function getCalendarHandler(
 export function registerEventsRoutes(app: FastifyInstance) {
   app.post('/events', {
     schema: createEventSchema,
+    preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     handler: (req, reply) => createEventHandler(req, reply, app),
   });
 
   app.get('/events', {
     schema: getEventsSchema,
+    preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     handler: (req, reply) => getEventsHandler(req, reply, app),
   });
 
   app.get('/events/:id', {
     schema: getEventByIdSchema,
+    preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     handler: (req, reply) => getEventByIdHandler(req, reply, app),
   });
 
   app.put('/events/:id', {
     schema: updateEventSchema,
+    preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     handler: (req, reply) => updateEventHandler(req, reply, app),
   });
 
   app.delete('/events/:id', {
     schema: deleteEventSchema,
+    preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     handler: (req, reply) => deleteEventHandler(req, reply, app),
   });
 
   app.get('/museum/calendar', {
     schema: getCalendarSchema,
+    preHandler: [authenticateHook(app), requireMuseumPermission('configuration')],
     handler: (req, reply) => getCalendarHandler(req, reply, app),
   });
 }
-

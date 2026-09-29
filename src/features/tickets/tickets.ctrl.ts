@@ -34,8 +34,7 @@ import {
   getWeeklySlotsStatsSchema,
   resendTicketsByCheckoutIdSchema,
 } from './tickets.schemas.ts';
-import { authenticateHook, requireAnyRole } from '../auth/auth.middleware.ts';
-import { roles } from '../auth/auth.const.ts';
+import { authenticateHook, requireMuseumPermission } from '../auth/auth.middleware.ts';
 import { handleStructuredError } from './tickets.errors.ts';
 import { sendToRoom } from '../websocket/websocket.manager.ts';
 
@@ -437,6 +436,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     '/museum/tickets',
     {
       schema: getTicketsSchema,
+      preHandler: [authenticateHook(app), requireMuseumPermission('ticket_manage')],
     },
     async (req, reply) => getTicketsHandler(req, reply, app)
   );
@@ -464,6 +464,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
           500: getTicketByIdSchema.response[500],
         },
       },
+      preHandler: [authenticateHook(app), requireMuseumPermission('ticket_scan')],
     },
     async (req, reply) => getTicketByQRCodeHandler(req, reply, app)
   );
@@ -474,7 +475,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: validateTicketSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum, roles.museum_ticket_scan]),
+        requireMuseumPermission('ticket_scan'),
       ],
     },
     async (req, reply) => validateTicketHandler(req, reply, app)
@@ -494,7 +495,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       },
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('ticket_manage'),
       ],
     },
     async (req, reply) => regenerateTicketPDFHandler(req, reply, app)
@@ -504,6 +505,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     '/museum/tickets/checkout/:checkoutId',
     {
       schema: getTicketsByCheckoutIdSchema,
+      preHandler: [authenticateHook(app), requireMuseumPermission('ticket_manage')],
     },
     async (req, reply) => getTicketsByCheckoutIdHandler(req, reply, app)
   );
@@ -514,7 +516,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: resendTicketsByCheckoutIdSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireMuseumPermission('ticket_manage'),
       ],
     },
     async (req, reply) => resendTicketsByCheckoutIdHandler(req, reply, app)
@@ -525,14 +527,13 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     async (req, reply) => viewTicketPageHandler(req, reply, app)
   );
 
-  // Route publique : statistiques des tickets
   app.get(
     '/museum/tickets/stats',
     {
       schema: getTicketsStatsSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireMuseumPermission('ticket_manage'),
       ],
     },
     async (_req, reply) => getTicketsStatsHandler(_req, reply, app)
@@ -544,7 +545,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: getWeeklySlotsStatsSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireMuseumPermission('ticket_manage'),
       ],
     },
     async (_req, reply) => getWeeklySlotsStatsHandler(_req, reply, app)
@@ -554,7 +555,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
     '/museum/tickets/:id',
     {
       schema: getTicketByIdSchema,
-      preHandler: [authenticateHook(app)],
+      preHandler: [authenticateHook(app), requireMuseumPermission('ticket_manage')],
     },
     async (req, reply) => getTicketByIdHandler(req, reply, app)
   );
@@ -565,7 +566,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: createTicketSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev]),
+        requireMuseumPermission('ticket_manage'),
       ],
     },
     async (req, reply) => createTicketHandler(req, reply, app)
@@ -585,7 +586,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: updateTicketSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('ticket_manage'),
       ],
     },
     async (req, reply) => updateTicketHandler(req, reply, app)
@@ -597,7 +598,7 @@ export function registerTicketsRoutes(app: FastifyInstance) {
       schema: deleteTicketSchema,
       preHandler: [
         authenticateHook(app),
-        requireAnyRole([roles.bureau, roles.dev, roles.museum]),
+        requireMuseumPermission('ticket_manage'),
       ],
     },
     async (req, reply) => deleteTicketHandler(req, reply, app)
